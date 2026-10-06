@@ -157,7 +157,15 @@ export function PantallaDelPanel({
         />
       )}
 
-      {vista.tipo === 'boletin' && <BoletinPanel />}
+      {vista.tipo === 'boletin' && (
+        <BoletinPanel
+          onEditar={(a, sesion) => {
+            setVolverA('boletin');
+            setEtiquetasSinRegistrar([]);
+            setVista({ tipo: 'editar', actividad: a, sesion });
+          }}
+        />
+      )}
 
       {vista.tipo === 'reportes' && (
         <ReportesPanel usuario={{ uid: usuario.uid, email: usuario.email }} />
@@ -286,6 +294,7 @@ export function PantallaDelPanel({
           vistaDelPanel={vistaDelPanel}
           formatoDeHora={formatoDeHora}
           inicial={vista.tipo === 'editar' ? vista.actividad : undefined}
+          sesionAEnfocar={vista.tipo === 'editar' ? vista.sesion : undefined}
           copia={
             vista.tipo === 'duplicar' || vista.tipo === 'convertir' ? vista.copia : undefined
           }

@@ -285,11 +285,15 @@ tachado con su motivo («se pasa al jueves 3») en vez de un hueco.
   nadie viera el primero. El formulario ya avisa contra el índice publicado (5.4); falta
   el caso del mismo organizador en la misma fecha, que es el más común.
 
-### 2.8 · Cancelar o reprogramar un encuentro desde los recordatorios del lunes — **Próximo** · M
+### 2.8 · Cancelar o reprogramar un encuentro desde los recordatorios del lunes — ✅ **Hecho (2026-10-06)** · M
 
 - **Qué gana:** el lunes es cuando uno se entera de que algo cambió, y hoy hay que
   abrir la actividad entera para cancelar un encuentro (B-98 ya sabe cancelar con
   motivo; falta el atajo).
+- **Cómo quedó:** cada recordatorio tiene «Cancelar o cambiar», que abre el formulario
+  de la actividad **en ese encuentro** (sección «Encuentros», con el foco en su fecha).
+  No hay un segundo camino de escritura: cancelar o mover pasa por el guardado de
+  siempre, con su sync a Calendar y su historial. Al guardar, se vuelve al correo.
 
 ### Lo que no propongo para el panel
 
@@ -751,7 +755,7 @@ las novedades del panel ya existen como mecanismo.
 | 2.5 | Alcance de la segunda publicadora (B-920/921) | Panel | S–M | ✅ Hecho (2026-10-06) | 🟨 ¿Solo publicadas? → sí, antes de darla |
 | 2.6 | Ofrecer el Instagram y la web del organizador | Panel | S | ✅ Hecho (2026-10-06) | — |
 | 2.7 | Duplicado al guardar | Panel | S–M | ✅ Hecho (2026-10-06) | — |
-| 2.8 | Cancelar desde los recordatorios | Panel | M | Próximo | — |
+| 2.8 | Cancelar desde los recordatorios | Panel | M | ✅ Hecho | 2026-10-06 |
 | 3.9 | Resumen para organizadores | Analítica | M | Más adelante | 🟨 ¿Ofrecer números? → a los 3 meses |
 | 4.5 | Correo automático desde un feed | Newsletter | M | Más adelante | 🟨 ¿Solo o a mano? → a mano |
 | 4.6 | Correo por ciudad | Newsletter | M | Más adelante | 🟨 ¿Segmentar? → todavía no |

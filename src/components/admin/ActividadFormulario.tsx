@@ -104,6 +104,12 @@ interface Props {
   /** Si viene, el formulario edita; si no, crea. */
   inicial?: ActividadConId;
   /**
+   * Roadmap 2.8 — el encuentro en el que abre, cuando se llega desde un
+   * recordatorio del lunes para cancelarlo o cambiarlo: lleva a «Encuentros» y
+   * pone el foco en la fecha de ese encuentro.
+   */
+  sesionAEnfocar?: string;
+  /**
    * B-11 — copia precargada de otra actividad, ya con ids de sesión nuevos,
    * `calendarEventId` en null, slug propuesto y estado borrador
    * (`duplicarActividadForm`). Llega sin `inicial` a propósito: se guarda por
@@ -186,6 +192,7 @@ export function ActividadFormulario({
   vistaDelPanel,
   formatoDeHora,
   inicial,
+  sesionAEnfocar,
   copia,
   tituloOrigen,
   origenDeLaCopia = 'duplicado',
@@ -546,6 +553,22 @@ export function ActividadFormulario({
     ciudadesDeLaCiudad.valores.find((v) => v.slug === slug)?.label ??
     labelsPendientes.ciudad?.[slug];
   const avisoFueraDeSuCiudad = fuera ? textoFueraDeSuCiudad(fuera, ciudad, etiquetaDeCiudad) : null;
+
+  /*
+   * Roadmap 2.8 — al abrir desde un recordatorio, ir a ese encuentro. Una sola vez,
+   * al montar: después es la persona la que se mueve por el formulario. El foco va
+   * a la fecha del encuentro (`sesion-inicio-…`, el id de `SesionesEditor`), que es
+   * por donde se empieza a cambiarlo; la casilla de cancelado está en la misma fila.
+   */
+  useEffect(() => {
+    if (!sesionAEnfocar) return;
+    irASeccion('encuentros');
+    requestAnimationFrame(() => {
+      const campo = document.getElementById(`sesion-inicio-${sesionAEnfocar}`);
+      campo?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      campo?.focus({ preventScroll: true });
+    });
+  }, []);
 
   /**
    * El caso de uso vive en `lib/formulario/guardar.ts` (B-70): validar, chequear

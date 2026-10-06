@@ -1035,7 +1035,10 @@ del correo, un bloque «Para redes» con:
   «Armar recordatorio» que lee **esa** actividad y arma el mismo texto que da su
   formulario —con los arrobados y el canal de inscripción—, para el encuentro de ese
   día aunque sea el tercero de un ciclo. La lista sale del índice; el texto, de
-  `construirTextoRedes`. Lo arma `src/lib/difusionDeLaSemana.ts`.
+  `construirTextoRedes`. Lo arma `src/lib/difusionDeLaSemana.ts`. Al lado, «Cancelar o
+  cambiar» abre el formulario de esa actividad en ese encuentro —la sección
+  «Encuentros», con el foco en su fecha— y al guardar vuelve al correo (roadmap 2.8):
+  no escribe nada por su cuenta, cancelar pasa por el guardado de siempre;
 
 **Siete días corridos y no la semana calendario.** Un correo que sale el miércoles y
 abarca de lunes a domingo habla de dos días que ya pasaron y calla los dos

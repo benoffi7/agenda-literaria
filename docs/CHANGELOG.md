@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **«Cancelar o cambiar» en los recordatorios del lunes** (roadmap 2.8). Cada encuentro
+  de la semana, en la pantalla del correo, abre el formulario de su actividad parado en
+  **ese** encuentro; al guardar se vuelve al correo. Sin un segundo camino de escritura:
+  cancelar con motivo (B-98) o mover la fecha pasa por el guardado de siempre.
+
 - **El aviso de duplicado reconoce al mismo organizador a la misma hora** (roadmap 2.7),
   aunque el título se haya escrito distinto: la forma de los pares de B-2167. Una hora
   de margen, porque una casa puede hacer dos cosas el mismo día. Vale para el aviso del

@@ -14,7 +14,9 @@ import type { EfemerideConId } from '@/types/efemeride';
 export type Vista =
   | { tipo: 'lista' }
   | { tipo: 'nueva' }
-  | { tipo: 'editar'; actividad: ActividadConId }
+  // Roadmap 2.8 — `sesion`: el encuentro en el que abre, cuando se llega desde
+  // un recordatorio del lunes para cancelarlo o cambiarlo.
+  | { tipo: 'editar'; actividad: ActividadConId; sesion?: string }
   // B-11 — la copia viaja como form, no como documento: se guarda por el camino
   // de creación, así el id, el slug y `createdAt`/`createdBy` son de la copia.
   | { tipo: 'duplicar'; copia: ActividadForm; tituloOrigen: string }
@@ -117,7 +119,10 @@ export type DestinoDeVolver =
   | 'suscripciones'
   | 'lugares'
   | 'bibliotecas'
-  | 'efemerides';
+  | 'efemerides'
+  // Roadmap 2.8 — después de cancelar un encuentro desde los recordatorios, se
+  // vuelve al lunes de difusión: hay más recordatorios para mirar.
+  | 'boletin';
 
 /**
  * El título del encabezado. `switch` y no un ternario encadenado: con veintidós

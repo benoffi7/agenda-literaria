@@ -5,6 +5,7 @@ import type { CalendarioActividades as TipoCalendario } from '@/components/admin
 import type { HistorialActividad as TipoHistorial } from '@/components/admin/HistorialActividad';
 import type { ListaActividades as TipoLista } from '@/components/admin/ListaActividades';
 import type { EstadisticasPanel as TipoEstadisticas } from '@/components/admin/EstadisticasPanel';
+import type { BoletinPanel as TipoBoletin } from '@/components/admin/BoletinPanel';
 import type { ReportesPanel as TipoReportes } from '@/components/admin/ReportesPanel';
 import type { PropuestasPanel as TipoPropuestas } from '@/components/admin/PropuestasPanel';
 import type { LibreriasPanel as TipoLibrerias } from '@/components/admin/LibreriasPanel';
@@ -163,7 +164,7 @@ export const EfemeridesPanel = diferido<Parameters<typeof TipoEfemerides>[0]>(()
  * es la vista que se abre una vez por semana: no tiene por qué viajar en el
  * chunk que se baja para mostrar «Entrar con Google» (B-09, D-51, B-117).
  */
-export const BoletinPanel = diferido<object>(() =>
+export const BoletinPanel = diferido<NonNullable<Parameters<typeof TipoBoletin>[0]>>(() =>
   import('@/components/admin/BoletinPanel').then((m) => ({ default: m.BoletinPanel })),
 );
 

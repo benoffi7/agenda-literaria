@@ -65,6 +65,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'cancelar-desde-recordatorios',
+    fecha: '2026-10-06',
+    version: '1.11.0',
+    titulo: 'Cancelar o mover un encuentro desde los recordatorios del lunes',
+    detalle:
+      'Cada encuentro de la semana tiene «Cancelar o cambiar»: abre la actividad parada en ' +
+      'ese encuentro, para cancelarlo con su motivo o correrle la fecha. Al guardar, volvés ' +
+      'al correo.',
+    donde: 'Correo semanal → «Los recordatorios, día por día».',
+  },
+  {
     id: 'contacto-del-organizador',
     fecha: '2026-10-06',
     version: '1.11.0',

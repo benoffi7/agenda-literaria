@@ -19,6 +19,7 @@ import {
   type EncuentroARecordar,
 } from '@/lib/difusionDeLaSemana';
 import { leerActividad } from '@/lib/actividades';
+import type { ActividadConId } from '@/types/actividad';
 import { useLabelsTaxonomia } from '@/components/admin/useOpciones';
 import type { ActividadParaRedes } from '@/lib/textoRedes';
 import { fechaCompleta, hora } from '@/lib/fechasPublicas';
@@ -186,7 +187,16 @@ function VistaPrevia({ boletin }: { boletin: Boletin }) {
  * los handles a etiquetar y el canal de inscripción, que el índice no trae. El
  * texto lo arma `recordatorioDeEncuentro`, que es la función del formulario.
  */
-function Recordatorio({ e, idDe }: { e: EncuentroARecordar; idDe: (slug: string) => string | null }) {
+export function Recordatorio({
+  e,
+  idDe,
+  onEditar,
+}: {
+  e: EncuentroARecordar;
+  idDe: (slug: string) => string | null;
+  /** Roadmap 2.8 — abre la actividad en el formulario, en este encuentro. */
+  onEditar?: (a: ActividadConId, sesion: string) => void;
+}) {
   const labels = useLabelsTaxonomia();
   const [estado, setEstado] = useState<
     { tipo: 'nada' } | { tipo: 'cargando' } | { tipo: 'listo'; texto: string } | { tipo: 'error'; motivo: string }
@@ -206,6 +216,25 @@ function Recordatorio({ e, idDe }: { e: EncuentroARecordar; idDe: (slug: string)
     }
   };
 
+  /*
+   * Roadmap 2.8 — «Cancelar o cambiar»: el lunes es cuando uno se entera de que
+   * algo se movió. **Abre el formulario en este encuentro** y no escribe nada desde
+   * acá: cancelar (con su motivo, B-98) o mover la fecha pasa por el guardado de
+   * siempre, con todas sus guardas. Un segundo camino de escritura sería la clase
+   * de bug que el repo evita.
+   */
+  const editar = async () => {
+    const id = idDe(e.slug);
+    if (!id || !onEditar) return setEstado({ tipo: 'error', motivo: 'No encontré esa actividad en el índice publicado.' });
+    try {
+      const actividad = await leerActividad(id);
+      if (!actividad) return setEstado({ tipo: 'error', motivo: 'Esa actividad ya no está en la base.' });
+      onEditar(actividad, e.sesionId);
+    } catch {
+      setEstado({ tipo: 'error', motivo: 'No pude leer la actividad. Probá de nuevo.' });
+    }
+  };
+
   return (
     <li className="flex flex-col gap-1">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -213,11 +242,18 @@ function Recordatorio({ e, idDe }: { e: EncuentroARecordar; idDe: (slug: string)
           <span className="font-semibold">{e.titulo}</span>
           <span className="block text-xs text-tinta/65">{e.detalle}</span>
         </span>
-        {estado.tipo !== 'listo' && (
-          <button type="button" className={claseBotonSecundario} onClick={armar} disabled={estado.tipo === 'cargando'}>
-            {estado.tipo === 'cargando' ? 'Armando…' : 'Armar recordatorio'}
-          </button>
-        )}
+        <span className="flex flex-wrap gap-2">
+          {estado.tipo !== 'listo' && (
+            <button type="button" className={claseBotonSecundario} onClick={armar} disabled={estado.tipo === 'cargando'}>
+              {estado.tipo === 'cargando' ? 'Armando…' : 'Armar recordatorio'}
+            </button>
+          )}
+          {onEditar && (
+            <button type="button" className={claseBotonSecundario} onClick={() => void editar()}>
+              Cancelar o cambiar
+            </button>
+          )}
+        </span>
       </div>
       {estado.tipo === 'error' && <p className="text-xs text-acento">{estado.motivo}</p>}
       {estado.tipo === 'listo' && (
@@ -232,7 +268,12 @@ function Recordatorio({ e, idDe }: { e: EncuentroARecordar; idDe: (slug: string)
   );
 }
 
-export function BoletinPanel() {
+export function BoletinPanel({
+  onEditar,
+}: {
+  /** Roadmap 2.8 — abre una actividad en el formulario, en el encuentro dado. */
+  onEditar?: (a: ActividadConId, sesion: string) => void;
+} = {}) {
   const [carga, setCarga] = useState<Carga>({ estado: 'cargando' });
 
   useEffect(() => {
@@ -364,6 +405,7 @@ export function BoletinPanel() {
                       key={e.clave}
                       e={e}
                       idDe={(slug) => carga.indice.actividades.find((a) => a.slug === slug)?.id ?? null}
+                      onEditar={onEditar}
                     />
                   ))}
                 </ul>
