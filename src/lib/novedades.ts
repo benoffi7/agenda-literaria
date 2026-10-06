@@ -65,6 +65,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'imagen-de-la-semana',
+    fecha: '2026-10-06',
+    version: '1.11.0',
+    titulo: 'La imagen de la semana para Instagram, lista para bajar',
+    detalle:
+      'Al lado del posteo de la semana hay una imagen con los encuentros, para el feed o para ' +
+      'la historia, con los colores y las letras de la agenda. Se baja y se sube a mano: ' +
+      'ya no hace falta armarla en Canva.',
+    donde: 'Correo de la semana → Para redes → «Imagen de la semana».',
+  },
+  {
     id: 'se-miran-y-no-generan-mensajes',
     fecha: '2026-10-06',
     version: '1.11.0',

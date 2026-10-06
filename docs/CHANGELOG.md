@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **La imagen «Esta semana en la agenda», lista para bajar** (roadmap 4.3). En la
+  pantalla del correo, al lado del posteo: una imagen para el feed o para la historia
+  con los encuentros de la semana, dibujada en el navegador con las tipografías y los
+  colores del sitio, que se baja como PNG. Lo que no entra se dice («y N más»).
+
 - **El tablero dice qué actividades se miran y casi no generan mensajes** (roadmap 3.2).
   En «El sitio público», las actividades con 30 vistas o más en los últimos 28 días,
   ordenadas por clics en «inscribirse» por vista y comparadas contra la mediana; las

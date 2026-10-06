@@ -1012,6 +1012,14 @@ del correo, un bloque «Para redes» con:
   mismo borrador, o sea del índice publicado, y **no lee la base** (D-801). Si no
   entra en los 2200 caracteres de Instagram se corta al final y dice «…y N más en la
   agenda»;
+- **la imagen de la semana** (roadmap 4.3), para el feed (1080 × 1350, hasta 4
+  encuentros) o la historia (1080 × 1920, hasta 7): «Esta semana en la agenda», el
+  rango, una fila por encuentro con día, hora, título y lugar, y `agendaleh.ar`. Se
+  dibuja en un `<canvas>` del navegador con las tipografías del sitio y los colores
+  leídos de sus variables CSS, y se baja como PNG para subirla a mano; no se publica
+  sola. Si sobran, entran primero las recomendadas; lo que no entra se dice («y N más
+  en la agenda»), contado sobre lo que se dibujó. Qué entra y cómo se parten los
+  títulos: `lib/imagenDeLaSemana.ts`;
 - **los recordatorios, día por día**: cada encuentro de la semana con un botón
   «Armar recordatorio» que lee **esa** actividad y arma el mismo texto que da su
   formulario —con los arrobados y el canal de inscripción—, para el encuentro de ese

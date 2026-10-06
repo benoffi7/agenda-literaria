@@ -1,3 +1,4 @@
+import { ImagenDeLaSemana } from '@/components/admin/ImagenDeLaSemana';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { claseBotonSecundario } from '@/components/campos/Campo';
 import {
@@ -345,6 +346,8 @@ export function BoletinPanel() {
               texto={posteoDeLaSemana(boletin)}
               filas={12}
             />
+            {/* Roadmap 4.3 — la misma semana, como imagen para el feed o la historia. */}
+            <ImagenDeLaSemana boletin={boletin} />
             <h3 className="font-serif text-base font-semibold">Recordatorios, día por día</h3>
             <p className="text-xs text-tinta/65">
               Para publicar el día antes de cada encuentro. «Armar recordatorio» lee esa actividad y

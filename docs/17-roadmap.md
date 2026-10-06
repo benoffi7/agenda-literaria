@@ -445,7 +445,12 @@ que va marcado como decisión.
   índice público; el correo hoy no lo usa.
 - **Riesgo / costo:** ninguno.
 
-### 4.3 · La imagen para la historia y el posteo, lista para bajar — **Próximo** · M · 🟨 Decisión
+### 4.3 · La imagen para la historia y el posteo, lista para bajar — ✅ Hecho (2026-10-06) · M · 🟨 Decisión
+
+> **Hecho el 2026-10-06** como recomendaba la decisión: **una sola plantilla
+> semanal**, en la pantalla del correo, para el feed o la historia, dibujada en el
+> navegador con la identidad del sitio y bajada como PNG.
+
 
 - **Qué gana quien carga:** una imagen cuadrada y una vertical con el flyer, la
   fecha y «agendaleh.ar», armadas en el navegador del panel y listas para subir.
@@ -699,7 +704,7 @@ las novedades del panel ya existen como mecanismo.
 | 1.5 | Páginas por organizador | Sitio | L | En curso | páginas hechas; falta sembrar y unir (B-2172, B-2178) |
 | 2.3 | El formulario pide lo que Google quiere (B-813) | Panel | S | ✅ Hecho (2026-09-24) | — |
 | 2.4 | Aviso de precio en las cuatro bandejas (B-1410/1411) | Panel | S | ✅ Hecho (2026-09-24) | — |
-| 4.3 | Imagen semanal para redes | Redes | M | Próximo | 🟨 ¿Plantilla propia? → una sola, semanal |
+| 4.3 | Imagen semanal para redes | Redes | M | ✅ Hecho (2026-10-06) | 🟨 ¿Plantilla propia? → una sola, semanal |
 | 4.4 | Invitar al correo desde el detalle | Newsletter | S | ✅ Hecho (2026-09-28) | — |
 | 5.4 | Posibles duplicados | Datos | M | ✅ Hecho (2026-09-28) | — |
 | 5.5 | Links rotos | Datos | M | ✅ Hecho (2026-09-28) | — |
