@@ -65,6 +65,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'se-miran-y-no-generan-mensajes',
+    fecha: '2026-10-06',
+    version: '1.11.0',
+    titulo: 'Qué actividades se miran mucho y casi no reciben consultas',
+    detalle:
+      'El tablero compara las actividades entre sí: cuántas veces tocaron «inscribirse» por ' +
+      'cada vez que alguien abrió la página. Las de arriba de la lista son las que conviene ' +
+      'revisar: la descripción, el precio o cómo anotarse.',
+    donde: 'Estadísticas → El sitio público → «Se miran y casi no generan mensajes».',
+  },
+  {
     id: 'sacar-la-pagina-de-un-organizador',
     fecha: '2026-09-30',
     version: '1.11.0',

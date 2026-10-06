@@ -1255,6 +1255,14 @@ Con números, la pestaña muestra tres bloques:
   **vocabulario real de eventos** y no de una lista escrita al lado, así que el
   evento que se agregue mañana no puede aparecer en la pantalla con datos y faltar
   en la vacía.
+- **«Se miran y casi no generan mensajes»** (roadmap 3.2) — las actividades con más
+  vistas y menos clics en «inscribirse», **comparadas entre sí**: clics por vista de
+  cada una contra la mediana de las demás, solo entre las que tienen 30 vistas o más
+  en los 28 días, y nada si son menos de tres (la pantalla dice cuántas hay). Las
+  que quedan por debajo de la mitad de la mediana van marcadas: ahí conviene revisar
+  la descripción, el precio o cómo anotarse. Sale de un informe de GA4 más
+  (`conversion`: página × evento, solo `/actividad/…`); la cuenta la hace
+  `comparacionDeConversion`.
 - **«¿Google nos encuentra?»** (B-373) — de Search Console, que no usa cookies ni
   JavaScript. Dice los clics y las apariciones **sumando las diez búsquedas más
   frecuentes, no todo el sitio**, y lo aclara en la misma frase; debajo, dos tablas

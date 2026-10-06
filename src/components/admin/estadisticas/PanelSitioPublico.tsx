@@ -6,6 +6,7 @@ import { Barra } from '@/components/admin/estadisticas/Barra';
  * lado del panel.
  */
 import { NOMBRES_EVENTOS_SITIO, type EjeMedible } from '@/lib/analyticsSitio';
+import { rutaDeDetalle } from '@/lib/rutasPublicas';
 import {
   ctrLegible,
   periodoLegible,
@@ -14,6 +15,7 @@ import {
   variacionLegible,
   type FilaDeBusqueda,
   type FilaDeRanking,
+  type ConversionDelSitio,
   type FilaSinResultados,
   type MetricaConVariacion,
   type ResumenDelSitio,
@@ -131,6 +133,64 @@ const nombreDeEje = (eje: string | null): string =>
  * Qué filtro dejó el listado vacío — B-798. Cerrado por defecto: la fila sigue
  * diciendo el total, y el detalle se abre a pedido.
  */
+/** «12,5 %» — una tasa de 0 a 1 en el formato del panel. */
+const porcentaje = (tasa: number): string =>
+  `${(tasa * 100).toLocaleString('es-AR', { maximumFractionDigits: 1 })} %`;
+
+/**
+ * **«Se miran y casi no generan mensajes»** — roadmap 3.2.
+ *
+ * Una comparación entre actividades y no una tasa suelta: el diseño lo pide así
+ * (fricción 8 del §4), porque con el tráfico de hoy «2 % de clics» no dice nada
+ * solo. Lo que sí dice algo es «esta tiene 120 vistas y 1 clic, y la mitad de las
+ * demás pasa del 8 %». Debajo del piso de vistas no se opina, y con menos de tres
+ * actividades sobre el piso tampoco: la pantalla dice por qué en vez de mostrar
+ * una lista que engaña.
+ */
+function ComparacionDeConversion({ conversion }: { conversion: ConversionDelSitio }) {
+  if (conversion.mediana === null) {
+    return (
+      <p className="mt-2 text-xs text-tinta/65">
+        Todavía no alcanza para comparar: hacen falta al menos tres actividades con{' '}
+        {conversion.piso || 30} vistas o más en estos 28 días
+        {conversion.comparables > 0 ? ` (hoy hay ${conversion.comparables})` : ''}.
+      </p>
+    );
+  }
+  const mediana = conversion.mediana;
+  return (
+    <>
+      <p className="mt-0.5 text-xs text-tinta/65">
+        Clics en «inscribirse» por cada vista, entre las {conversion.comparables} actividades con{' '}
+        {conversion.piso} vistas o más. La mitad está por encima de {porcentaje(mediana)}. Las
+        de arriba de esta lista son las que más vale la pena revisar: la descripción, el precio
+        o cómo anotarse.
+      </p>
+      <ul className="mt-2 divide-y divide-borde border border-borde">
+        {conversion.filas.map((f) => (
+          <li key={f.slug} className="flex items-baseline justify-between gap-4 px-3 py-2.5">
+            <a
+              className="min-w-0 truncate text-sm underline decoration-tinta/30 underline-offset-2"
+              href={rutaDeDetalle(f.slug)}
+              target="_blank"
+              rel="noreferrer"
+              title={f.slug}
+            >
+              {f.slug}
+            </a>
+            <span className="shrink-0 text-xs tabular-nums text-tinta/80">
+              {f.vistas} vistas · {f.clics} {f.clics === 1 ? 'clic' : 'clics'} ·{' '}
+              <span className={f.tasa < mediana / 2 ? 'font-semibold text-acento' : ''}>
+                {porcentaje(f.tasa)}
+              </span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </>
+  );
+}
+
 function DesgloseSinResultados({ filas }: { filas: FilaSinResultados[] }) {
   const tope = filas[0]?.valor ?? 0;
   return (
@@ -536,6 +596,16 @@ export function PanelSitioPublico({ resumen }: { resumen: ResumenDelSitio }) {
           nota="Fricciones concretas. Los eventos ya están instalados y esperando volumen."
           items={METRICAS_PARA_MEJORAR}
         />
+      )}
+
+      {/* ── Roadmap 3.2 — qué actividades se miran y no generan mensajes ─── */}
+      {hayNumerosDeGa4 && (
+        <section>
+          <h3 className="text-xs font-semibold uppercase tracking-wide text-tinta/65">
+            Se miran y casi no generan mensajes
+          </h3>
+          <ComparacionDeConversion conversion={ga4.conversion} />
+        </section>
       )}
 
       {/* ── ¿Google nos encuentra? — B-373, la pregunta 7 del §3 ────────── */}

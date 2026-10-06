@@ -293,11 +293,15 @@ describe('los pedidos a la Data API', () => {
      * puerta de la próxima.** Ahí el producto `eje` × `slug` es la respuesta y
      * no se re-agrega, y `eventName` va porque la Data API solo filtra por una
      * dimensión pedida.
+     *
+     * **Y `conversion` (roadmap 3.2), por el mismo motivo**: `pagePath` ×
+     * `eventName` es la respuesta —vistas y clics de **la misma** página— y no se
+     * re-agrega; `comparacionDeConversion` solo suma los dos eventos de cada ruta.
      */
     const p = pedidosGa4(v);
     for (const [nombre, pedido] of Object.entries(p)) {
       expect(pedido.dateRanges, nombre).toEqual([{ startDate: v.desde, endDate: v.hasta }]);
-      if (nombre === 'sinResultados') continue;
+      if (nombre === 'sinResultados' || nombre === 'conversion') continue;
       expect((pedido as { dimensions?: unknown[] }).dimensions?.length ?? 0, nombre).toBeLessThan(
         2,
       );
@@ -316,6 +320,7 @@ describe('los pedidos a la Data API', () => {
     expect(p.sinResultados.limit).toBe(TOPE_DE_RANKING);
     expect(Object.keys(p).sort()).toEqual([
       'canales',
+      'conversion',
       'dispositivos',
       'eventos',
       'paginas',

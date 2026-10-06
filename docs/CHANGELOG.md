@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **El tablero dice qué actividades se miran y casi no generan mensajes** (roadmap 3.2).
+  En «El sitio público», las actividades con 30 vistas o más en los últimos 28 días,
+  ordenadas por clics en «inscribirse» por vista y comparadas contra la mediana; las
+  que quedan muy abajo van marcadas. Con menos de tres sobre el piso no compara, y lo
+  dice. Un informe de GA4 más por ventana; la cuenta es `comparacionDeConversion`.
+
 - **`/anunciar` dice cuánta gente ve la agenda, con su mes** (roadmap 3.3, B-771). «En
   septiembre de 2026 entraron a la agenda al menos N visitantes, que miraron M páginas»:
   la analítica diaria guarda la audiencia del último mes cerrado en un documento aparte

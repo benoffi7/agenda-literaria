@@ -150,6 +150,21 @@ export const EVENTOS_PROPIOS = [
   'clic_banner_ciudad',
 ];
 
+/**
+ * Roadmap 3.2 — **el piso de vistas** por debajo del cual una actividad no entra a
+ * la comparación «se mira y no genera mensajes». Con 5 vistas, un clic más o menos
+ * cambia la tasa del 0 al 20 %: eso es ruido, no un problema de la ficha. El
+ * diseño lo pidió así (fricción 8 del §4): comparar entre actividades **o no
+ * mostrar**, y no opinar debajo de un piso.
+ */
+export const PISO_DE_VISTAS = 30;
+
+/** Cuántas actividades sobre el piso hacen falta para que comparar diga algo. */
+export const MINIMO_PARA_COMPARAR = 3;
+
+/** El prefijo de las páginas de detalle, que son las que tienen botón de inscripción. */
+export const RUTA_DE_DETALLE = '/actividad/';
+
 /** Cuántas filas se piden de un ranking. Diez es lo que el §9.3 decide mostrar. */
 export const TOPE_DE_RANKING = 10;
 
@@ -354,6 +369,39 @@ export const pedidosGa4 = (ventana) => {
           inListFilter: { values: EVENTOS_PROPIOS },
         },
       },
+    },
+    /*
+     * **Vistas contra clics en «inscribirse», por actividad** — roadmap 3.2.
+     *
+     * Dos dimensiones, como `sinResultados`, y por el mismo motivo: el cruce
+     * **es** la respuesta («esta página tuvo 120 vistas y 1 clic»). Solo las
+     * páginas de detalle (`RUTA_DE_DETALLE`), que son las que tienen el botón, y
+     * solo los dos eventos que se comparan. La cuenta la hace
+     * `comparacionDeConversion`, de este lado.
+     */
+    conversion: {
+      dateRanges,
+      dimensions: [dimension('pagePath'), dimension('eventName')],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter: {
+        andGroup: {
+          expressions: [
+            {
+              filter: {
+                fieldName: 'eventName',
+                inListFilter: { values: ['page_view', 'clic_inscripcion'] },
+              },
+            },
+            {
+              filter: {
+                fieldName: 'pagePath',
+                stringFilter: { matchType: 'BEGINS_WITH', value: RUTA_DE_DETALLE },
+              },
+            },
+          ],
+        },
+      },
+      limit: 2000,
     },
     /*
      * **Qué filtro dejó el listado vacío** — B-798. La fila «Filtros que no
@@ -667,6 +715,52 @@ export const fechaDeGa4 = (valor) =>
  * cruda de cada uno. `primerDia` es la respuesta de `pedidoPrimerDia`, y
  * `vocabulario` el de `vocabularioDelDesglose` (B-2161).
  */
+/**
+ * **«Qué actividades se miran y no generan mensajes»** — roadmap 3.2.
+ *
+ * De la respuesta de `conversion`: por actividad, vistas y clics en inscribirse,
+ * y la tasa. **Solo las que pasan el piso** (`PISO_DE_VISTAS`) entran, y si son
+ * menos de `MINIMO_PARA_COMPARAR` no hay comparación: con dos actividades una
+ * «mediana» no dice nada. La tasa suelta engaña (lo dice el diseño, fricción 8),
+ * así que lo que se devuelve es **contra la mediana** de las demás.
+ *
+ * El slug sale de la ruta y se valida con `FORMA_DE_SLUG`: una ruta rara —un
+ * parámetro, una barra de más— no entra como si fuera una actividad.
+ *
+ * Las filas, ordenadas de menor a mayor tasa (a igual tasa, más vistas primero:
+ * es más evidencia), hasta `TOPE_DE_RANKING`.
+ *
+ * @param {any} respuesta
+ */
+export const comparacionDeConversion = (respuesta) => {
+  const porSlug = new Map();
+  for (const fila of respuesta?.rows ?? []) {
+    const ruta = fila?.dimensionValues?.[0]?.value ?? '';
+    const evento = fila?.dimensionValues?.[1]?.value;
+    const n = Number(fila?.metricValues?.[0]?.value ?? 0);
+    if (!ruta.startsWith(RUTA_DE_DETALLE) || !Number.isFinite(n)) continue;
+    const slug = ruta.slice(RUTA_DE_DETALLE.length).replace(/\/$/, '');
+    if (!FORMA_DE_SLUG.test(slug)) continue;
+    const a = porSlug.get(slug) ?? { slug, vistas: 0, clics: 0 };
+    if (evento === 'page_view') a.vistas += n;
+    else if (evento === 'clic_inscripcion') a.clics += n;
+    porSlug.set(slug, a);
+  }
+  const comparables = [...porSlug.values()]
+    .filter((a) => a.vistas >= PISO_DE_VISTAS)
+    .map((a) => ({ ...a, tasa: a.clics / a.vistas }));
+  if (comparables.length < MINIMO_PARA_COMPARAR) {
+    return { piso: PISO_DE_VISTAS, comparables: comparables.length, mediana: null, filas: [] };
+  }
+  const tasas = comparables.map((a) => a.tasa).sort((x, y) => x - y);
+  const medio = Math.floor(tasas.length / 2);
+  const mediana = tasas.length % 2 ? tasas[medio] : (tasas[medio - 1] + tasas[medio]) / 2;
+  const filas = comparables
+    .sort((x, y) => x.tasa - y.tasa || y.vistas - x.vistas)
+    .slice(0, TOPE_DE_RANKING);
+  return { piso: PISO_DE_VISTAS, comparables: comparables.length, mediana, filas };
+};
+
 export const resumenGa4 = ({ actual, anterior, primerDia, ventana, vocabulario = {} }) => {
   const [sesiones, personas, vistas, nuevos, duracion, enganche] = metricasDeLaFila(
     actual?.totales,
@@ -722,6 +816,8 @@ export const resumenGa4 = ({ actual, anterior, primerDia, ventana, vocabulario =
       ]),
     ),
     sinResultados: desgloseSinResultados(actual?.sinResultados, vocabulario),
+    // Roadmap 3.2 — vistas contra clics en inscribirse, comparado entre actividades.
+    conversion: comparacionDeConversion(actual?.conversion),
   };
 };
 
@@ -913,6 +1009,8 @@ export const CLAVES_DEL_RESUMEN = {
     'eventos',
     // B-798 — el desglose de `filtro_sin_resultados`, con `eje` y `slug`.
     'sinResultados',
+    // Roadmap 3.2 — vistas contra clics de inscripción, por actividad.
+    'conversion',
   ],
   searchConsoleOk: [
     'estado',

@@ -89,6 +89,27 @@ export interface FilaDeBusqueda {
  */
 export type SituacionDeFuente = 'sin-documento' | 'sin-configurar' | 'falla' | 'sin-datos' | 'ok';
 
+/** Una actividad en la comparación de vistas contra clics — roadmap 3.2. */
+export interface FilaDeConversion {
+  slug: string;
+  vistas: number;
+  clics: number;
+  /** `clics / vistas`, 0 a 1. */
+  tasa: number;
+}
+
+/**
+ * «Qué actividades se miran y no generan mensajes» — roadmap 3.2. `mediana` es
+ * `null` cuando no hay suficientes actividades sobre el piso para comparar, y ahí
+ * la pantalla no opina.
+ */
+export interface ConversionDelSitio {
+  piso: number;
+  comparables: number;
+  mediana: number | null;
+  filas: FilaDeConversion[];
+}
+
 export interface ResumenGa4 {
   situacion: SituacionDeFuente;
   /** Solo con `falla`: qué dijo la API, ya recortado. */
@@ -121,6 +142,8 @@ export interface ResumenGa4 {
   eventos: Record<string, number>;
   /** Qué filtro dejó el listado vacío, de más a menos veces — B-798. */
   sinResultados: FilaSinResultados[];
+  /** Vistas contra clics de inscripción, comparado entre actividades — roadmap 3.2. */
+  conversion: ConversionDelSitio;
 }
 
 export interface ResumenSearchConsole {
@@ -217,6 +240,31 @@ const sinResultadosDe = (v: unknown): FilaSinResultados[] =>
       }))
     : [];
 
+/** Sin comparación: un documento de antes de 3.2, o algo que no cierra. */
+const SIN_CONVERSION: ConversionDelSitio = { piso: 0, comparables: 0, mediana: null, filas: [] };
+
+/*
+ * Roadmap 3.2 — se lee campo por campo, como el resto: un documento de antes
+ * no trae `conversion` y da «sin comparación», que la pantalla sabe decir.
+ */
+const conversionDe = (v: unknown): ConversionDelSitio => {
+  if (!esObjeto(v)) return SIN_CONVERSION;
+  const mediana = typeof v.mediana === 'number' && Number.isFinite(v.mediana) ? v.mediana : null;
+  return {
+    piso: num(v.piso),
+    comparables: num(v.comparables),
+    mediana,
+    filas: Array.isArray(v.filas)
+      ? v.filas.filter(esObjeto).map((f) => ({
+          slug: texto(f.slug) ?? '',
+          vistas: num(f.vistas),
+          clics: num(f.clics),
+          tasa: num(f.tasa),
+        }))
+      : [],
+  };
+};
+
 const busquedasDe = (v: unknown): FilaDeBusqueda[] =>
   Array.isArray(v)
     ? v.filter(esObjeto).map((f) => ({
@@ -276,6 +324,7 @@ const SIN_DOCUMENTO: ResumenDelSitio = {
     dispositivos: [],
     eventos: {},
     sinResultados: [],
+    conversion: SIN_CONVERSION,
   },
   searchConsole: {
     situacion: 'sin-documento',
@@ -330,6 +379,7 @@ export const leerResumenDelSitio = (doc: unknown): ResumenDelSitio => {
       dispositivos: rankingDe(ga4Crudo?.dispositivos),
       eventos: eventosDe(ga4Crudo?.eventos),
       sinResultados: sinResultadosDe(ga4Crudo?.sinResultados),
+      conversion: conversionDe(ga4Crudo?.conversion),
     },
     searchConsole: {
       situacion: situacionDe(scCrudo, scCrudo?.hayDatos === true, motivoSc),

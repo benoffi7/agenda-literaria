@@ -283,7 +283,11 @@ respuestas.
   que hay que **anotar la fecha** en que se miró.
 - **Nota técnica:** pasos en `docs/08-operacion.md` y `docs/16-analitica-del-sitio.md` §9.4.
 
-### 3.2 · «Qué actividades se miran y no generan mensajes» — **Próximo (3 de octubre)** · M
+### 3.2 · «Qué actividades se miran y no generan mensajes» — ✅ Hecho (2026-10-06) · M
+
+> **Hecho el 2026-10-06** en la pestaña «El sitio público»: comparación entre
+> actividades contra la mediana, con piso de 30 vistas y mínimo de tres actividades.
+
 
 - **Qué gana quien carga:** saber cuál taller tiene un problema —la descripción, el
   precio o cómo anotarse— comparándolo con los demás, en vez de adivinar.
@@ -685,7 +689,7 @@ las novedades del panel ya existen como mecanismo.
 | 5.3 | Aviso de geografía que no cierra | Datos | S | ✅ Hecho (2026-09-28) | — |
 | 5.7 | Las dos fichas cruzadas (B-1124) | Datos | S | ❌ Descartado (2026-09-25) | (edición del dueño) |
 | 6.1 | Que el backlog no pierda aprobadas | Otros | S | ✅ Hecho (2026-09-24) | — |
-| 3.2 | Vistas contra mensajes por actividad | Analítica | M | Próximo (3/10) | — |
+| 3.2 | Vistas contra mensajes por actividad | Analítica | M | ✅ Hecho (2026-10-06) | — |
 | 3.3 | Número real en `/anunciar` (B-771) | Analítica | S | ✅ Hecho (2026-10-06) | — |
 | 3.5 | Foto mensual del tablero (B-378) | Analítica | S–M | ✅ Hecho (2026-09-28) | — |
 | 3.6 | Qué filtro deja cero, con nombre (B-798) | Analítica | S | ✅ Hecho (2026-09-25) | — |

@@ -202,14 +202,14 @@ const leerGa4 = async (ahora) => {
     /*
      * ── Las tres tandas van EN SERIE, y no es prolijidad ───────────────────
      *
-     * Son trece informes: seis por ventana, dos ventanas, más el del primer
-     * día. La Data API tiene una cuota de **10 pedidos concurrentes por
+     * Son dieciséis informes: siete por ventana (el séptimo, `conversion`, es de
+     * la 3.2), dos ventanas, el del primer día y el del mes cerrado (3.3). La Data API tiene una cuota de **10 pedidos concurrentes por
      * propiedad**, así que lanzarlos todos juntos con un `Promise.all` se pasa
      * por uno y devuelve `RESOURCE_EXHAUSTED`. Y lo peor no es que falle: es
      * que fallaría **de a ratos**, según cuáles terminen primero, dejando el
      * documento con los números de ayer sin un motivo que se entienda.
      *
-     * En serie el pico es de seis concurrentes, con margen. El costo son tres
+     * En serie el pico es de siete concurrentes, con margen. El costo son tres
      * round trips en vez de uno, en una Function que corre una vez por día.
      */
     const actual = await informesDe(ga4, property, v.actual);

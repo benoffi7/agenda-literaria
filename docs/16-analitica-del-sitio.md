@@ -1058,6 +1058,13 @@ Debajo, tres bloques, en el orden de lo que hay que hacer primero:
 
 ### 8.1bis · Qué muestra la pestaña «El sitio público» — el andamiaje, no los datos (B-502)
 
+> **Desde el roadmap 3.2 (2026-10-06)** la pestaña suma «Se miran y casi no generan
+> mensajes»: un informe más por ventana (`conversion`, `pagePath` × `eventName` sobre
+> `/actividad/…`, con `page_view` y `clic_inscripcion`), que `comparacionDeConversion`
+> convierte en clics por vista **comparados contra la mediana**, con piso de 30 vistas
+> (`PISO_DE_VISTAS`) y mínimo de tres actividades (`MINIMO_PARA_COMPARAR`). Es la
+> fricción 8 del §4 resuelta como el diseño la pedía: comparación o nada.
+
 > **Esta sección describe el estado del 2026-09-03 a la mañana, y sigue siendo
 > exacta para el caso «todavía no hay datos» — que es el caso normal el primer
 > mes.** A la tarde se construyó la lectura (**B-374/B-373**), así que cuando
