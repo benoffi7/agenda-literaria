@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { organizadorDeRelleno } from '@/lib/organizadorDeRelleno';
+import { avisoDelFormulario, organizadorDeRelleno } from '@/lib/organizadorDeRelleno';
 
 /** B-2178 — lo que no es un organizador, con los casos reales de producción. */
 describe('organizadorDeRelleno', () => {
@@ -24,5 +24,19 @@ describe('organizadorDeRelleno', () => {
     expect(organizadorDeRelleno('Buscando lectores', [])).toBeNull();
     expect(organizadorDeRelleno('Boedo Libros', ['boedo'])).toBeNull();
     expect(organizadorDeRelleno('')).toBeNull();
+  });
+});
+
+describe('avisoDelFormulario — el mismo aviso, en el momento de cargar', () => {
+  it('cada motivo con su texto, que dice qué hacer', () => {
+    expect(avisoDelFormulario('A conf')).toMatch(/«A conf» no es un organizador.*borrador/);
+    expect(avisoDelFormulario('@laraliteraria')).toMatch(/Instagram del organizador/);
+    expect(avisoDelFormulario('Boedo', ['boedo'])).toMatch(/barrio o la ciudad/);
+    expect(avisoDelFormulario('Biblioteca|')).toMatch(/caracteres/);
+  });
+
+  it('un nombre de verdad, o vacío, no dice nada', () => {
+    expect(avisoDelFormulario('Mandolina Libros')).toBeNull();
+    expect(avisoDelFormulario('')).toBeNull();
   });
 });

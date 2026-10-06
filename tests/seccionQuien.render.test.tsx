@@ -385,3 +385,15 @@ describe('la regla de la que esto es el eco: el guardado normaliza aunque nadie 
     }
   });
 });
+
+describe('el organizador de relleno se avisa al cargarlo, sin frenar nada', () => {
+  it('«A conf» muestra el cartel, y un nombre de verdad lo saca', () => {
+    render(<Arnes escrituras={{ n: 0 }} />);
+    const caja = screen.getByRole('combobox');
+    fireEvent.change(caja, { target: { value: 'A conf' } });
+    expect(screen.getByText(/«A conf» no es un organizador/)).toBeTruthy();
+    expect(caja.getAttribute('aria-describedby')).toContain('org-nombre-aviso');
+    fireEvent.change(caja, { target: { value: 'Casa Brandon' } });
+    expect(screen.queryByText(/no es un organizador/)).toBeNull();
+  });
+});

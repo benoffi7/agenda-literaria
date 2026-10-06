@@ -2262,7 +2262,9 @@ export const CAPITULOS: CapituloAyuda[] = [
         texto:
           'El organizador se escribe y el campo te sugiere los que ya están cargados. Si aparece, ' +
           'elegilo: así todas sus actividades quedan juntas. Si abajo dice que es nuevo, se suma a ' +
-          'la lista al guardar; fijate antes que no esté escrito de otra forma.',
+          'la lista al guardar; fijate antes que no esté escrito de otra forma. Si escribís algo ' +
+          'que no es un organizador —«A conf», una cuenta de Instagram, el barrio—, el campo ' +
+          'te avisa: no frena el guardado, pero así sale en el sitio.',
       },
       {
         texto:

@@ -7,6 +7,7 @@ import { Seccion, TextoConSugerencias } from '@/components/admin/campos-del-pane
 import { Campo, claseInput } from '@/components/campos/Campo';
 import { handleInstagram } from '@/lib/enlaceSeguro';
 import { muestraLibro } from '@/lib/formulario/condicionales';
+import { avisoDelFormulario } from '@/lib/organizadorDeRelleno';
 import type { PropsSeccion } from '@/components/admin/formulario/PropsSeccion';
 
 type Props = PropsSeccion & {
@@ -160,6 +161,10 @@ export function SeccionQuien({ form, set, errorDe, uid, esTaller, esCharla, nomb
   // medio escribir. Uno solo alcanza: el foco está en un campo por vez.
   const [editando, setEditando] = useState<'org' | 'persona' | null>(null);
   const instagramPersona = form.tallerista?.instagram ?? '';
+  const avisoOrganizador = avisoDelFormulario(
+    form.organizador.nombre,
+    form.modalidades.flatMap((m) => [m.sede?.barrio ?? '', m.sede?.ciudad ?? '']).filter(Boolean),
+  );
   return (
     <Seccion ancla="quien" titulo="Quién" conAyuda>
       <div className="grid gap-4 sm:grid-cols-2 @5xl:grid-cols-3">
@@ -176,7 +181,17 @@ export function SeccionQuien({ form, set, errorDe, uid, esTaller, esCharla, nomb
             value={form.organizador.nombre}
             onChange={(nombre) => set('organizador', { ...form.organizador, nombre })}
             avisoDeNuevo="Es nuevo: se suma a la lista de organizadores al guardar."
+            describedBy={avisoOrganizador ? 'org-nombre-aviso' : undefined}
           />
+          {/*
+            Lo que el tablero marca al día siguiente («A conf», una cuenta, el
+            barrio), dicho en el momento de cargar. No frena el guardado (D-767).
+          */}
+          {avisoOrganizador && (
+            <p id="org-nombre-aviso" role="status" className="text-xs font-medium text-tinta/70">
+              {avisoOrganizador}
+            </p>
+          )}
         </Campo>
         <Campo label="Instagram del organizador" htmlFor="org-instagram" ayuda={AYUDA_INSTAGRAM}>
           <input

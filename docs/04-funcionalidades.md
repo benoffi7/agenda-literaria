@@ -398,6 +398,9 @@ guarda tal como se escribió: ver D-116 para por qué esto no es `TagsInput`.
   escrito ya está en la lista —«casa brandon» es «Casa Brandon», y se usa ésa— o
   si es nuevo, en cuyo caso se suma a la lista al guardar. Lo nuevo de un
   publicador entra sin aprobar, como cualquier etiqueta suya (D-810).
+  **Y avisa del relleno** (2026-10-06): «A conf», una cuenta de Instagram, el barrio o
+  la ciudad, o un nombre con un `|` muestran un cartel debajo del campo con qué hacer
+  (`avisoDelFormulario`, la misma regla que el aviso del tablero). No frena el guardado.
 - El **Instagram del organizador y de quien está adelante se prolija solo**: se
   pega el link del perfil —o lo que copia el botón «Compartir» de Instagram, con
   el `?igsh=` y todo— y al salir del campo queda el usuario solo, «casabrandon»

@@ -71,3 +71,28 @@ export const DICHO_DEL_MOTIVO: Record<MotivoDeRelleno, string> = {
   lugar: 'es el barrio o la ciudad, no quién organiza',
   caracteres: 'tiene caracteres que no van en un nombre',
 };
+
+/**
+ * El cartel del formulario, debajo de «Organizador» (2026-10-06): la misma regla
+ * que el aviso del tablero, dicha **en el momento de cargar**, que es cuando
+ * corregirlo no cuesta nada. **No frena el guardado**, como los demás avisos del
+ * formulario (D-767): un borrador puede no saber todavía quién organiza.
+ */
+export const avisoDelFormulario = (
+  nombre: string | null | undefined,
+  lugares: readonly string[] = [],
+): string | null => {
+  const motivo = organizadorDeRelleno(nombre, lugares);
+  if (!motivo) return null;
+  const n = (nombre ?? '').trim();
+  switch (motivo) {
+    case 'relleno':
+      return `«${n}» no es un organizador. Si todavía no sabés quién organiza, guardala como borrador y completalo después: así sale con página propia en el sitio.`;
+    case 'cuenta':
+      return 'Eso es una cuenta de Instagram: va en «Instagram del organizador». Acá va el nombre de la casa o la persona.';
+    case 'lugar':
+      return 'Eso es el barrio o la ciudad, que ya está en «Dónde». Acá va quién organiza.';
+    case 'caracteres':
+      return 'Tiene caracteres que no van en un nombre (como «|»). Revisalo: así sale en el sitio.';
+  }
+};

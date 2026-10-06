@@ -65,6 +65,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'organizador-de-relleno',
+    fecha: '2026-10-06',
+    version: '1.11.0',
+    titulo: 'El organizador avisa si lo escrito no es un organizador',
+    detalle:
+      'Si en «Organizador» queda «A conf», una cuenta de Instagram o el barrio, el campo lo ' +
+      'dice ahí mismo y qué hacer. No frena el guardado: un borrador puede no saber todavía ' +
+      'quién organiza.',
+    donde: 'Al cargar una actividad → «Quién» → «Organizador».',
+  },
+  {
     id: 'imagen-de-la-semana',
     fecha: '2026-10-06',
     version: '1.11.0',

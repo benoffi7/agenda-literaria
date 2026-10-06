@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **El campo «Organizador» avisa cuando lo escrito no es un organizador** («A conf», una
+  cuenta de Instagram, el barrio, un `|`), con qué hacer en cada caso. La misma regla que
+  el aviso del tablero, pero en el momento de cargar; no frena el guardado.
+
 - **«Quién organiza»: el índice `/organiza/`**. Todas las casas con página, en orden
   alfabético, con cuántas actividades tiene cada una por venir. Se enlaza desde el pie
   y desde cada página de organizador, que hasta ahora solo tenían el «Todo lo de…» de
