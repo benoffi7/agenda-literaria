@@ -11,6 +11,7 @@ Este documento no la repite: explica cómo se usa y dónde están las trampas.
 | `/actividades/{id}` | una actividad con sus N sesiones embebidas | panel (claim `admin`, o `publicador` **solo sobre las suyas** — B-888) y `syncCalendar` |
 | `/actividades/{id}/versiones/{version}` | historial de versiones (§12) | `guardarVersion` y `guardarVersionAlBorrar` (Admin SDK) |
 | `/opciones/{campo}` | taxonomías autogestionadas (§4) | panel y scripts |
+| `/sistema/audiencia-del-mes` | la audiencia del último mes cerrado: `{ mes: 'AAAA-MM', personas, vistas, actualizado }` y nada más (roadmap 3.3, B-771). Documento aparte de `sistema/analitica-sitio` porque es lo único de la analítica que va a una página pública (`/anunciar`); el build lo **proyecta** (`audienciaProyectada`) | `traerAnaliticaDelSitio`, en transacción; marca el rebuild cuando cambia el mes |
 | `/sistema/rebuild` | flag de rebuild pendiente y estado de los reintentos (§8) | `syncCalendar`, `rebuildPorOpciones`, `dispararRebuild` |
 | `/reportes/{id}` | bugs y sugerencias cargados desde el panel | panel (crea) y `reporteAIssue` (mueve el estado) |
 | `/propuestas/{id}` | actividades que propone alguien de afuera, antes de existir como actividad (B-830) | **va a ser** el formulario público de `/proponer` (crea) y el panel (revisa). **Hoy el `create` sigue cerrado a admin** hasta que App Check exija — B-836a |

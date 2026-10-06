@@ -16,10 +16,11 @@
  * propiedad que ninguna otra del sitio necesita —**no puede afirmar un número de
  * audiencia**— que solo se puede afirmar sobre datos.
  *
- * El sitio empezó a medir el 2026-09-03 (B-372, B-373). O sea que hoy **no hay
- * un histórico que valga presentar**, y la tentación de la página comercial es
- * exactamente la de escribir «miles de lectores» porque suena mejor que la
- * verdad. Eso sería inventar, que es lo que este repo lleva media docena de
+ * El sitio empezó a medir el 2026-09-03 (B-372, B-373), y la tentación de la
+ * página comercial es exactamente la de escribir «miles de lectores» porque suena
+ * mejor que la verdad. **Desde B-771 hay un número, y sale de un dato**: la
+ * audiencia del último mes cerrado, armada por `bloqueDeAudiencia` (abajo). Lo
+ * escrito a mano sigue sin poder afirmar ninguno. Eso sería inventar, que es lo que este repo lleva media docena de
  * decisiones evitando (D-138, D-159, D-272: mejor un dato ausente que uno que
  * miente). `tests/comercial-del-sitio.test.ts` barre el texto buscando cifras de
  * audiencia y palabras de volumen, así que la próxima versión de esta página no
@@ -38,6 +39,7 @@
  */
 import { ASUNTO_COMERCIAL, urlDeContactoComercial } from '@/lib/enlaces';
 import { RUTA_CONTACTO, RUTA_SUMAR_LUGAR } from '@/lib/rutasPublicas';
+import { nombreDeMes } from '@/lib/meses';
 
 /**
  * Un bloque de la página: un título corto y uno o dos párrafos.
@@ -159,6 +161,47 @@ export const POR_QUE_ACA: BloqueComercial[] = [
       'directorio automático que junta todo lo que encuentra, y por eso quien lo usa vuelve.',
   },
 ];
+
+/**
+ * **«Cuánta gente lo ve»**, el cuarto motivo — roadmap 3.3, B-771.
+ *
+ * Es el único número de audiencia de la página, y **sale de un dato**: la
+ * audiencia del último mes cerrado que guarda la analítica diaria
+ * (`audienciaDelSitio`). Sin dato no hay bloque, y la página dice lo mismo que
+ * antes: nada de tamaños. Por eso el chequeo de `tests/comercial-del-sitio.test.ts`
+ * sigue prohibiendo cifras en los textos escritos a mano: la única cifra posible
+ * es ésta, y la arma esta función con el número en la mano.
+ *
+ * Tres cosas que la frase dice a propósito:
+ *
+ *  - **el mes**, porque un número en una página estática tiene que decir de cuándo
+ *    es (el riesgo que el roadmap le anotó a 3.3);
+ *  - **«al menos»**, porque GA4 solo cuenta a quien acepta la medición en el
+ *    banner (el panel, que mide sin preguntar, queda afuera por el filtro de
+ *    `pedidoDelMes`). GA4 cuenta **navegadores**, no personas —quien entra del
+ *    teléfono y de la compu suma dos—, y por eso la palabra es «visitantes»; el
+ *    «al menos» se sostiene porque lo que el consentimiento deja afuera pesa
+ *    bastante más que ese doble conteo;
+ *  - que **se actualiza cada mes**, para que quien la lea sepa que no es un número
+ *    de lanzamiento congelado.
+ */
+export const bloqueDeAudiencia = (
+  audiencia: { mes: string; personas: number; vistas: number } | null,
+): BloqueComercial | null => {
+  if (!audiencia || audiencia.personas <= 0) return null;
+  const [anio, mes] = audiencia.mes.split('-');
+  const nombre = nombreDeMes(mes ?? '');
+  if (!nombre || !anio) return null;
+  const n = (x: number) => x.toLocaleString('es-AR');
+  return {
+    id: 'audiencia',
+    titulo: 'Cuánta gente lo ve',
+    texto:
+      `En ${nombre} de ${anio} entraron a la agenda al menos ${n(audiencia.personas)} visitantes, ` +
+      `que miraron ${n(audiencia.vistas)} páginas. Contamos solo a quienes aceptan la medición, ` +
+      'así que la cifra real es más alta. Se actualiza cada mes.',
+  };
+};
 
 // ───────────────────────────────────────────────────────────────────────────
 // Cómo sigue

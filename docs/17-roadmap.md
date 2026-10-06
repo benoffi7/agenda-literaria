@@ -297,7 +297,13 @@ respuestas.
 - **Nota técnica:** `functions/analitica.js` (pedido nuevo con `eventName` ×
   `pagePath`), pestaña «El sitio público» del tablero (`estadisticas/PanelSitioPublico.tsx`).
 
-### 3.3 · Un número real para `/anunciar` (B-771) — **Próximo (3 de octubre)** · S
+### 3.3 · Un número real para `/anunciar` (B-771) — ✅ Hecho (2026-10-06) · S
+
+> **Hecho el 2026-10-06**, sin número horneado: la analítica diaria guarda la
+> audiencia del **último mes cerrado** (`sistema/audiencia-del-mes`) y el build la
+> lee. «Cuánta gente lo ve» dice el mes, «al menos» (GA4 solo cuenta a quien acepta
+> la medición) y que se actualiza cada mes; el rebuild se marca al cambiar el mes.
+
 
 - **Qué gana:** un café o una librería que pregunta «¿cuánta gente lo ve?» recibe
   un número verdadero y con fecha.
@@ -680,7 +686,7 @@ las novedades del panel ya existen como mecanismo.
 | 5.7 | Las dos fichas cruzadas (B-1124) | Datos | S | ❌ Descartado (2026-09-25) | (edición del dueño) |
 | 6.1 | Que el backlog no pierda aprobadas | Otros | S | ✅ Hecho (2026-09-24) | — |
 | 3.2 | Vistas contra mensajes por actividad | Analítica | M | Próximo (3/10) | — |
-| 3.3 | Número real en `/anunciar` (B-771) | Analítica | S | Próximo (3/10) | — |
+| 3.3 | Número real en `/anunciar` (B-771) | Analítica | S | ✅ Hecho (2026-10-06) | — |
 | 3.5 | Foto mensual del tablero (B-378) | Analítica | S–M | ✅ Hecho (2026-09-28) | — |
 | 3.6 | Qué filtro deja cero, con nombre (B-798) | Analítica | S | ✅ Hecho (2026-09-25) | — |
 | 3.7 | Medir el banner de ciudad (B-963) | Analítica | S | ✅ Hecho (2026-09-24) | — |

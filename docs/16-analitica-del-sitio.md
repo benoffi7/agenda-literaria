@@ -1211,7 +1211,7 @@ falta.
 | Pieza del §9.1 | Cómo quedó |
 |---|---|
 | **La Data API de GA4** | `functions/analitica.js` arma los pedidos (`runReport` v1beta) y `functions/analitica-trigger.js` los ejecuta |
-| **Una Cloud Function nueva** | `traerAnaliticaDelSitio`, un `onSchedule` diario a las 07:00 (`America/Argentina/Buenos_Aires`) |
+| **Una Cloud Function nueva** | `traerAnaliticaDelSitio`, un `onSchedule` diario a las 07:00 (`America/Argentina/Buenos_Aires`). **Desde B-771 (roadmap 3.3) hace un pedido más**: la audiencia del último mes cerrado (`mesCerrado`, `pedidoDelMes`: visitantes y vistas, sin dimensiones y **sin el panel**, que mide sin consentimiento), que guarda aparte en `sistema/audiencia-del-mes` para `/anunciar` y no en el documento del panel |
 | **Una cuenta de servicio con acceso a la propiedad** | **no se creó una nueva.** Es `calendar-sync@`, la que ya existe y a la que el proyecto ya le da permisos a mano en consolas de Google. Una identidad menos que rotar y un paso de consola menos |
 | **Autorizar la Function** | **no hay endpoint que autorizar.** El resumen se escribe en `sistema/analitica-sitio`, que en `firestore.rules` ya es `read: if esAdmin()` / `write: if false` |
 | **Caché** | es el mismo documento. Un `onCall` con un caché al lado eran dos piezas para el mismo fin |

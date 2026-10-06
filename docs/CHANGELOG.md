@@ -2,6 +2,14 @@
 
 ## Sin publicar
 
+- **`/anunciar` dice cuánta gente ve la agenda, con su mes** (roadmap 3.3, B-771). «En
+  septiembre de 2026 entraron a la agenda al menos N visitantes, que miraron M páginas»:
+  la analítica diaria guarda la audiencia del último mes cerrado en un documento aparte
+  (`sistema/audiencia-del-mes`, en transacción) y el build la lee y la proyecta. «Al
+  menos» porque GA4 solo cuenta a quien acepta la medición (el panel, que mide sin
+  preguntar, queda afuera); al cambiar el mes se marca
+  el rebuild, así que el número no envejece. Sin dato, la página no dice ninguno.
+
 - **`corregir-contactos-mal-cargados.mjs` escribe en lotes de 400** (B-2184): con más de
   500 actividades a corregir, el lote único fallaba entero.
 - **El respaldo de la base se probó restaurándolo** (B-2162): 13 min 37 s. La copia tenía

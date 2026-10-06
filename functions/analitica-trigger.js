@@ -40,10 +40,14 @@ import { logger } from 'firebase-functions/v2';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { GoogleAuth } from 'google-auth-library';
 import { google } from 'googleapis';
+import { marcarRebuild } from './marca-de-rebuild.js';
 import {
   MOTIVOS_SIN_CONFIGURAR,
   RETRASO,
+  audienciaDelMes,
   documentoDeAnalitica,
+  mesCerrado,
+  pedidoDelMes,
   pedidoPrimerDia,
   pedidosGa4,
   pedidosSearchConsole,
@@ -78,6 +82,48 @@ const OPCIONES = {
 
 /** El documento que lee el panel. Uno solo: es una foto, no una serie (B-378). */
 const DOC = 'sistema/analitica-sitio';
+
+/**
+ * Roadmap 3.3, B-771 — **la audiencia del último mes cerrado**, en un documento
+ * propio: es lo único de la analítica que va a una página pública (`/anunciar`),
+ * y por eso no vive dentro de `sistema/analitica-sitio`, que lee el panel. Dos
+ * números y el mes (`audienciaDelMes`). El build lo lee con el Admin SDK.
+ */
+const DOC_AUDIENCIA = 'sistema/audiencia-del-mes';
+
+/**
+ * Escribe la audiencia si cambió, y **marca el rebuild cuando cambia el mes**:
+ * sin eso `/anunciar` seguiría diciendo «en septiembre» hasta que alguien edite
+ * algo en noviembre. Dentro del mismo mes GA4 a veces corrige un número de días
+ * atrás; eso se guarda pero no rebuildea: lo toma el próximo build.
+ *
+ * **En transacción** (la clase de B-85): leer para decidir y escribir después, con
+ * dos corridas solapadas, podría pisar un mes más nuevo con uno más viejo. Es un
+ * documento chico y una vez por día; la transacción no cuesta nada.
+ *
+ * Nunca tira: un fallo acá no puede llevarse la analítica del panel.
+ */
+const guardarAudiencia = async (db, audiencia) => {
+  try {
+    const ref = db.doc(DOC_AUDIENCIA);
+    const cambioElMes = await db.runTransaction(async (tx) => {
+      const antes = (await tx.get(ref)).data();
+      const igual =
+        antes?.mes === audiencia.mes &&
+        antes?.personas === audiencia.personas &&
+        antes?.vistas === audiencia.vistas;
+      if (igual) return false;
+      tx.set(ref, { ...audiencia, actualizado: FieldValue.serverTimestamp() });
+      return antes?.mes !== audiencia.mes;
+    });
+    if (cambioElMes) await marcarRebuild(db, DOC_AUDIENCIA);
+  } catch (e) {
+    logger.error('no se pudo guardar la audiencia del mes', {
+      alerta: 'analitica-sitio-audiencia',
+      error: e?.message,
+    });
+  }
+};
 
 /**
  * La propiedad de GA4 y el sitio de Search Console, por entorno.
@@ -171,6 +217,12 @@ const leerGa4 = async (ahora) => {
     const primerDia = await ga4.properties
       .runReport({ property, requestBody: pedidoPrimerDia(ahora) }, { timeout: TIMEOUT_MS })
       .then((r) => r.data);
+    // Roadmap 3.3 — el último mes cerrado, para `/anunciar`. Un pedido chico más,
+    // en la misma tanda serie: la cuota de concurrencia no se mueve.
+    const mes = mesCerrado(ahora);
+    const delMes = await ga4.properties
+      .runReport({ property, requestBody: pedidoDelMes(mes) }, { timeout: TIMEOUT_MS })
+      .then((r) => r.data);
     /*
      * Las taxonomías contra las que se contrasta el desglose de
      * `filtro_sin_resultados` — B-2161. Seis documentos chicos en una sola
@@ -187,6 +239,7 @@ const leerGa4 = async (ahora) => {
     return {
       ok: true,
       resumen: resumenGa4({ actual, anterior, primerDia, ventana: v.actual, vocabulario }),
+      audiencia: audienciaDelMes(delMes, mes),
     };
   } catch (e) {
     /*
@@ -295,6 +348,8 @@ export const traerAnaliticaDelSitio = onSchedule(OPCIONES, async () => {
        */
       { merge: false },
     );
+
+  if (ga4.ok && ga4.audiencia) await guardarAudiencia(getFirestore(), ga4.audiencia);
 
   logger.info('analítica del sitio actualizada', {
     ga4: ga4.ok ? 'ok' : 'falla',

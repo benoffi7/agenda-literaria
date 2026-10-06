@@ -57,7 +57,9 @@ import {
   QUE_CONTARNOS,
   TAMBIEN_EN_LA_GUIA,
   TITULO_COMERCIAL,
+  bloqueDeAudiencia,
 } from '@/lib/comercialDelSitio';
+import { audienciaDelSitio } from '@/lib/contenidoDelSitio';
 import {
   claseBloque,
   claseBotonPrimario,
@@ -65,6 +67,11 @@ import {
   claseHundido,
   claseRotulo,
 } from '@/components/sitio/estilos';
+
+// Roadmap 3.3 (B-771) — el único número de audiencia de la página sale de un dato:
+// la audiencia del último mes cerrado. Sin dato, no hay bloque.
+const audiencia = bloqueDeAudiencia(await audienciaDelSitio());
+const motivos = audiencia ? [...POR_QUE_ACA, audiencia] : POR_QUE_ACA;
 ---
 
 <Base
@@ -113,7 +120,7 @@ import {
       */}
       <div class="mt-6 grid items-start gap-4 sm:grid-cols-2">
         {
-          POR_QUE_ACA.map((bloque) => (
+          motivos.map((bloque) => (
             <section
               aria-labelledby={`arg-${bloque.id}`}
               class={`flex min-w-0 flex-col p-5 sm:p-6 ${claseBloque}`}

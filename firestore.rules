@@ -836,9 +836,11 @@ service cloud.firestore {
     }
 
     /*
-     * Lo que el backend calcula y el panel mira. Dos documentos hoy:
+     * Lo que el backend calcula y el panel mira. Tres documentos hoy:
      *
      *  - `rebuild` — el flag de rebuild pendiente del §8;
+     *  - `audiencia-del-mes` — el mes y dos agregados de GA4 (B-771); lo lee el
+     *    build con el Admin SDK para `/anunciar`, así que no necesita lectura acá;
      *  - `analitica-sitio` — el resumen diario de GA4 y Search Console
      *    (B-374/B-373), y **éste lleva contenido**: los rankings de páginas del
      *    sitio y las consultas con las que Google nos muestra, o sea texto que

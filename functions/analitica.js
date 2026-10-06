@@ -412,6 +412,86 @@ export const pedidoPrimerDia = (ahora) => ({
 });
 
 // ─────────────────────────────────────────────────────────────────
+// La audiencia del último mes cerrado — roadmap 3.3, B-771
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * **El último mes calendario con todos sus días medidos**, en la zona del
+ * proyecto: `{ clave: '2026-09', desde: '2026-09-01', hasta: '2026-09-30' }`.
+ *
+ * Es el número que `/anunciar` le da a un café que pregunta «¿cuánta gente lo
+ * ve?», y por eso **mes calendario y no la ventana de 28 días** del tablero: la
+ * frase lleva su mes («en septiembre de 2026…») para que se sepa de cuándo es, y
+ * un «últimos 28 días» horneado en una página estática no dice cuándo se escribió.
+ *
+ * El retraso de GA4 cuenta (`RETRASO.ga4`, un día): el último día medido es
+ * ayer, así que el 1 de octubre septiembre ya cerró; con un retraso de dos días
+ * todavía no, y el mes cerrado seguiría siendo agosto. Se toma el día siguiente
+ * al último medido y se va al mes de antes.
+ *
+ * @param {Date} ahora
+ * @param {number} [retraso]
+ */
+export const mesCerrado = (ahora, retraso = RETRASO.ga4) => {
+  const ultimoMedido = sumarDias(claveDeDia(ahora), -retraso);
+  const [a, m] = sumarDias(ultimoMedido, 1).split('-').map(Number);
+  const anio = m === 1 ? a - 1 : a;
+  const mes = m === 1 ? 12 : m - 1;
+  const clave = `${anio}-${String(mes).padStart(2, '0')}`;
+  const primeroDelSiguiente = `${a}-${String(m).padStart(2, '0')}-01`;
+  return { clave, desde: `${clave}-01`, hasta: sumarDias(primeroDelSiguiente, -1) };
+};
+
+/**
+ * El pedido de la audiencia del mes: **dos métricas y ninguna dimensión**. Un
+ * agregado del mes entero, que no puede traer contenido de nadie (la razón de
+ * `DIMENSIONES_PERMITIDAS` vive del lado de las dimensiones).
+ *
+ * @param {{ desde: string, hasta: string }} mes
+ */
+export const pedidoDelMes = (mes) => ({
+  dateRanges: [{ startDate: mes.desde, endDate: mes.hasta }],
+  metrics: [{ name: 'activeUsers' }, { name: 'screenPageViews' }],
+  /*
+   * **Sin el panel** (lo cobró el `auditor-privacidad`). La propiedad es la misma
+   * para el sitio y el panel (B-801), y el panel mide **sin** pedir consentimiento:
+   * sin este filtro, quien trabaja en el panel contaba como visitante, y la frase de
+   * `/anunciar` —«contamos solo a quienes aceptan la medición»— dejaba de ser
+   * cierta. El mismo filtro que el ranking de páginas. Es un filtro y no una
+   * dimensión: la respuesta sigue siendo un agregado.
+   */
+  dimensionFilter: {
+    notExpression: {
+      filter: {
+        fieldName: 'pagePath',
+        stringFilter: { matchType: 'BEGINS_WITH', value: RUTA_DEL_PANEL },
+      },
+    },
+  },
+});
+
+/**
+ * Lo que se guarda en `sistema/audiencia-del-mes` y lee el build: **el mes y dos
+ * números**, nada más. Es un documento aparte del de la analítica del panel a
+ * propósito: lo que va a una página pública tiene que estar separado de lo que no,
+ * y acá la separación es el documento entero.
+ *
+ * `null` sin números: una respuesta vacía no es «cero personas», es «no hubo
+ * respuesta», y la página no tiene que decir nada.
+ *
+ * @param {any} respuesta  de `runReport`
+ * @param {{ clave: string }} mes
+ */
+export const audienciaDelMes = (respuesta, mes) => {
+  const valores = respuesta?.rows?.[0]?.metricValues;
+  if (!valores) return null;
+  const personas = Number(valores[0]?.value);
+  const vistas = Number(valores[1]?.value);
+  if (!Number.isFinite(personas) || !Number.isFinite(vistas)) return null;
+  return { mes: mes.clave, personas, vistas };
+};
+
+// ─────────────────────────────────────────────────────────────────
 // Las respuestas de GA4
 // ─────────────────────────────────────────────────────────────────
 

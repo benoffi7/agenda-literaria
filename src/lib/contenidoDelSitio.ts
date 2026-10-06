@@ -829,6 +829,44 @@ const leer = async (): Promise<ContenidoDelSitio> => {
 
 let cache: Promise<ContenidoDelSitio> | null = null;
 
+/**
+ * **La audiencia del último mes cerrado**, para `/anunciar` — roadmap 3.3, B-771.
+ *
+ * La escribe `traerAnaliticaDelSitio` en `sistema/audiencia-del-mes`, un documento
+ * aparte de la analítica del panel justamente porque esto va a una página pública.
+ * Se **proyecta** igual: solo `mes`, `personas` y `vistas`, validados — si mañana
+ * alguien le agrega un campo al documento, no sale solo.
+ *
+ * `null` sin credenciales, sin documento o con algo que no cierra: la página no
+ * dice ningún número, que es lo que decía antes de que hubiera datos. Memoizada
+ * como el resto: una lectura por build.
+ */
+export interface AudienciaDelMes {
+  /** `AAAA-MM`. */
+  mes: string;
+  personas: number;
+  vistas: number;
+}
+
+export const audienciaProyectada = (d: unknown): AudienciaDelMes | null => {
+  const a = d as Partial<AudienciaDelMes> | null | undefined;
+  if (!a || typeof a.mes !== 'string' || !/^\d{4}-\d{2}$/.test(a.mes)) return null;
+  const personas = Number(a.personas);
+  const vistas = Number(a.vistas);
+  if (!Number.isInteger(personas) || personas <= 0 || !Number.isInteger(vistas) || vistas < 0) return null;
+  return { mes: a.mes, personas, vistas };
+};
+
+let cacheAudiencia: Promise<AudienciaDelMes | null> | null = null;
+
+export const audienciaDelSitio = (): Promise<AudienciaDelMes | null> =>
+  (cacheAudiencia ??= hayCredenciales()
+    ? adminDb()
+        .doc('sistema/audiencia-del-mes')
+        .get()
+        .then((s) => audienciaProyectada(s.data()))
+    : Promise.resolve(null));
+
 /** El contenido del sitio, leído una sola vez por build. */
 export const contenidoDelSitio = (): Promise<ContenidoDelSitio> => {
   if (!cache) {
