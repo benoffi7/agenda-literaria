@@ -23,6 +23,7 @@
  */
 import * as derivados from '../../functions/derivados.js';
 import { deDatetimeLocal } from '@/lib/sesiones';
+import { claveDeDia } from '@/lib/fechasPublicas';
 import type { Modalidad, ModalidadFila, ModalidadFilaForm, Online, Sede } from '@/types/actividad';
 
 /**
@@ -187,3 +188,46 @@ export const modalidadAForm = (
   sede: f.sede,
   online: f.online,
 });
+
+/**
+ * **¿En qué fila ocurre este encuentro?** — B-734, la segunda salida. El id de
+ * la fila, o `null` si los datos no alcanzan para decirlo.
+ *
+ * La pidió Search Console y no la prolijidad: B-734 había dejado al `subEvent`
+ * sin `location` cuando hay más de una fila, apostando a que Google «tolera
+ * heredar del padre». **No tolera**: el informe «Eventos» marcó esos items como
+ * inválidos («Falta el campo "location"», 2026-10-11), y un item inválido no
+ * sale en el resultado enriquecido.
+ *
+ * La regla, de la afirmación más gruesa a la más fina:
+ *
+ * 1. Candidatas son las filas **cuya ventana contiene el inicio del encuentro**.
+ *    Una punta vacía es abierta: sin `fin` es «desde tal fecha», sin ninguna de
+ *    las dos es «siempre».
+ * 2. Si queda una sola, es ésa.
+ * 3. Si quedan varias, gana **la única que empieza el mismo día que el
+ *    encuentro** (en Buenos Aires, trampa 1). Es el caso real que la destrabó:
+ *    un club con dos sedes cargó cada fila con la fecha de su encuentro y sin
+ *    cierre, así que el del sábado cae en las dos ventanas abiertas y solo la
+ *    del sábado empieza ese día.
+ * 4. Si no, `null`. **No se elige «la que empezó más cerca»**: dos filas
+ *    abiertas en paralelo —presencial los martes, Meet los jueves— pasarían a
+ *    repartirse por orden de carga, que es inventar.
+ *
+ * Con una sola fila no hay nada que repartir y devuelve `null`: quien llama ya
+ * usa la fila única.
+ */
+export const filaDeEncuentro = (
+  filas: { id: string; inicio: Date | null; fin: Date | null }[],
+  inicio: Date,
+): string | null => {
+  if (filas.length < 2) return null;
+  const t = inicio.getTime();
+  const candidatas = filas.filter(
+    (f) => (!f.inicio || f.inicio.getTime() <= t) && (!f.fin || t <= f.fin.getTime()),
+  );
+  if (candidatas.length === 1) return candidatas[0]!.id;
+  const dia = claveDeDia(inicio);
+  const delDia = candidatas.filter((f) => f.inicio && claveDeDia(f.inicio) === dia);
+  return delDia.length === 1 ? delDia[0]!.id : null;
+};

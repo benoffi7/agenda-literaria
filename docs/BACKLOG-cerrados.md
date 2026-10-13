@@ -24006,3 +24006,85 @@ La ruta de recorte ya está escrita y medida a medias: sumarle
 testigo que hay que dar vuelta ya existe y **enumera lo que lee**: `it('lee un
 BORRADOR ajeno de su ciudad, con su link de reunión y sus notas internas adentro')`
 en `tests/rol-publicador.integracion.test.ts`.
+
+### B-734 · Con más de una fila de modalidad, el `location` de cada `subEvent` afirma más de lo que sabe — ✅ hecho (2026-10-13) · P3
+
+> ✅ **Hecha la segunda salida, porque Search Console refutó la primera.** El
+> informe «Eventos» marcó **«Falta el campo "location"»** en los dos `subEvent` de
+> `club-de-lectura-alma-lectora-mdp-octubre` (primera detección 2026-09-03, lectura
+> del 2026-10-11): el item sin `location` **no** lo tolera Google heredando del
+> padre, lo marca inválido y lo saca del resultado enriquecido. Es la primera
+> actividad publicada con dos filas **con ventana** —la condición que el 👁 de abajo
+> esperaba—: dos sedes, cada fila con la fecha de su encuentro y sin cierre.
+>
+> **El reparto se resuelve en `toPublic` y lo que viaja es la atribución, no la
+> ventana** (D-130 sigue en pie): `SesionPublica.modalidadId`, calculado por
+> `filaDeEncuentro` (`src/lib/modalidades.ts`) — la única fila cuya ventana
+> contiene el encuentro, o entre varias la única que empieza ese día en Buenos
+> Aires, o `null`. Como `comisionId`, no llega a ningún archivo: el índice del
+> listado no lo proyecta. El JSON-LD le da a cada `subEvent` **los lugares de su
+> fila**, y si no se sabe, **los de la serie** — nunca un item sin `location`.
+> Dos filas abiertas en paralelo no se reparten por orden de carga.
+>
+> **Falta solo mirar**: después del deploy, «Validar corrección» en el informe de
+> Search Console (lo junta B-731).
+
+> 👁 **Apareció la primera actividad con más de una fila (revisado el 2026-09-30), y
+> no alcanza para decidir.** Es un festival publicado, ya pasado, con **cuatro filas
+> presenciales sin `inicio` ni `fin`** (una sala y tres filas con el mismo centro
+> cultural). Sin ventana en ninguna fila no hay con qué repartir los encuentros, así
+> que publicar esos dos campos no cambiaría nada en el único caso real. Lo que hace
+> hoy la página es lo correcto para ese caso: la raíz nombra los lugares y cada
+> `subEvent` no dice en cuál ocurre. **La condición pasa a ser más fina:** decidirlo
+> el día que haya una actividad con dos o más filas **que tengan ventana**.
+
+> ✅ **Hecho con la primera de las dos salidas: el `subEvent` deja de heredar
+> `location` cuando hay más de una fila.** La raíz lo sigue publicando —el conjunto
+> de lugares es de la actividad y es cierto—, así que el item vuelve al estado
+> incompleto que B-730 arregló, que es el que «Google tolera heredando del padre»,
+> y no a un encuentro sin lugar en ninguna parte.
+>
+> **La segunda salida no se puede hacer desde la página, y ése es el hallazgo.**
+> Repartir los lugares de verdad necesita `modalidades[].inicio`/`fin` en el
+> view-model, y hoy esos dos campos son una fila explícita del «Qué NUNCA sale»
+> (B-224, **D-130**). Aunque se usaran solo dentro del build para casar fila con
+> encuentro, subirlos a `ModalidadPublica` es una decisión de `toPublic` y no de
+> esta salida. Es lo que hay que decidir el día que aparezca la primera actividad
+> con dos filas.
+>
+> **Un detalle que el ítem no decía y que ahora tiene test: la cuenta es de filas,
+> no de lugares.** Una fila **híbrida** produce un `Place` y un `VirtualLocation`,
+> y de esa fecha las dos cosas son ciertas a la vez, así que conserva su
+> `location`. Escribir la guarda sobre la cantidad de lugares —que es lo que uno
+> escribe leyendo «con más de un lugar no se sabe»— rompe el ciclo híbrido, que sí
+> es un caso real de hoy.
+>
+> **`eventAttendanceMode` no se tocó, y está argumentado en el código:** con filas
+> mixtas dice «esto se cursa de las dos formas», que es una propiedad de la
+> actividad; `location` nombra lugares concretos, que es la afirmación fina. Si el
+> reparto de verdad llega, los dos se resuelven juntos.
+
+**Lo derivó el `auditor-privacidad` auditando B-730, y lo clasificó como
+honestidad de datos y no como privacidad — con razón: no hay fuga.**
+
+Con `modalidades.length > 1` (B-224, «presencial los martes y por Meet los
+jueves») la serie decía «esto ocurre en estos lugares» y cada `subEvent` pasa a
+decir «*esta fecha* ocurre en todos ellos». `modalidadDeDetalle` no lleva el
+`inicio`/`fin` de la fila al view-model, así que el JSON-LD **no puede** saber
+qué encuentro va con qué lugar.
+
+No dice más que la página, que tampoco los reparte, y el conjunto de lugares ya
+era público y es el mismo. Pero es una afirmación más fina que el dato que la
+respalda, o sea que roza la regla 6 del §5.3.
+
+**Hoy es hipotético y por eso es P3:** de las 68 actividades publicadas,
+**ninguna** tiene más de una fila (verificado sobre el `events.json` real). El
+caveat quedó escrito en la regla 7 del §5.3 y en el docblock de
+`datosEstructurados`, que es lo que hace que no se pierda.
+
+**Las dos salidas, si el caso aparece:** omitir `location` en el `subEvent`
+cuando hay más de una fila —vuelve a dejarlo incompleto, que es lo que B-730
+arregló—, o llevar las fechas de la fila al view-model y repartir los lugares de
+verdad. La segunda es la buena y es más grande que este ítem.
+
+---

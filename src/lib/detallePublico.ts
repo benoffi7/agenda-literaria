@@ -125,6 +125,13 @@ export interface EncuentroDeDetalle {
    * §5.1 a cambio de nada. Lo cobró el `auditor-privacidad`.
    */
   comision: { etiqueta: string } | null;
+  /**
+   * **En qué fila de `modalidades` ocurre** — B-734, o `null` si no se sabe. Es
+   * un id que el view-model ya lleva (`ModalidadDeDetalle.id`) y que la plantilla
+   * no pinta: solo lo lee `datosEstructurados` para darle a cada `subEvent` su
+   * `location`. Un id que no apunta a ninguna fila se lee como `null`.
+   */
+  filaId: string | null;
   inicioIso: string;
   finIso: string;
   fecha: string;
@@ -1300,6 +1307,7 @@ export const detalleDeActividad = (
   const claveDe = (comisionId: string | null): string =>
     comisionId && etiquetaDeComision.has(comisionId) ? comisionId : '';
   const contados = new Map<string, number>();
+  const idsDeFila = new Set((a.modalidades ?? []).map((m) => m.id));
   /*
    * Roadmap 1.1 — el lugar del evento que se agenda: la misma función que el
    * calendario público, sobre la sede ya proyectada (el derivado «primera fila
@@ -1334,6 +1342,7 @@ export const detalleDeActividad = (
        * está a mano.
        */
       comision: etiqueta ? { etiqueta } : null,
+      filaId: s.modalidadId && idsDeFila.has(s.modalidadId) ? s.modalidadId : null,
       inicioIso: inicio ? isoConOffset(inicio) : '',
       finIso: fin ? isoConOffset(fin) : '',
       fecha: inicio ? fechaLarga(inicio) : '',
@@ -1741,8 +1750,11 @@ const CANCELADO = 'https://schema.org/EventCancelled';
  * Hasta que el dominio existió el lugar salía sin `url`, porque una URL relativa
  * ahí no es válida y una absoluta inventada es peor que nada.
  */
-const lugaresDe = (d: DetallePublico): Record<string, unknown>[] =>
-  d.modalidades.flatMap((m) => {
+const lugaresDe = (
+  d: DetallePublico,
+  filas: DetallePublico['modalidades'] = d.modalidades,
+): Record<string, unknown>[] =>
+  filas.flatMap((m) => {
     const salida: Record<string, unknown>[] = [];
     if (m.sede) {
       salida.push({
@@ -1788,9 +1800,9 @@ const lugaresDe = (d: DetallePublico): Record<string, unknown>[] =>
  *    item completo**, no una cáscara con fechas: hereda de la actividad el
  *    lugar, la descripción y el organizador —el mismo hecho en otra fecha—,
  *    porque `location` es obligatorio en un `Event` (**B-721**). El `offers`,
- *    en cambio, se vuelve a decidir encuentro por encuentro, y el `location` se
- *    cae cuando hay más de una forma de cursar (**B-734**): ver la rama de la
- *    serie, al final de esta función.
+ *    en cambio, se vuelve a decidir encuentro por encuentro, y con más de una
+ *    forma de cursar el `location` es el de la fila del encuentro (**B-734**):
+ *    ver la rama de la serie, al final de esta función.
  * 3. **Una sesión cancelada conserva su fecha** con `eventStatus:
  *    EventCancelled`. Google pide el `startDate` original: sin él no puede
  *    tacharlo en el resultado.
@@ -2049,15 +2061,9 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
    * lugares ya es público y es el mismo— pero era una afirmación más fina que el
    * dato que la respalda, o sea la regla 6 al revés.
    *
-   * Ahora el `location` **sale de la herencia** en ese caso (`repartible`, abajo)
-   * y el encuentro no dice dónde. Es la primera de las dos salidas que B-734
-   * anota, y la barata: lo devuelve al item incompleto que B-730 arregló, que es
-   * el estado que «Google tolera heredando del padre» —la raíz sigue teniendo los
-   * lugares—. La buena es la otra: llevar las fechas de cada fila al view-model y
-   * repartir los lugares de verdad, y es más grande que este ítem porque hoy
-   * `ModalidadPublica` ni siquiera trae la ventana (§5.1: «no sale a ninguna de
-   * las diecinueve salidas», y usarla acá aunque no se publique es una decisión de
-   * `toPublic`, no de este módulo).
+   * **Ese recorte duró hasta que Search Console lo marcó inválido** (2026-10-13):
+   * ahora cada encuentro lleva el lugar de su fila cuando se sabe, y los de la
+   * serie cuando no — ver `lugarDelEncuentro`, abajo.
    *
    * **`eventAttendanceMode` se queda, y no es un olvido**: con filas mixtas dice
    * `Mixed`, o sea «esto se cursa de las dos formas», que es una propiedad de la
@@ -2070,15 +2076,33 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
    * arriba. La cuenta es de **filas** y no de lugares, y ésa es la parte que se
    * lee al revés: una fila híbrida produce dos lugares —un `Place` y un
    * `VirtualLocation`— y de esa fecha las dos cosas son ciertas a la vez, así que
-   * ahí el `subEvent` conserva su `location`. Lo que no se puede atribuir son dos
-   * **filas**, porque cada una es una forma distinta de cursar con su propia
-   * ventana, y la ventana no llega hasta acá.
-   *
-   * Dos filas con la misma sede pierden el `location` de más: es el lado barato
-   * de equivocarse —un item incompleto que hereda del padre, contra un encuentro
-   * afirmando un lugar donde puede no ocurrir—.
+   * ahí el `subEvent` conserva su `location`. Con dos **filas** hace falta saber
+   * de cuál es cada encuentro, y eso lo resuelve `lugarDelEncuentro`, abajo.
    */
   const repartible = d.modalidades.length <= 1;
+
+  /*
+   * **El `location` de cada encuentro** — B-734, la segunda salida, hecha el
+   * 2026-10-13 porque Search Console refutó la primera: el `subEvent` sin
+   * `location` **no** lo tolera Google heredando del padre, lo marca inválido
+   * («Falta el campo "location"») y lo saca del resultado enriquecido.
+   *
+   * Con una fila, la de siempre. Con varias, **la fila del encuentro** si
+   * `filaDeEncuentro` la pudo decir —la ventana de cada fila se usa en
+   * `toPublic` y no sale (D-130)—. Y si no la pudo decir, **los lugares de la
+   * serie**: un array de `Place` se lee «en alguno de éstos», que es cierto, y
+   * un item sin lugar es un item que Google descarta. Entre la afirmación un
+   * poco gruesa y el item inválido, la gruesa.
+   */
+  const lugarDelEncuentro = (e: EncuentroDeDetalle): unknown => {
+    if (repartible || !e.filaId) return location;
+    const propios = lugaresDe(
+      d,
+      d.modalidades.filter((m) => m.id === e.filaId),
+    );
+    if (propios.length === 0) return location;
+    return propios.length === 1 ? propios[0] : propios;
+  };
 
   const {
     '@context': _contexto,
@@ -2104,9 +2128,9 @@ export const datosEstructurados = (d: DetallePublico): Record<string, unknown> |
         const cancelado = d.cancelada || e.cancelada;
         return {
           ...deLaActividad,
-          // B-734 — solo cuando el lugar se puede atribuir a la fecha (ver
-          // `repartible`). La raíz lo sigue publicando en los dos casos.
-          ...(repartible ? { location } : {}),
+          // B-734 — el lugar de su fila cuando se sabe, y si no los de la serie
+          // (ver `lugarDelEncuentro`). Nunca sin `location`: Google lo exige.
+          location: lugarDelEncuentro(e),
           '@type': subtipo,
           /*
            * B-181 — el mismo título que el evento de Calendar, y de la misma

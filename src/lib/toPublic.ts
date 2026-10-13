@@ -3,6 +3,7 @@ import { slugDeOrganizador } from '@/lib/organizador.mjs';
 import { esTonoElegible } from '@/lib/identidad';
 import { admiteMonto } from '@/lib/arancel';
 import { imagenesDe } from '@/lib/imagenes';
+import { filaDeEncuentro } from '@/lib/modalidades';
 // B-98 — la regla de «hay motivo» es la del evento de Calendar, importada (D-20):
 // el sitio y el calendario no pueden estar en desacuerdo sobre si se publica.
 import { motivoDeCancelacion } from '@calendario';
@@ -78,6 +79,19 @@ export interface SesionPublica {
    * el campo ya está decidido y no entra de contrabando.
    */
   comisionId: string | null;
+  /**
+   * **En qué fila de `modalidades` ocurre** — B-734. `null` cuando no se puede
+   * decir, o cuando hay una sola fila (`filaDeEncuentro`).
+   *
+   * **Es la atribución y no la ventana.** Las fechas de cada fila siguen sin salir
+   * (D-130): el reparto se resuelve acá, donde todavía están, y lo que viaja es
+   * solo «este encuentro es de aquella fila» — un hecho que la página ya permite
+   * leer, porque fecha y sede son públicas. Sale a esta proyección y, como
+   * `comisionId`, **no llega a ningún archivo**: el índice del listado proyecta de
+   * cada sesión solo `inicio`, `fin` y `cancelada`. Lo lee el JSON-LD del detalle
+   * para darle a cada `subEvent` su `location`, que Google exige.
+   */
+  modalidadId: string | null;
   /**
    * **El organizador no dijo la hora** — B-2175. Público a propósito: es lo que
    * la página, la tarjeta y el evento dicen en lugar de la hora («Horario a
@@ -588,7 +602,10 @@ const modalidadPublica = (m: ModalidadFila): ModalidadPublica => ({
   online: onlinePublico(m.online),
 });
 
-const sesionPublica = (s: Sesion): SesionPublica => ({
+const fechaONull = (t: { toDate(): Date } | Date | null | undefined): Date | null =>
+  t ? (t instanceof Date ? t : t.toDate()) : null;
+
+const sesionPublica = (s: Sesion, filas: ModalidadFila[]): SesionPublica => ({
   id: s.id,
   inicio: aIso(s.inicio),
   fin: aIso(s.fin),
@@ -598,6 +615,14 @@ const sesionPublica = (s: Sesion): SesionPublica => ({
   motivoCancelacion: motivoDeCancelacion(s),
   // B-181 — `?? null` para los documentos anteriores al campo (D-26).
   comisionId: s.comisionId ?? null,
+  // B-734 — ver `filaDeEncuentro`: la ventana se usa acá y no sale. Una sesión
+  // sin `inicio` no se atribuye a nada; no puede tirar el build entero.
+  modalidadId: s.inicio
+    ? filaDeEncuentro(
+        filas.map((f) => ({ id: f.id, inicio: fechaONull(f.inicio), fin: fechaONull(f.fin) })),
+        fechaONull(s.inicio)!,
+      )
+    : null,
   // B-2175 — `false` para los documentos anteriores al campo (D-26).
   horarioAConfirmar: s.horarioAConfirmar === true,
 });
@@ -762,7 +787,7 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
     : null,
   libro: libroPublico(a.libro),
   esCiclo: a.esCiclo ?? false,
-  sesiones: (a.sesiones ?? []).map(sesionPublica),
+  sesiones: (a.sesiones ?? []).map((s) => sesionPublica(s, a.modalidades ?? [])),
   /*
    * B-181 — las comisiones. `?? []` es el default de lectura de siempre: un
    * documento anterior al campo publica «no tiene comisiones», que es lo que es.

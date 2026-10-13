@@ -27,6 +27,7 @@ import { duplicarActividadForm } from '@/lib/duplicar';
 import { formVacio, modalidadVacia } from '@/lib/formulario/estadoInicial';
 import { filtrar, FILTROS_VACIOS, opcionesPresentes } from '@/lib/filtrosActividades';
 import {
+  filaDeEncuentro,
   duplicarModalidad,
   modalidadResultante,
   modalidadesQueOfrece,
@@ -374,5 +375,43 @@ describe('la ventana invertida se ve antes de guardar', () => {
   it('con una sola de las dos no hay nada que comparar', () => {
     expect(ventanaInvertida({ inicio: VENTANA.inicio, fin: '' })).toBe(false);
     expect(ventanaInvertida({ inicio: '', fin: '' })).toBe(false);
+  });
+});
+
+describe('filaDeEncuentro — de qué fila es cada encuentro (B-734)', () => {
+  const d = (iso: string) => new Date(iso);
+  const fila = (id: string, inicio: string | null, fin: string | null = null) => ({
+    id,
+    inicio: inicio ? d(inicio) : null,
+    fin: fin ? d(fin) : null,
+  });
+
+  it('con una sola fila no reparte nada', () => {
+    expect(filaDeEncuentro([fila('a', null)], d('2026-10-29T21:00:00Z'))).toBeNull();
+  });
+
+  it('una sola ventana que contiene el encuentro decide', () => {
+    const filas = [
+      fila('marzo', '2026-03-01T00:00:00Z', '2026-03-31T23:00:00Z'),
+      fila('abril', '2026-04-01T00:00:00Z', '2026-04-30T23:00:00Z'),
+    ];
+    expect(filaDeEncuentro(filas, d('2026-04-07T22:00:00Z'))).toBe('abril');
+  });
+
+  it('entre dos ventanas abiertas gana la que empieza ese día, en Buenos Aires', () => {
+    const filas = [fila('jueves', '2026-10-29T21:00:00Z'), fila('sabado', '2026-10-31T13:00:00Z')];
+    expect(filaDeEncuentro(filas, d('2026-10-29T21:00:00Z'))).toBe('jueves');
+    expect(filaDeEncuentro(filas, d('2026-10-31T13:00:00Z'))).toBe('sabado');
+    // El viernes 30 a las 22:00 de Buenos Aires ya es sábado 31 en UTC: la clave
+    // del día es la de la zona del proyecto (trampa 1), y en UTC no casaría.
+    const deNoche = [fila('x', '2026-10-01T00:00:00Z'), fila('y', '2026-10-30T22:00:00Z')];
+    expect(filaDeEncuentro(deNoche, d('2026-10-31T01:00:00Z'))).toBe('y');
+  });
+
+  it('dos filas abiertas en paralelo no se reparten por orden de carga', () => {
+    // Presencial los martes y Meet los jueves, las dos desde marzo: no se sabe.
+    const filas = [fila('martes', '2026-03-03T22:00:00Z'), fila('jueves', '2026-03-05T22:00:00Z')];
+    expect(filaDeEncuentro(filas, d('2026-03-17T22:00:00Z'))).toBeNull();
+    expect(filaDeEncuentro([fila('a', null), fila('b', null)], d('2026-03-17T22:00:00Z'))).toBeNull();
   });
 });

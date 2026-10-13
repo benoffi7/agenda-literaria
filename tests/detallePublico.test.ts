@@ -1507,23 +1507,16 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
     expect(lugares.map((l) => l['@type'])).toEqual(['Place', 'VirtualLocation']);
   });
 
-  it('con dos formas de cursar, ningún subEvent afirma en cuál ocurre (B-734)', () => {
+  it('con dos filas sin ventana, cada subEvent lleva los lugares de la serie (B-734)', () => {
     /*
-     * **Honestidad de datos y no privacidad**: no hay fuga, el conjunto de lugares
-     * ya es público y es el mismo. Lo que pasaba es que la raíz decía «la serie
-     * ocurre en estos lugares» —cierto— y cada encuentro decía «*esta* fecha
-     * ocurre en todos ellos», que nadie sabe: `modalidadDeDetalle` no lleva el
-     * `inicio`/`fin` de la fila al view-model, así que el JSON-LD no puede saber
-     * qué encuentro va con qué lugar. Es la regla 6 al revés — afirmar más fino
-     * que el dato que lo respalda.
+     * **Ningún `subEvent` sin `location`.** La primera salida de B-734 lo sacaba
+     * con más de una fila, apostando a que Google lo heredara del padre: Search
+     * Console lo marcó inválido («Falta el campo "location"», 2026-10-11). Sin
+     * ventana en las filas no se sabe cuál es de cada fecha, así que va la lista
+     * entera — «en alguno de éstos», que es cierto.
      *
-     * La serie **sí** los sigue publicando, y eso es la mitad que hace que esto no
-     * sea una regresión de B-730: el item queda incompleto en el modo que Google
-     * tolera, heredando del padre, y no sin lugar en ninguna parte.
-     *
-     * MUTACIÓN PROBADA: volver a heredar `location` siempre —sacarlo del
-     * destructuring y del spread condicional, que es como estaba— deja este caso
-     * en rojo y ningún otro: el fixture normal tiene una sola fila.
+     * MUTACIÓN PROBADA: volver a `...(repartible ? { location } : {})` deja este
+     * caso en rojo.
      */
     const ld = datosEstructurados(
       detalleDe({
@@ -1532,21 +1525,39 @@ describe('el JSON-LD sigue las reglas del §5.3', () => {
         fechas: ['2026-09-17T22:00:00Z', '2026-09-24T22:00:00Z'],
       }),
     )!;
-    expect((ld.location as Record<string, unknown>[]).map((l) => l['@type'])).toEqual([
-      'Place',
-      'VirtualLocation',
-    ]);
-
     const subs = ld.subEvent as Record<string, unknown>[];
     expect(subs).toHaveLength(2);
     for (const sub of subs) {
-      expect(sub).not.toHaveProperty('location');
-      // Y el resto de la herencia de B-721 no se toca: lo que se cae es la
-      // afirmación fina, no el item.
+      expect(sub.location).toEqual(ld.location);
       expect(sub.description).toBe(ld.description);
       expect(sub.organizer).toEqual(ld.organizer);
-      expect(sub.startDate).toBeTruthy();
     }
+  });
+
+  it('con dos sedes y su fecha en cada fila, cada subEvent lleva la suya (B-734)', () => {
+    /*
+     * **El caso real que lo destrabó**: un club con dos sedes, cada fila cargada
+     * con la fecha de su encuentro y sin cierre. El del sábado cae dentro de las
+     * dos ventanas abiertas; lo decide que solo una empieza ese día.
+     *
+     * Y la ventana **no sale**: lo que viaja es la atribución (D-130).
+     */
+    const base = actividadDePrueba({
+      esCiclo: true,
+      modalidades: ['presencial', 'presencial'],
+      fechas: ['2026-10-29T21:00:00Z', '2026-10-31T13:00:00Z'],
+    });
+    const [a, b] = base.modalidades!;
+    const modalidades = [
+      { ...a!, inicio: ts('2026-10-29T21:00:00Z'), sede: { ...a!.sede!, nombre: 'Pierino Café' } },
+      { ...b!, inicio: ts('2026-10-31T13:00:00Z'), sede: { ...b!.sede!, nombre: 'Coco café' } },
+    ];
+    const ld = datosEstructurados(
+      detalleDeActividad(toPublic({ ...base, modalidades }, 'act_1'), ETIQUETAS, AHORA, TONOS),
+    )!;
+    const subs = ld.subEvent as Record<string, Record<string, unknown>>[];
+    expect(subs.map((x) => x.location!.name)).toEqual(['Pierino Café', 'Coco café']);
+    expect(JSON.stringify(ld)).not.toContain('mod_');
   });
 
   it('una sola fila híbrida conserva el lugar, aunque sean dos (B-734)', () => {

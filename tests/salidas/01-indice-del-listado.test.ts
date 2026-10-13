@@ -300,6 +300,11 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
      * salida todavía.
      */
     const dos = toPublic(actividadCentinela(conDosSedes()), 'act_dos');
+    // B-734 — control positivo: en la proyección cada sesión **sí** sabe su fila,
+    // así que el último aserto cubre también `sesiones[].modalidadId`, cuyo valor
+    // es `modalidades.id`. Sin esto, mover las fechas del fixture lo dejaba en
+    // `null` y el aserto seguía verde sin probar nada.
+    expect(dos.sesiones.every((s) => s.modalidadId === `mod_${CENTINELA['modalidades.2.id']}`)).toBe(true);
     const indice = construirIndice({
       actividades: [dos],
       opciones: {},

@@ -2,6 +2,13 @@
 
 ## Sin publicar
 
+- **Cada encuentro de un ciclo con varias sedes dice dónde ocurre** (B-734). Search
+  Console marcaba inválidos los encuentros de una actividad con más de una fila de
+  modalidad («Falta el campo "location"»): se publicaban sin lugar, apostando a que
+  Google lo heredara de la serie, y no lo hereda. Ahora cada `subEvent` lleva la sede
+  de su fila —se deduce de la fecha de la fila, que sigue sin publicarse— y, si no se
+  puede saber, la lista de lugares de la serie.
+
 - **«Cancelar o cambiar» en los recordatorios del lunes** (roadmap 2.8). Cada encuentro
   de la semana, en la pantalla del correo, abre el formulario de su actividad parado en
   **ese** encuentro; al guardar se vuelve al correo. Sin un segundo camino de escritura:
