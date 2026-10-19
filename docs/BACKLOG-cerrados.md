@@ -18311,6 +18311,22 @@ comentarios: la corrida de mañana lo reintenta, y un mail diario por objeto ser
 ruido. Lo que no cubre —un schedule pausado o borrado, un crash antes de entrar
 al cuerpo— quedó en B-2220.
 
+### B-2196 · Hosting no manda ningún header de seguridad · P2 — ✅ hecho (2026-10-19), sin CSP de contenido
+
+`firebase.json` solo declara `Cache-Control`. Faltan `X-Frame-Options` /
+`frame-ancestors` (cualquiera puede enmarcar `/proponer`, los `/sumar` o
+`/admin`), `X-Content-Type-Options`, `Referrer-Policy` global y una CSP.
+**Arreglo:** bloque `"source": "**"` con los tres primeros y la CSP en
+`Report-Only` primero (GA y reCAPTCHA obligan a enumerar dominios).
+
+**Hecho:** `X-Frame-Options: DENY`, `frame-ancestors 'none'`, `nosniff` y
+`Referrer-Policy` en toda ruta menos `/__/`, que es donde vive el iframe del
+login (el `authDomain` es este mismo sitio). Medido en el emulador de Hosting;
+`tests/cabeceras-de-seguridad.test.ts` con la mutación probada. **La CSP de
+contenido no se hizo**: en `Report-Only` sin un receptor de reportes no mide
+nada, y enforzada sin medir puede romper GA o reCAPTCHA. Si se retoma, primero un
+endpoint que junte los reportes.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

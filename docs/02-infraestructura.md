@@ -507,6 +507,9 @@ rastreada. Que los `href` internos la paguen es una deuda chica: **B-293**.
 
 Rewrite de `/admin/**` a `/admin/index.html` para el router propio de la SPA.
 
+**Cabeceras de seguridad** en toda ruta menos `/__/` (B-2196): ver
+[`07-seguridad.md`](07-seguridad.md) § «Las cabeceras de seguridad de Hosting».
+
 **Cabeceras de cache declaradas en `firebase.json`** (D-38), no el default:
 
 | Recurso | `Cache-Control` |

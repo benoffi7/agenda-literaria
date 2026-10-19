@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Otro sitio ya no puede meter este dentro de un iframe** (B-2196). El sitio, los
+  formularios y el panel salen con las cabeceras que lo impiden, más `nosniff` y una
+  política de referrer explícita. El login del panel no cambia.
+
 - **Si un barrido diario falla entero, llega un aviso** (B-2195). Incluye la retención
   de 30 días de los contactos de terceros: antes podía dejar de cumplirse sin que
   nadie se enterara.

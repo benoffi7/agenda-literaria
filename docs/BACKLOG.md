@@ -168,14 +168,6 @@ El evento se arma con `event.data.after` de cada invocación, y Firestore no
 garantiza orden. **Arreglo:** releer el documento al ejecutar y comparar contra un
 hash del último evento enviado por sesión (el mismo campo de B-2186).
 
-### B-2196 · Hosting no manda ningún header de seguridad · P2 (auditoría 2026-10-19)
-
-`firebase.json` solo declara `Cache-Control`. Faltan `X-Frame-Options` /
-`frame-ancestors` (cualquiera puede enmarcar `/proponer`, los `/sumar` o
-`/admin`), `X-Content-Type-Options`, `Referrer-Policy` global y una CSP.
-**Arreglo:** bloque `"source": "**"` con los tres primeros y la CSP en
-`Report-Only` primero (GA y reCAPTCHA obligan a enumerar dominios).
-
 ### B-2197 · Una Action de terceros en un tag móvil recibe la key de deploy · P2 (auditoría 2026-10-19)
 
 `FirebaseExtended/action-hosting-deploy@v0` en `push-main.yml:264` y

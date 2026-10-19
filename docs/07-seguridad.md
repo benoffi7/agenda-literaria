@@ -1949,6 +1949,24 @@ node scripts/preparar-produccion.mjs <email>
 
 El claim entra al token en el próximo login.
 
+## Las cabeceras de seguridad de Hosting (B-2196)
+
+Toda ruta del sitio sale con `X-Frame-Options: DENY`,
+`Content-Security-Policy: frame-ancestors 'none'`, `X-Content-Type-Options:
+nosniff` y `Referrer-Policy: strict-origin-when-cross-origin` (`firebase.json`, la
+primera regla). Lo que cierra: que otro sitio enmarque `/proponer`, los
+formularios `/guia/*/sumar` o `/admin` para hacer clic por encima.
+
+- **`/__/` queda afuera de la regla.** El `authDomain` es
+  `agenda-literaria.firebaseapp.com`, este mismo sitio, y `signInWithPopup` carga
+  su `/__/auth/iframe` desde `agendaleh.ar`: un `frame-ancestors 'none'` ahí
+  rompería el login del panel. Hosting no aplica cabeceras propias a las rutas
+  reservadas —medido el 2026-10-19: `/__/auth/iframe` responde con su propio
+  `max-age=1800`—, pero la regex lo excluye igual. Es RE2, sin lookahead.
+- **No hay CSP de contenido todavía.** GA y reCAPTCHA obligan a enumerar dominios,
+  y una CSP en `Report-Only` sin dónde recibir los reportes no mide nada. Lo fija
+  `tests/cabeceras-de-seguridad.test.ts`.
+
 ## `firebase-admin` nunca al cliente
 
 Si se cuela en un componente cliente, **la service account key termina en el

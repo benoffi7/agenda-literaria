@@ -86,7 +86,10 @@ describe('las páginas con URL limpia no se cachean una hora — B-2188', () => 
    */
   type Regla = { source?: string; regex?: string; headers: { key: string; value: string }[] };
   const reglas: Regla[] = firebaseJson.hosting?.headers ?? [];
-  const deRegex = reglas.filter((h) => typeof h.regex === 'string');
+  // Las de `regex` que deciden la caché: desde B-2196 hay otra, la de seguridad.
+  const deRegex = reglas.filter(
+    (h) => typeof h.regex === 'string' && h.headers.some((k) => k.key === 'Cache-Control'),
+  );
 
   it('una regla `regex` pone `no-cache` a toda ruta sin extensión, y no toca los archivos con hash', () => {
     const sinExtension = deRegex.find((h) =>
