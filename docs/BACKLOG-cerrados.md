@@ -18337,6 +18337,18 @@ con `srcset` 1x/2x (o SVG) por `astro:assets`, con hash e inmutable.
 muestra), sacado del de 512. Sin `astro:assets`: con 4,5 KB la hora de caché ya no
 pesa. `tests/logo-del-encabezado.test.ts`.
 
+### B-2204 · `optimizarImagen` no tiene guarda de reentrega y recomprime un JPEG ya optimizado · P2 — ✅ hecho (2026-10-19)
+
+`imagenes-trigger.js:84` decide con los metadatos del evento: si el evento del
+upload llega dos veces, la segunda descarga el objeto ya optimizado y lo vuelve a
+codificar con pérdida. **Arreglo:** leer `getMetadata()` del objeto antes de
+descargar y salir si tiene `MARCA_OPTIMIZADA`, o fijar el `generation`.
+
+**Hecho:** antes del `download()` el trigger relee `getMetadata()` del objeto y
+vuelve a pasar por `decidirOptimizacion` con los metadatos de ahora; un objeto
+que ya no existe corta sin error. Una lectura de metadatos más por subida.
+`tests/imagenes-function.test.ts` fija el orden (mutación probada).
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

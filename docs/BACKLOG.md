@@ -224,13 +224,6 @@ vuelta, más de 11.000 en una sesión de 20 ediciones. El badge de propuestas
 `useContactoDeOrganizador`) o un `onSnapshot` compartido; `getCountFromServer`
 para el badge.
 
-### B-2204 · `optimizarImagen` no tiene guarda de reentrega y recomprime un JPEG ya optimizado · P2 (auditoría 2026-10-19)
-
-`imagenes-trigger.js:84` decide con los metadatos del evento: si el evento del
-upload llega dos veces, la segunda descarga el objeto ya optimizado y lo vuelve a
-codificar con pérdida. **Arreglo:** leer `getMetadata()` del objeto antes de
-descargar y salir si tiene `MARCA_OPTIMIZADA`, o fijar el `generation`.
-
 ### B-2205 · Un reporte que queda en `enviando` no tiene salida · P2 (auditoría 2026-10-19)
 
 `reportes-trigger.js:114` y `reportes.js:143`: si el contenedor muere entre la

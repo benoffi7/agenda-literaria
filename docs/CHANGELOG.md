@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **Una foto ya optimizada no se vuelve a comprimir** (B-2204). Si el aviso de la
+  subida llegaba dos veces, la segunda la recomprimía y perdía calidad.
+
 - **Cada página baja 86 KB menos** (B-2201): el logo del encabezado pasó del PNG de
   512 px (91 KB) a uno de 80 px (4,5 KB), que es lo que se ve.
 

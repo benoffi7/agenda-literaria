@@ -284,6 +284,24 @@ describe('la recursión termina — trampa 12, B-220', () => {
     expect(corte, 'hay una escritura antes del return de la guarda').toBeLessThan(primeraEscritura);
   });
 
+  it('una reentrega del upload no recomprime: se relee la marca del objeto antes de bajarlo (B-2204)', () => {
+    /*
+     * La guarda de arriba usa los metadatos del EVENTO, que en una reentrega son
+     * los de la subida, sin la marca. La segunda pregunta tiene que hacerse con
+     * los metadatos **del objeto**, y antes del `download()`.
+     * Mutación probada: sacar la relectura deja un solo `decidirOptimizacion(` y
+     * pone esto rojo.
+     */
+    const src = fuente('functions/imagenes-trigger.js');
+    const relee = src.indexOf('original.getMetadata()');
+    const segunda = src.indexOf('decidirOptimizacion(', src.indexOf('decidirOptimizacion(') + 1);
+    const baja = src.indexOf('original.download()');
+    expect(relee).toBeGreaterThan(-1);
+    expect(segunda).toBeGreaterThan(relee);
+    expect(baja).toBeGreaterThan(segunda);
+    expect(src.slice(segunda, baja)).toContain('metadatos: actuales.metadata');
+  });
+
   it('el trigger escribe exactamente las direcciones que la simulación imita', () => {
     // Si mañana escribe una tercera, la simulación de arriba dejaría de cubrir
     // el lazo completo y este test es el que avisa.

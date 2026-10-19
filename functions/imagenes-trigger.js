@@ -101,6 +101,32 @@ export const optimizarImagen = onObjectFinalized(
 
     const bucket = getStorage().bucket(event.data.bucket);
     const original = bucket.file(nombre);
+
+    /*
+     * B-2204 — la guarda de arriba decide con los metadatos **del evento**, que son
+     * los del momento de la subida. La entrega es al-menos-una-vez: si el evento
+     * del upload llega dos veces, la segunda trae los metadatos viejos —sin la
+     * marca— aunque el objeto ya esté optimizado, y lo volvería a codificar con
+     * pérdida. Se vuelve a preguntar con los metadatos **de ahora**, antes de
+     * bajar un solo byte. Si el objeto ya no existe, no hay nada que hacer.
+     */
+    let actuales;
+    try {
+      [actuales] = await original.getMetadata();
+    } catch (e) {
+      if (Number(e?.code) === 404) return;
+      throw e;
+    }
+    const deAhora = decidirOptimizacion({
+      nombre,
+      contentType: actuales.contentType,
+      metadatos: actuales.metadata ?? {},
+    });
+    if (deAhora.accion === 'ignorar') {
+      logger.debug('objeto ignorado al releerlo: reentrega', { nombre, motivo: deAhora.motivo });
+      return;
+    }
+
     const [bytes] = await original.download();
     const antes = bytes.length;
 
