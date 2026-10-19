@@ -18095,6 +18095,18 @@ Lo señaló el `auditor-trampas`: `scripts/corregir-contactos-mal-cargados.mjs` 
 no pierde nada. **Arreglo:** el mismo `for (i += 400)` que `sembrar-ciudades.mjs` y
 `reubicar-barrios.mjs`.
 
+### B-2207 · `sedesRepetidas.ts` se perdió en un merge y la novedad todavía lo anuncia · P2 — ✅ hecho (2026-10-19): restaurado
+
+`81203ed` lo enchufó en `EstadisticasPanel.tsx` y `49248b4` (B-621, el mismo día)
+lo dejó sin referencias; `novedades.ts:1021`, `LugarFormulario.tsx:61`,
+`lugares.ts:161` y los PRD 02 y 04 lo citan como si existiera. **Arreglo:**
+restaurarlo en `estadisticas/PanelCatalogo` o borrar módulo, test y novedad y
+corregir las citas.
+
+**Resuelto:** el dueño eligió restaurarlo. Volvió la frase al pie de «Por forma
+de cursar» en Estadísticas → El catálogo, y `tests/sedes-repetidas.test.ts`
+repuso las dos aserciones que se habían retirado al integrar.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

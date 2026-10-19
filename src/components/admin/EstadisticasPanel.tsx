@@ -9,6 +9,7 @@ import { useLabelsTaxonomia, useOpciones } from '@/components/admin/useOpciones'
 import { listarActividades } from '@/lib/actividades';
 import { medirFuncion } from '@/lib/analytics';
 import { estadoDelCatalogo } from '@/lib/estadoDelCatalogo';
+import { resumenDeSedes } from '@/lib/sedesRepetidas';
 /*
  * D-150 — los matices elegidos a mano salen de la **misma** función que los
  * saca del `events.json` para el sitio público, no de un `filter` copiado acá:
@@ -167,6 +168,8 @@ export function EstadisticasPanel({ onEditar }: Props) {
   }, [pestania, resumenDelSitio]);
 
   const estado = useMemo(() => estadoDelCatalogo(actividades, ahora), [actividades, ahora]);
+  // B-2207 — B-100: ¿se repiten las sedes? Puro sobre lo que ya está en memoria.
+  const sedes = useMemo(() => resumenDeSedes(actividades), [actividades]);
   // `slug → título`, para que «El sitio público» diga el nombre de cada actividad
   // y no su ruta. Sale de la misma lista: cero lecturas de más.
   const titulos = useMemo(
@@ -277,6 +280,7 @@ export function EstadisticasPanel({ onEditar }: Props) {
         {pestania === 'catalogo' ? (
           <PanelCatalogo
             estado={estado}
+            sedes={sedes}
             ritmo={ritmo}
             porId={porId}
             onEditar={onEditar}

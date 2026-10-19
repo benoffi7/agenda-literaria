@@ -354,14 +354,6 @@ medido en local). Lo pagan también las callables y `dispararRebuild`.
 `@googleapis/searchconsole`; una sola `google-auth-library` (hoy conviven la 9 y
 la 10); `import()` perezoso de `sharp`.
 
-### B-2207 · `sedesRepetidas.ts` se perdió en un merge y la novedad todavía lo anuncia · P2 — decisión del dueño (auditoría 2026-10-19)
-
-`81203ed` lo enchufó en `EstadisticasPanel.tsx` y `49248b4` (B-621, el mismo día)
-lo dejó sin referencias; `novedades.ts:1021`, `LugarFormulario.tsx:61`,
-`lugares.ts:161` y los PRD 02 y 04 lo citan como si existiera. **Arreglo:**
-restaurarlo en `estadisticas/PanelCatalogo` o borrar módulo, test y novedad y
-corregir las citas.
-
 ### B-2208 · Dependencias mayores atrasadas · P2 (auditoría 2026-10-19)
 
 Raíz: `firebase` 11→13, `vitest` 3→5, `@astrojs/react` 6→7, `zod` 3→4,

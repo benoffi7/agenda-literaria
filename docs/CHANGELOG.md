@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **Volvió el aviso de sedes repetidas en Estadísticas** (B-2207). «El catálogo» dice
+  cuántas actividades con lugar están en una sede que usa otra, y nombra las tres más
+  repetidas. Se había perdido en un merge del 2026-09-07 y la novedad lo seguía
+  anunciando.
+
 - **La Guía se llama «Espacios» y está agrupada en tres** (D-1274), como pidió el
   dueño: espacios para comprar libros (librerías y suscripciones), para leer,
   consultar o retirar libros (bibliotecas) y para hacer tu evento literario

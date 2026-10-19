@@ -115,24 +115,16 @@ describe('el tablero muestra el número (B-100)', () => {
     .map((f) => readFileSync(f, 'utf8'))
     .join('\n');
 
-  /*
-   * **Las dos aserciones que había acá se retiraron al integrar, el 2026-09-07,
-   * y el motivo es de coordinación y no de diseño.** Exigían que
-   * `EstadisticasPanel` consumiera `resumenDeSedes`; ese archivo lo **reescribió
-   * entero** otro frente de la misma tanda (los repartos con torta o lista), así
-   * que el enganche se perdió en el merge.
-   *
-   * Lo que sobrevive es lo que importa: el módulo puro y sus casos, que son donde
-   * vive la decisión de qué cuenta como «la misma sede». Falta el consumidor, y
-   * queda anotado — sin él, la señal que B-100 necesita se calcula y no se ve.
-   *
-   * La segunda aserción (que la pantalla no recalcule la repetición por su
-   * cuenta) hay que reponerla junto con el enganche: sola no protege nada,
-   * porque hoy la pantalla no menciona sedes en ninguna parte.
-   */
-  it('el resumen está calculado y hoy no lo consume ninguna pantalla', () => {
-    // Fija el estado real, para que el día que se enganche este caso se caiga y
-    // haya que reponer las dos aserciones de arriba en vez de olvidarlas.
-    expect(TABLERO).not.toContain('resumenDeSedes');
+  // B-2207 — el enganche que se había perdido en el merge del 2026-09-07 volvió.
+  it('el tablero consume `resumenDeSedes` y lo muestra en el catálogo', () => {
+    expect(TABLERO).toContain('resumenDeSedes(actividades)');
+    expect(TABLERO).toContain('sedes.enSedeRepetida');
+  });
+
+  it('la pantalla no recalcula la repetición por su cuenta', () => {
+    // Qué cuenta como «la misma sede» vive en el módulo puro; una segunda
+    // derivación en la pantalla se separaría sin que nada falle.
+    expect(TABLERO).not.toMatch(/sedesRepetidas\(/);
+    expect(TABLERO).not.toMatch(/sede\?*\.nombre/);
   });
 });

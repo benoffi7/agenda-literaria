@@ -3,6 +3,7 @@ import { Barra } from '@/components/admin/estadisticas/Barra';
 import { Reparto } from '@/components/admin/estadisticas/Reparto';
 import { Ritmo } from '@/components/admin/estadisticas/Ritmo';
 import type { RitmoDelCatalogo } from '@/lib/ritmoDelCatalogo';
+import type { ResumenDeSedes } from '@/lib/sedesRepetidas';
 import { DIAS_PROXIMOS, porcentaje, type EstadoDelCatalogo } from '@/lib/estadoDelCatalogo';
 import { porcentajeLegible } from '@/lib/tortaDelPanel';
 import { ETIQUETA_ESTADO, ETIQUETA_MODALIDAD, legible } from '@/lib/filtrosActividades';
@@ -79,6 +80,7 @@ function Cobertura({
  */
 export function PanelCatalogo({
   estado,
+  sedes,
   ritmo,
   porId,
   onEditar,
@@ -86,6 +88,8 @@ export function PanelCatalogo({
   tonosDeTipo,
 }: {
   estado: EstadoDelCatalogo;
+  /** B-100 — ¿se repiten las sedes? Ver `lib/sedesRepetidas.ts`. */
+  sedes: ResumenDeSedes;
   /** B-1081 — cuándo pasan las cosas: el mapa de ocho semanas, el día y la franja. */
   ritmo: RitmoDelCatalogo;
   porId: Map<string, ActividadConId>;
@@ -376,6 +380,21 @@ export function PanelCatalogo({
                 «12 ciclos y 28 sueltas» no diga mejor y en menos lugar.
               */}
             </p>
+            {/*
+              B-100 — la condición que ese ítem se puso para valer la pena: «¿se
+              repiten las sedes?». Se había perdido en un merge (49248b4) y la
+              restauró B-2207. Cero lecturas: el tablero ya tiene la colección.
+            */}
+            {sedes.conSede > 0 && (
+              <p className="text-sm text-tinta/65 lg:col-span-2">
+                {sedes.repetidas.length === 0
+                  ? `Ninguna sede se repite: las ${sedes.conSede} actividades con lugar cargado están cada una en el suyo.`
+                  : `${sedes.enSedeRepetida} de ${sedes.conSede} actividades con lugar cargado están en una sede que también usa otra: ${sedes.repetidas
+                      .slice(0, 3)
+                      .map((s) => `${s.nombre} (${s.actividades})`)
+                      .join(', ')}${sedes.repetidas.length > 3 ? ' y otras' : ''}.`}
+              </p>
+            )}
           </div>
         </section>
       </div>
