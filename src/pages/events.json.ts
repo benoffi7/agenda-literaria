@@ -38,7 +38,9 @@ export const prerender = true;
 export const GET: APIRoute = async () => {
   const indice = await indiceDelSitio();
 
-  return new Response(`${JSON.stringify(indice, null, 2)}\n`, {
+  // B-2191 — sin sangría: la home baja y parsea este archivo en cada visita, y la
+  // sangría eran 278 KB de espacios (un 35 % del archivo sin comprimir).
+  return new Response(`${JSON.stringify(indice)}\n`, {
     headers: {
       'content-type': 'application/json; charset=utf-8',
       'cache-control': 'no-cache',

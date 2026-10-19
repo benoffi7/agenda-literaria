@@ -152,7 +152,7 @@ log que filtrar. **Arreglo:** que cada schedule escriba un latido en
 más de 48 h; más una segunda política de GCP sobre `severity>=ERROR` en los
 servicios de Cloud Run (es configuración de consola, no del repo).
 
-### B-2191 · `events.json` lleva todo el histórico y crece sin tope · P2 (auditoría 2026-10-19)
+### B-2191 · `events.json` lleva todo el histórico y crece sin tope · P2 — 🟡 sin imagen y minificado (2026-10-19), falta partirlo
 
 Producción, 2026-10-18: 1.080.883 B (168 KB gzip), 519 actividades, 382 ya
 terminadas (534 KB del array). `imagenUrl` ocupa 94 KB y no tiene lector
@@ -161,6 +161,17 @@ La home lo baja en cada visita y `/pasadas` lo baja entero aunque ya trae las 38
 filas en el HTML. **Arreglo:** partir en vigentes + `pasadas.json`, sacar
 `imagenUrl`, emitir minificado, y que `/pasadas` haga el fetch al usar el
 buscador. Actualizar el barrido de salidas y el gate post-build.
+
+**Primera mitad, hecha (2026-10-19):** el índice ya no lleva `imagenUrl` (sin
+lector desde D-146) y sale sin sangría. Medido sobre el `events.json` de
+producción de ese día: 1.077.648 → 704.955 B sin comprimir (−35 %), 168 → 133 KB
+gzip (−21 %). El barrido detectó solo la excepción que sobraba; el gate pasa.
+
+**Falta:** partirlo en vigentes y `pasadas.json`. Lo leen la home (`Buscador`,
+`PanelesDeAhora`), `/pasadas`, `MisGuardados`, el panel (`useIndicePublicado`,
+el boletín, Estadísticas), el correo semanal y `verificarFrescuraDelSitio`, que
+compara el índice contra las publicadas: cada uno tiene que decir cuál de los dos
+lee, y la frescura, contra la unión.
 
 ### B-2194 · Dos guardados seguidos procesados fuera de orden dejan Calendar con el contenido anterior · P2 (auditoría 2026-10-19)
 

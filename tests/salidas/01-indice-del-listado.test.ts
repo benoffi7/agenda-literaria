@@ -80,17 +80,7 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
         'lleva es la descripción **entera**, que es lo que pesa — y `searchText` ya la ' +
         'contiene normalizada, así que mandar las dos sería mandarla dos veces.',
     },
-    {
-      nombre: 'la portada, **saneada**',
-      centinelas: ['imagenes.url'],
-      porque:
-        'la tarjeta necesita una imagen, y es la URL que el navegador va a pedir igual. ' +
-        'El epígrafe NO está en esta lista: es del detalle, debajo de la foto (D-125). ' +
-        'Desde B-860 lo que sale es el valor que devuelve `urlSegura` sobre la primera ' +
-        'imagen publicable, o sea el **mismo** que publica la página de detalle: por eso ' +
-        'el centinela aparece normalizado (`https://centinela.imagenes.url/`) y este ' +
-        'barrido corre insensible a mayúsculas — ver el docblock del describe.',
-    },
+    // B-2191 — la portada salió del índice: no tenía lector (D-146) y eran 94 KB.
     {
       nombre: 'quién, solo el nombre',
       // Roadmap 1.5 — más el slug del organizador, que es la clave de su página.
@@ -418,7 +408,9 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
       generadoEn: '2026-08-27T00:00:00.000Z',
     });
 
-    expect(indice.actividades[0]!.imagenUrl).toBeNull();
+    // Desde B-2191 el índice no lleva imagen en absoluto; lo que sigue importando
+    // es que el centinela no viaje.
+    expect('imagenUrl' in indice.actividades[0]!).toBe(false);
     expect(
       JSON.stringify(indice).toLowerCase().includes(CENTINELA.imagenUrl.toLowerCase()),
       'el `imagenUrl` legacy inválido entró al índice del listado. El índice tiene que ' +

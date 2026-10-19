@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **La home baja un 35 % menos de datos** (B-2191). El índice de actividades dejó de
+  llevar la imagen, que el listado no muestra, y sale sin sangría: de 1,08 MB a 705 KB
+  (133 KB comprimido).
+
 - **Un reporte que se trabó «creando el issue…» ya no queda así para siempre** (B-2205).
   A los 15 minutos pasa a error, con un aviso de que conviene mirar en GitHub si el
   issue ya se creó antes de reintentar.
