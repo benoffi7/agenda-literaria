@@ -191,6 +191,15 @@ describe('barrido de la cartelera (§5, salida 7, B-265)', () => {
     for (const [campo, valor] of Object.entries(afiche)) {
       if (campo === 'ruta' || campo === 'urlMiniatura' || typeof valor !== 'string' || valor === '')
         continue;
+      if (campo === 'donde') {
+        // B-2216 — `donde` se **compone**: une con « · » las piezas de
+        // `detalle.donde`. Antes la cadena unida aparecía de casualidad en el
+        // `<title>`; lo que se afirma ahora es lo que importa, que cada pieza la
+        // publique el detalle.
+        for (const pieza of valor.split(' · '))
+          expect(detalle.donde.map((p) => p.texto), `pieza «${pieza}» de la cartelera`).toContain(pieza);
+        continue;
+      }
       expect(
         delDetalle.includes(valor),
         `la cartelera publica \`${campo}\` y la página de detalle no: o dejó de derivar de ` +

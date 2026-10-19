@@ -22949,6 +22949,22 @@ emulador, con la mutación probada; `actividades`, `rol-publicador` y
 `cancelar-encuentro` siguen en verde. Los scripts con Admin SDK no pasan por la
 regla, y ninguno toca el slug.
 
+### B-2216 · Doc desactualizada que encontró la auditoría · P3 — ✅ hecho (2026-10-19)
+
+`07-seguridad.md:1583,1792` dice «cuatro escrituras anónimas» y son cinco (falta
+`/bibliotecas`); la tabla de tests salteados de `10-salud` §6.1 es del
+2026-09-09 (hoy son 31 archivos con `skipIf`); el `<title>` del detalle
+(`detallePublico.ts:1703`) no sigue la forma de `12-sitio-publico.md:1301` y deja
+el barrido después del corte de ~60 caracteres.
+
+**Hecho:** `07-seguridad.md` dice «cinco escrituras anónimas» y nombra
+`/bibliotecas`, con `COLECCIONES_ABIERTAS` como la lista que manda (y el enlace de
+`02-infraestructura.md`); la tabla de `10-salud` §6.1 quedó marcada como foto, con
+el comando que da la cuenta de hoy. El `<title>` se arregló en el **código** y no en
+la doc: `dondeDelTitulo` pone barrio o ciudad sin la sede («Taller en Villa
+Crespo», «Taller online», «en Palermo y online»), que es la regla de la doc. El
+gate de títulos únicos pasa.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

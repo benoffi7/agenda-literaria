@@ -1519,8 +1519,15 @@ midió entonces, porque las dos cambian qué significa el verde:
   pasada anterior, donde 5 casos se salteaban igual — el §1.1 de entonces se los
   atribuye a la falta de un `dist/`.
 
+> **Esta tabla es una foto del 2026-09-09 y ya no cuenta lo de hoy** (B-2216). El
+> 2026-10-19, sin emuladores, se saltean 29 archivos enteros —todos los
+> `*.integracion.test.ts`— más los tres parciales de abajo. En vez de mantener la
+> lista a mano, se saca así: `npx vitest run 2>&1 | grep -E "skipped|↓"`, y con
+> `EXIGIR_EMULADOR=1` dentro de `firebase emulators:exec` (lo que hace el hook) no
+> se saltea ninguno. Se deja la tabla por el razonamiento de los parciales.
+
 El desglose de los 210 que se saltean sin emuladores —**15 archivos**, doce
-enteros y tres parciales—:
+enteros y tres parciales—, en la foto del 2026-09-09:
 
 | Archivo | Se saltean |
 |---|---|

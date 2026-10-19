@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **El título de cada actividad en Google dice el barrio** (B-2216): «Taller de crónica ·
+  Taller en Villa Crespo» en vez de empezar por la sede, que dejaba el barrio después
+  del corte. Las virtuales dicen «online».
+
 - **La dirección de una actividad publicada no se puede cambiar ni desde afuera del
   panel** (B-2210). Lo frenaba el formulario; ahora también las reglas de la base.
 

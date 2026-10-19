@@ -539,14 +539,6 @@ ellos `tieneClaimAdmin`, `TOPE_INSTAGRAM_LUGAR`, `TOPE_INSTAGRAM_SUSCRIPCION`,
 `AA_GRANDE`, `DICHO_DEL_MOTIVO`). **Arreglo:** prender esos dos flags y evaluar
 `knip`.
 
-### B-2216 · Doc desactualizada que encontró la auditoría · P3 (auditoría 2026-10-19)
-
-`07-seguridad.md:1583,1792` dice «cuatro escrituras anónimas» y son cinco (falta
-`/bibliotecas`); la tabla de tests salteados de `10-salud` §6.1 es del
-2026-09-09 (hoy son 31 archivos con `skipIf`); el `<title>` del detalle
-(`detallePublico.ts:1703`) no sigue la forma de `12-sitio-publico.md:1301` y deja
-el barrido después del corte de ~60 caracteres.
-
 ### B-2176 · «Algunos etiquetados menos»: averiguar qué pidió la publicadora · P3
 
 En el mismo mensaje que pidió B-2175 (2026-09-29) agregó «y algunos etiquetados

@@ -1584,7 +1584,7 @@ desde el 2026-09-11** (B-896 paso 2). Hoy son **cuatro**: `/propuestas`,
 2026-09-15, con los formularios de `/guia/<x>/sumar` (B-831/B-832/B-915). El
 párrafo de abajo describe el estado de **antes** y se conserva porque es el
 razonamiento con el que se decidió el orden; lo que hoy sostiene las cuatro
-puertas está más abajo, en «Las cuatro escrituras anónimas».
+puertas está más abajo, en «Las cinco escrituras anónimas».
 
 > El texto original: «`/propuestas` es donde va a ir la primera escritura anónima,
 > y todavía no está abierta. El `create` es `esAdmin() && propuestaValida()`: lo
@@ -1771,7 +1771,7 @@ Con la puerta cerrada rebotaba para quien no tuviera el claim, e indexar una
 página cuyo formulario rebota es prometer lo que no se cumple, que es lo que B-780
 costó como P0.
 
-Hoy las cuatro puertas están abiertas y cada una tiene su control positivo contra
+Hoy las cinco puertas están abiertas y cada una tiene su control positivo contra
 el emulador, así que anunciarlas no promete nada que no se cumpla. La excepción
 que `tests/sitemap.test.ts` guardaba para `/proponer` se borró con su motivo, y
 las tres rutas de la Guía entran **derivadas de la misma fila** que su listado
@@ -1793,11 +1793,14 @@ archivo justamente para que sumar una cueste ese renglón: es el único lugar de
 repo donde se ve, de un vistazo, cuántas páginas públicas pueden cargar
 reCAPTCHA Enterprise.
 
-## Las cuatro escrituras anónimas
+## Las cinco escrituras anónimas
 
-**Hoy hay exactamente cuatro colecciones donde alguien sin cuenta puede escribir,
+**Hoy hay exactamente cinco colecciones donde alguien sin cuenta puede escribir,
 y son solo `create`:** `/propuestas` (B-896, 2026-09-11), `/librerias`,
-`/suscripciones` y `/lugares` (B-831/B-832/B-915, 2026-09-15). En las cuatro,
+`/suscripciones` y `/lugares` (B-831/B-832/B-915, 2026-09-15) y `/bibliotecas`
+(B-960). La lista que manda es `COLECCIONES_ABIERTAS` de
+`tests/escritura-anonima.integracion.test.ts`; hasta B-2216 esta sección decía
+«cuatro» y le faltaba la última. En las cinco,
 `read`, `update` y `delete` siguen en `esAdmin()` — **mandar no es ver**, que es
 lo que separa un buzón de una bandeja, y es lo que hace que abrir la escritura no
 sea abrir la publicación.

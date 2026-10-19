@@ -923,10 +923,11 @@ describe('la meta description y el título', () => {
   it('el título de la actividad va primero y el lugar entra', () => {
     // §5.1 — Google recorta a ~60 caracteres: lo que importa es el nombre, y el
     // barrio es la palabra que hace match con «taller de escritura villa crespo».
+    // B-2216 — el barrio y no la sede: con la sede adelante, el barrio quedaba
+    // después del corte de Google en casi cualquier título real.
     const d = detalleDe({ titulo: 'Taller de crónica' });
-    expect(d.meta.titulo.startsWith('Taller de crónica · Taller en Casa Brandon · Villa Crespo')).toBe(
-      true,
-    );
+    expect(d.meta.titulo.startsWith('Taller de crónica · Taller en Villa Crespo')).toBe(true);
+    expect(d.meta.titulo).not.toContain('Casa Brandon');
   });
 
   it('con la descripción vacía cae al formato armado y no a una frase trunca (§7.7)', () => {
@@ -966,8 +967,11 @@ describe('la meta description y el título', () => {
         ],
       },
     );
-    expect(d.meta.titulo).toContain('Online, plataforma a confirmar');
-    expect(d.meta.titulo).not.toContain('Online por A confirmar');
+    // Desde B-2216 el `<title>` dice «online» a secas; el texto vive en la ficha.
+    const donde = d.donde.map((p) => p.texto).join(' · ');
+    expect(donde).toContain('Online, plataforma a confirmar');
+    expect(donde).not.toContain('Online por A confirmar');
+    expect(d.meta.titulo).toContain('Taller online —');
   });
 });
 

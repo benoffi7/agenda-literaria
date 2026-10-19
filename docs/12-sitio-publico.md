@@ -1299,7 +1299,7 @@ Open Graph completo, `twitter:card = summary_large_image`.
 | Página | `<title>` | `meta description` | `canonical` |
 |---|---|---|---|
 | `/` | `Agenda de actividades literarias en Argentina` | `Talleres de escritura, clubes de lectura, encuentros y presentaciones. 38 actividades con fecha próxima.` | `/` — **siempre sin query string** |
-| `/actividad/{slug}` | `{titulo} · {Tipo} en {barrio o "online"} — Agenda literaria` | `resumen` (los ~160 caracteres de la descripción). Si está vacía: `{Tipo} · {fecha} · {sede o plataforma} · {arancel}` | la propia |
+| `/actividad/{slug}` | `{titulo} · {Tipo} en {barrio o ciudad}` / `{Tipo} online` / `en {barrio} y online` `— Agenda LEH` (B-2216: sin la sede, que dejaba el barrio después del corte) | `resumen` (los ~160 caracteres de la descripción). Si está vacía: `{Tipo} · {fecha} · {sede o plataforma} · {arancel}` | la propia |
 | `/tipo/{slug}` | `{Label en plural} en Argentina — Agenda literaria` | `{N} {label} con fecha próxima: {tres títulos}.` | la propia |
 | `/barrio/{slug}` | `Actividades literarias en {Barrio} — Agenda literaria` | `Talleres, clubes de lectura y encuentros en {Barrio}. {N} con fecha próxima.` | la propia |
 | `/online` | `Talleres y clubes de lectura online — Agenda literaria` | escrita a mano | la propia |

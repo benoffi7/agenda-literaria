@@ -900,6 +900,25 @@ const dondeCorto = (modalidades: ModalidadDeDetalle[]): PiezaDeDonde[] => {
   return unicas.length > 0 ? unicas : [{ texto: 'Lugar a confirmar', href: null }];
 };
 
+/**
+ * **El dónde del `<title>`**: barrio o ciudad, y «online» — B-2216.
+ *
+ * Es `dondeCorto` **sin el nombre de la sede**. Google recorta el título a ~60
+ * caracteres y la regla de `docs/12-sitio-publico.md` pone el barrio ahí porque es
+ * lo que hace match con «taller de escritura villa crespo»; con la sede adelante,
+ * en casi cualquier título real el barrio quedaba después del corte. La ficha y la
+ * `meta description` siguen diciendo la sede.
+ */
+const dondeDelTitulo = (modalidades: ModalidadDeDetalle[]): string => {
+  const zonas = [
+    ...new Set(modalidades.flatMap((m) => (m.sede ? m.sede.zona.map((z) => z.texto) : [])).filter(Boolean)),
+  ];
+  const online = modalidades.some((m) => !m.sede);
+  // «Taller online», «Taller en Palermo», «Taller en Palermo y online».
+  if (zonas.length === 0) return online ? 'online' : '';
+  return `en ${zonas.join(' · ')}${online ? ' y online' : ''}`;
+};
+
 /** La hora de fin del encuentro, para «19:00 a 21:00». */
 const horaDeFin = (e: EncuentroDeDetalle): string => {
   if (e.horarioAConfirmar) return '';
@@ -1700,7 +1719,8 @@ export const detalleDeActividad = (
       // ~60 caracteres y lo que importa es el nombre, no la marca. El barrio
       // entra porque es la palabra que hace match con «taller de escritura villa
       // crespo».
-      titulo: `${a.titulo} · ${tipoEtiqueta} en ${dondeTexto} — ${NOMBRE}`,
+      // B-2216 — barrio o ciudad, y no la sede: ver `dondeDelTitulo`.
+      titulo: `${a.titulo} · ${tipoEtiqueta} ${dondeDelTitulo(modalidades) || `en ${dondeTexto}`} — ${NOMBRE}`,
       // Con la descripción vacía cae al formato armado, que es más útil que una
       // frase trunca (§7.7).
       descripcion:
