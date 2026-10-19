@@ -6,10 +6,9 @@
  * `tests/fixtures/clases-de-bug.ts`.
  */
 import { describe, expect, it } from 'vitest';
-import type { Actividad } from '@/types/actividad';
 // B-911 — el registro de la clase «flag booleano + dato que el flag esconde».
 import { CAMPOS_CON_PAR_DE, NO_SON_PARES, PARES_FLAG_DATO, camposDelPar } from '@/lib/paresFlagDato';
-import { fuente, versionados, EFECTOS_INCONDICIONALES } from '../fixtures/clases-de-bug';
+import { fuente, versionados } from '../fixtures/clases-de-bug';
 
 // ─────────────────────────────────────────────────────────────────────
 // clase de B-911 · el par flag + dato

@@ -6,7 +6,7 @@
  * `tests/fixtures/clases-de-bug.ts`.
  */
 import { describe, expect, it } from 'vitest';
-import { triggers, TRIGGERS, primero, EFECTOS_INCONDICIONALES } from '../fixtures/clases-de-bug';
+import { TRIGGERS, primero, EFECTOS_INCONDICIONALES } from '../fixtures/clases-de-bug';
 
 const llamadasAEfecto = () =>
   TRIGGERS.flatMap((t) =>

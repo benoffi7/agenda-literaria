@@ -32,8 +32,6 @@ import {
 } from './fixtures/ciclo';
 
 const raiz = new URL('..', import.meta.url);
-const fuente = (relativo: string) =>
-  readFileSync(fileURLToPath(new URL(relativo, raiz)), 'utf8');
 
 type Sesion = {
   id: string;

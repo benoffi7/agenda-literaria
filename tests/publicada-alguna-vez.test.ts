@@ -13,7 +13,6 @@ import {
 import { formADocumento, payloadDeActualizacion } from '@/lib/actividades';
 import { duplicarActividadForm } from '@/lib/duplicar';
 import { slugRestaurable } from '@/lib/historial';
-import { formVacio } from '@/lib/formulario/estadoInicial';
 import { formGuardable } from './fixtures/formulario';
 import { toPublic } from '@/lib/toPublic';
 import type { Actividad } from '@/types/actividad';

@@ -18,7 +18,7 @@ import {
 } from '@/lib/noEncontrado';
 import { DIRECTORIOS, directoriosDisponibles, type IdDirectorio } from '@/lib/directorios';
 import { aQuery, desdeQuery, filtrosVacios, ORDEN_PUBLICO_POR_DEFECTO } from '@/lib/listadoPublico';
-import { RUTA_AGENDA, RUTA_PASADAS } from '@/lib/rutasPublicas';
+import { RUTA_PASADAS } from '@/lib/rutasPublicas';
 import type { GrupoDeExploracion } from '@/lib/hubsPublicos';
 
 /**

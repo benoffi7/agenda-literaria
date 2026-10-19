@@ -29,7 +29,6 @@ interface Props extends PropsSeccion {
 export function SeccionOpcional({
   form,
   set,
-  errorDe,
   uid,
   anotarMultivalor,
   pedidoDeApertura,

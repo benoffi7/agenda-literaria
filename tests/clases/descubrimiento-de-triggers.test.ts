@@ -6,7 +6,7 @@
  * `tests/fixtures/clases-de-bug.ts`.
  */
 import { describe, expect, it } from 'vitest';
-import { CLASES_DE_TRIGGER, triggers, TRIGGERS, primero, EFECTOS_INCONDICIONALES, WRITE_BACKS_CON_GUARDA } from '../fixtures/clases-de-bug';
+import { TRIGGERS } from '../fixtures/clases-de-bug';
 
 describe('el descubrimiento de triggers sigue viendo lo que hay', () => {
   it('encuentra los dieciocho triggers del proyecto', () => {

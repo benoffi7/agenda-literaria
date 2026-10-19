@@ -27,11 +27,6 @@ import { raiz, fuente, ARCHIVOS_FUNCTIONS, sinComentarios } from '../fixtures/cl
  * La verificación no repite el formato: **saca las formas del productor** y las
  * hace pasar por el consumidor. Una forma nueva en `version.mjs` entra sola.
  */
-const SUSTITUCIONES: Record<string, string> = {
-  '${pkg.version}': '1.0.1',
-  '${sha}': '5e2cb50',
-  '${sello(ahora)}': '20260821-2124',
-};
 
 
 /**

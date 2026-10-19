@@ -6,7 +6,7 @@
  * `tests/fixtures/clases-de-bug.ts`.
  */
 import { describe, expect, it } from 'vitest';
-import { type Trigger, CLASES_DE_TRIGGER, TRIGGERS, primero, sinComentarios, trazaDe } from '../fixtures/clases-de-bug';
+import { type Trigger, TRIGGERS, primero, sinComentarios, trazaDe } from '../fixtures/clases-de-bug';
 
 // ─────────────────────────────────────────────────────────────────────
 // Clase de la trampa 12 · un trigger de Storage que escribe en el bucket

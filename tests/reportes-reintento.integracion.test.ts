@@ -18,7 +18,6 @@ import { initializeApp as initAdmin, deleteApp as deleteAdminApp } from 'firebas
 import { getFirestore as getAdminFirestore } from 'firebase-admin/firestore';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { fileURLToPath } from 'node:url';
-import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
 import { reintentarReporte } from '@/lib/reportes';
 import {

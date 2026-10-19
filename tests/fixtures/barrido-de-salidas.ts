@@ -57,9 +57,7 @@
  * ahí están las **instancias** (la forma exacta de `online`, el desvío de
  * `urlPublica`, la línea del cupo). Acá está la **clase**.
  */
-import { expect, it } from 'vitest';
-import { toPublic } from '@/lib/toPublic';
-import { entradaDeIndice } from '@/lib/eventsJson';
+import { expect } from 'vitest';
 import type { RutaCentinela } from './centinelas';
 import { type Excepcion } from './barrido';
 import { PERMITIDO_EN_LA_PROYECCION_DE_BIBLIOTECAS, PERMITIDO_EN_LA_PROYECCION_DE_LIBRERIAS, PERMITIDO_EN_LA_PROYECCION_DE_LUGARES, PERMITIDO_EN_LA_PROYECCION_DE_SUSCRIPCIONES, PERMITIDO_SIN_DIRECCION_DE_LUGARES } from './canastas-de-la-guia';

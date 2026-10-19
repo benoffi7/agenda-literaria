@@ -7,8 +7,7 @@
  * `tests/fixtures/barrido-de-salidas.ts`.
  */
 import { describe, expect, it } from 'vitest';
-import { opcionesPublicas, toPublic } from '@/lib/toPublic';
-import { entradaDeIndice } from '@/lib/eventsJson';
+import { toPublic } from '@/lib/toPublic';
 import { datosEstructurados, detalleDeActividad, migasDeDetalle } from '@/lib/detallePublico';
 import { mapaDeEtiquetas } from '@/lib/listadoPublico';
 import type { TipoActividad } from '@/types/actividad';

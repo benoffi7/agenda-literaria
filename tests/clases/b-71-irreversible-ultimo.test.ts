@@ -6,7 +6,6 @@
  * `tests/fixtures/clases-de-bug.ts`.
  */
 import { describe, expect, it } from 'vitest';
-import type { Actividad } from '@/types/actividad';
 import { fuente, versionados, primero } from '../fixtures/clases-de-bug';
 
 // ─────────────────────────────────────────────────────────────────────

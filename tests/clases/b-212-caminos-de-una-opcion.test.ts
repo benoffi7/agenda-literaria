@@ -6,10 +6,7 @@
  * `tests/fixtures/clases-de-bug.ts`.
  */
 import { describe, expect, it } from 'vitest';
-import { CAMPOS_TAXONOMIA } from '@/types/actividad';
-// B-891 — las cinco salidas que contestan «¿hay tallerista?» y «¿hay libro?».
-import { toPublic } from '@/lib/toPublic';
-import { fuente, triggers, primero, sinComentarios } from '../fixtures/clases-de-bug';
+import { fuente, sinComentarios } from '../fixtures/clases-de-bug';
 
 /**
  * Clase de B-212 · la misma decisión de privacidad, escrita en tres lugares.

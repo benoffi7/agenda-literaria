@@ -9,8 +9,6 @@
  * `it.fails` mantiene el CI verde y falla el día en que alguien los arregle,
  * que es cuando hay que venir a borrarlo.
  */
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { Timestamp } from 'firebase/firestore';
 import { documentoAForm, formADocumento } from '@/lib/actividades';
@@ -24,17 +22,12 @@ import {
 } from '../functions/calendario.js';
 import { idDeEvento, reponerIds } from '../functions/sincronizacion.js';
 import { CAMPOS_REARME, registrarExito } from '../functions/rebuild.js';
-import { huboCambioDeContenido } from '../functions/historial.js';
 import { pideRebuild } from '../functions/derivados.js';
 import { fuenteDeLaFunction, fuenteDeLaFunctionYSusModulos } from './fixtures/functions';
 import { encuentrosDe } from '@/lib/calendarioPanel';
 import { generarSesiones } from '@/lib/sesiones';
 import type { Actividad, ActividadConId, SesionForm } from '@/types/actividad';
 import { ts } from './fixtures/tiempo';
-
-const raiz = new URL('..', import.meta.url);
-const fuente = (relativo: string) =>
-  readFileSync(fileURLToPath(new URL(relativo, raiz)), 'utf8');
 
 // ─────────────────────────────────────────────────────────────────────
 // Fixtures: el documento tal como lo entrega Firestore a la Function.

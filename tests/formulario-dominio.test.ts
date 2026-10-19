@@ -1243,7 +1243,7 @@ describe('guardarActividad — el publicador crea por la callable (B-888, B-893)
      * publicador deja en rojo la segunda aserción (la de `tags` no se intenta).
      */
     const { puertos, llamadas } = puertosFalsos({
-      proponerOpcion: async (campo, label, slug) => {
+      proponerOpcion: async (campo, _label, slug) => {
         llamadas.push(`proponerOpcion:${campo}`);
         if (campo === 'arancel') throw new Error('functions/unauthenticated');
         return slug;

@@ -15,7 +15,6 @@ import { mapaDeEtiquetas } from '@/lib/listadoPublico';
 import { construirTextoRedes } from '@/lib/textoRedes';
 import { construirDescripcion } from '../../functions/calendario.js';
 import { actividadDePrueba } from '../fixtures/indice';
-import { fuente, CENTINELA } from '../fixtures/clases-de-bug';
 
 /**
  * **Clase de B-854 · «¿hay X?» se contesta igual en cada salida.**

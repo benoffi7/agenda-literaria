@@ -7,7 +7,7 @@
  * `tests/fixtures/barrido-de-salidas.ts`.
  */
 import { describe, expect, it } from 'vitest';
-import { CENTINELA as CENTINELA_DEL_GATE, CENTINELA_DEL_DIRECTORIO, CENTINELA_DE_LUGARES, CENTINELA_DE_SUSCRIPCIONES } from '../../scripts/gate-build/semilla.mjs';
+import { CENTINELA as CENTINELA_DEL_GATE } from '../../scripts/gate-build/semilla.mjs';
 import { RUTA_DEL_CENTINELA_DEL_GATE, RUTA_EN_LA_GUIA, canastaDelGateCoincide } from '../fixtures/barrido-de-salidas';
 
 describe('las canastas del gate del build y las de este barrido — B-1761', () => {

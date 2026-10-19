@@ -6,9 +6,8 @@
  * `tests/fixtures/clases-de-bug.ts`.
  */
 import { execFileSync } from 'node:child_process';
-import { Timestamp } from 'firebase/firestore';
 import { describe, expect, it } from 'vitest';
-import { fuente, versionados, sinComentarios } from '../fixtures/clases-de-bug';
+import { fuente, sinComentarios } from '../fixtures/clases-de-bug';
 
 /**
  * Clase de B-211 · el doble de un tipo del dominio se define **una vez**.

@@ -1,4 +1,3 @@
-import { z } from 'zod';
 import { Campo, claseInput } from '@/components/campos/Campo';
 import { TagsInput, TaxonomiaSelect } from '@/components/admin/campos-del-panel';
 import { GaleriaEditor } from '@/components/admin/GaleriaEditor';
@@ -90,10 +89,6 @@ interface Props {
   onGuardado: () => void;
   onCancelar: () => void;
 }
-
-/** `{ 'envio.cuantos': 'mensaje' }` — la forma en que `Campo` pide su error. */
-const erroresDe = (issues: z.ZodIssue[]): Record<string, string> =>
-  Object.fromEntries(issues.map((i) => [i.path.join('.'), i.message]));
 
 export function SuscripcionFormulario({ uid, inicial, onGuardado, onCancelar }: Props) {
   const { recordar: recordarLabel, recordarMultivalor, registrarTodas } = useEtiquetasNuevas();

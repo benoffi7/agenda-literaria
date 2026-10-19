@@ -304,7 +304,7 @@ function FilaEncuentro({
 export function CalendarioActividades({ onEditar, version, rol, uid, ciudad = '' }: Props) {
   // La carga vive en el hook: era el mismo `useEffect` verbatim en las dos
   // pantallas, y el flag de cancelación era el único lugar donde vivía (B-215).
-  const { actividades, setActividades, cargando, fallo, setFallo } = useActividades(
+  const { actividades, cargando, fallo } = useActividades(
     version,
     rol,
     uid,

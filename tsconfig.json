@@ -6,6 +6,10 @@
     "jsx": "react-jsx",
     "jsxImportSource": "react",
     "verbatimModuleSyntax": true,
+    // B-2215: lo importado o declarado que nadie lee no compila. Un parámetro que
+    // la firma obliga a tener y no se usa va con prefijo `_`.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],

@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { COLECCIONES_DE_DIRECTORIO } from '../../functions/directorios.js';
-import { triggers, TRIGGERS, sinComentarios, WRITE_BACKS_CON_GUARDA } from '../fixtures/clases-de-bug';
+import { TRIGGERS, sinComentarios, WRITE_BACKS_CON_GUARDA } from '../fixtures/clases-de-bug';
 
 describe('trampa 3 · el write-back al propio documento va detrás de su guarda — B-905', () => {
   const llamadas = TRIGGERS.flatMap((t) =>

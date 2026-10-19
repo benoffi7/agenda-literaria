@@ -67,7 +67,6 @@ import {
   claseCampo,
   claseCasilla,
   claseEtiquetaDeCampo,
-  foco,
 } from '@/components/sitio/estilos';
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { BannerDeCiudad } from '@/components/publico/BannerDeCiudad';
@@ -92,7 +91,6 @@ import {
   CUANDO_TRES_MESES,
   diasDelCuando,
   etiquetaDeDias,
-  EJES,
   ejesVisibles,
   ETIQUETA_EJE,
   ETIQUETA_ORDEN_PUBLICO,

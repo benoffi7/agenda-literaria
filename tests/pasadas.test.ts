@@ -19,7 +19,6 @@ import {
 } from '@/lib/pasadasPublicas';
 import {
   agruparPorMes,
-  coincideBusqueda,
   estadoDe,
   filtrarPublico,
   filtrosVacios,

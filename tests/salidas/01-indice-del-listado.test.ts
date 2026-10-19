@@ -8,9 +8,9 @@
  */
 import { describe, expect, it } from 'vitest';
 import { toPublic } from '@/lib/toPublic';
-import { TAXONOMIAS_FUERA_DEL_INDICE, construirIndice, entradaDeIndice } from '@/lib/eventsJson';
+import { TAXONOMIAS_FUERA_DEL_INDICE, construirIndice } from '@/lib/eventsJson';
 import { CAMPOS_TAXONOMIA } from '@/types/actividad';
-import { CENTINELA, VOCABULARIO_CERRADO, actividadCentinela, conDosSedes, opcionCentinela } from '../fixtures/centinelas';
+import { CENTINELA, actividadCentinela, conDosSedes, opcionCentinela } from '../fixtures/centinelas';
 import { barrer, type Excepcion } from '../fixtures/barrido';
 import { CENTINELA_DEL_INDICE } from '../../scripts/gate-build/semilla.mjs';
 import { canastaDelGateCoincide } from '../fixtures/barrido-de-salidas';

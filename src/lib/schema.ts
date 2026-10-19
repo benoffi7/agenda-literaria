@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { admiteMonto } from '@/lib/arancel';
-import { MAXIMO_IMAGENES, portadaDe } from '@/lib/imagenes';
+import { MAXIMO_IMAGENES } from '@/lib/imagenes';
 import { imagenSchema, MENSAJE_ID_IMAGEN } from '@/lib/imagen-schema';
 import { filaPideOnline, filaPideSede } from '@/lib/modalidades';
 import { esCopiaSinRevisar } from '@/lib/duplicar';

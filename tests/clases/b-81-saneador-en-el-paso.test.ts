@@ -7,7 +7,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { construirIssue } from '../../functions/reportes.js';
-import { fuente, primero, CENTINELA } from '../fixtures/clases-de-bug';
+import { fuente, CENTINELA } from '../fixtures/clases-de-bug';
 
 /**
  * Todo string de la entrada reemplazado por el centinela.

@@ -16,7 +16,6 @@ import { useMailesDelPanel } from '@/components/admin/useMailes';
 import {
   borrarActividad,
   documentoAForm,
-  listarActividades,
   marcarCupoCompleto,
 } from '@/lib/actividades';
 import { medirFuncion } from '@/lib/analytics';

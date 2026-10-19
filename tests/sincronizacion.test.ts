@@ -7,7 +7,6 @@
  * dos bugs, en `costuras.test.ts`.
  */
 import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   ALFABETO_ID_CALENDAR,
@@ -28,9 +27,6 @@ import { nuevaSesionId } from '@/lib/sesiones';
 import { ts } from './fixtures/tiempo';
 import { cicloDeOcho, sesionesDeCiclo } from './fixtures/ciclo';
 import { fuenteDeLaFunction } from './fixtures/functions';
-
-const fuente = (relativo: string) =>
-  readFileSync(fileURLToPath(new URL(relativo, new URL('..', import.meta.url))), 'utf8');
 
 // ─────────────────────────────────────────────────────────────────────
 // B-82 · el id del evento lo elige el cliente

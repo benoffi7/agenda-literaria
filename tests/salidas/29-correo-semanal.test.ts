@@ -11,7 +11,6 @@ import { describe, expect, it } from 'vitest';
 import { toPublic } from '@/lib/toPublic';
 import { construirIndice } from '@/lib/eventsJson';
 import { boletinSemanal, htmlDelBoletin, textoPlanoDelBoletin } from '@/lib/boletinSemanal';
-import { arancelDeTarjeta } from '@/lib/tarjetaPublica';
 import { LABELS_CENTINELA, actividadCentinela } from '../fixtures/centinelas';
 import { barrer, type Excepcion } from '../fixtures/barrido';
 

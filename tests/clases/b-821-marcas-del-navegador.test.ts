@@ -26,8 +26,6 @@ describe('clase de la §5.1 · una marca del navegador tiene clave fija y está 
    * El barrido va en los **dos sentidos** contra la tabla de la doc: una marca
    * nueva sin fila, y una fila que ya no exista en el código.
    */
-  const CLAVES = /'(agenda[-:][A-Za-z0-9:.-]*)'/g;
-
   /**
    * Los archivos del panel y del sitio que **tocan el almacenamiento del
    * navegador o declaran una de sus claves**.

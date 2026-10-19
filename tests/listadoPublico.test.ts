@@ -38,7 +38,7 @@ import {
   valoresDe,
   type Eje,
 } from '@/lib/listadoPublico';
-import { SIN_COSTO, esSinCosto, primeroSinCosto } from '@/lib/arancel';
+import { SIN_COSTO, esSinCosto } from '@/lib/arancel';
 import { entradaDePrueba } from './fixtures/indice';
 
 /** Todo lo de este archivo se mide contra este instante. */

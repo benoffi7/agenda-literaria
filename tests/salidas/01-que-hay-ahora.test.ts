@@ -10,10 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { toPublic } from '@/lib/toPublic';
 import { construirIndice } from '@/lib/eventsJson';
 import { panelesDeAhora } from '@/lib/ahoraPublico';
-import { coleccionSchema } from '@/lib/hubsPublicos';
-import { RUTA_AGENDA } from '@/lib/rutasPublicas';
-import { arancelDeTarjeta } from '@/lib/tarjetaPublica';
-import { CENTINELA, LABELS_CENTINELA, actividadCentinela, conLinkPublico } from '../fixtures/centinelas';
+import { LABELS_CENTINELA, actividadCentinela, conLinkPublico } from '../fixtures/centinelas';
 import { barrer, type Excepcion } from '../fixtures/barrido';
 
 /**

@@ -123,7 +123,7 @@ export const frasesDeNoEncontrado = (
    * —y no `[]`, que volvería la premisa una tautología— lo fija
    * `tests/no-encontrado.test.ts`.
    */
-  grupos: readonly GrupoDeExploracion[],
+  _grupos: readonly GrupoDeExploracion[],
 ): FrasesDeNoEncontrado => ({
   titulo: TITULO_NO_ENCONTRADO,
   bajada: BAJADA_NO_ENCONTRADO,

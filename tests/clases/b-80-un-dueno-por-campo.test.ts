@@ -9,7 +9,7 @@ import { Timestamp } from 'firebase/firestore';
 import { describe, expect, it } from 'vitest';
 import { documentoAForm, formADocumento, payloadDeActualizacion } from '@/lib/actividades';
 import type { Actividad } from '@/types/actividad';
-import { fuente, ARCHIVOS_FUNCTIONS, triggers, TRIGGERS, primero, trazaDe } from '../fixtures/clases-de-bug';
+import { fuente, TRIGGERS, trazaDe } from '../fixtures/clases-de-bug';
 
 /** Un array literal de constantes del fuente: `const X = ['a', 'b'];` → `['a','b']`. */
 const listaLiteral = (src: string, nombre: string): string[] => {
@@ -38,8 +38,11 @@ const listaLiteral = (src: string, nombre: string): string[] => {
  */
 const SRC_HISTORIAL = fuente('functions/historial.js');
 
-/**
- * El fuente de **todas** las Functions, concatenado, y no el de `index.js`.
+/*
+ * `SRC_FUNCTIONS` —el fuente de **todas** las Functions, concatenado, y no el
+ * de `index.js`— ya no se declara: ningún chequeo de este archivo lo leía
+ * (B-2215). Queda el porqué, que el docblock de
+ * `CAMPOS_DOCUMENTO_QUE_ESCRIBE_EL_SYNC` retoma:
  *
  * Apuntar a un archivo concreto ya se rompió una vez: B-77 partió `index.js` en
  * módulos y el write-back se mudó a `sincronizacion.js`, así que los chequeos de
@@ -47,7 +50,6 @@ const SRC_HISTORIAL = fuente('functions/historial.js');
  * vacía" lo agarró, que es para lo que está — pero la respuesta correcta no es
  * re-apuntar a otro archivo, es dejar de depender de dónde vive el código.
  */
-const SRC_FUNCTIONS = ARCHIVOS_FUNCTIONS.map((f) => fuente(f)).join('\n');
 
 
 const CAMPOS_DE_MAQUINA_SESION = listaLiteral(SRC_HISTORIAL, 'CAMPOS_DE_MAQUINA_SESION');

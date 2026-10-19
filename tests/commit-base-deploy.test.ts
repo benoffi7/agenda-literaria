@@ -45,12 +45,6 @@ const HEAD = execFileSync('git', ['rev-parse', '--short=7', 'HEAD'], {
 // trajo.
 const SHA_INEXISTENTE = 'deadbee';
 
-/** El mismo commit que `HEAD`, en 40 hex: el sha largo que git también produce. */
-const HEAD_LARGO = execFileSync('git', ['rev-parse', 'HEAD'], {
-  cwd: RAIZ,
-  encoding: 'utf8',
-}).trim();
-
 const decidir = async (
   entorno: Record<string, string> = {},
 ): Promise<string> => {

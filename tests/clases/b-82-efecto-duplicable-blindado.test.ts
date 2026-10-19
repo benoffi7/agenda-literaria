@@ -6,7 +6,7 @@
  * `tests/fixtures/clases-de-bug.ts`.
  */
 import { describe, expect, it } from 'vitest';
-import { fuente, type Trigger, triggers, TRIGGERS, primero, sinComentarios, importesDe, enFunctions, type Traza, trazar, comoDeclaracion, trazaDe, RE_CLAVE_DERIVADA, guardaPorClave, guardaPorReclamo, tieneGuardaDeReentrega, trazaFingida, marcasDe } from '../fixtures/clases-de-bug';
+import { fuente, type Trigger, TRIGGERS, primero, sinComentarios, importesDe, enFunctions, type Traza, trazar, comoDeclaracion, trazaDe, RE_CLAVE_DERIVADA, guardaPorClave, guardaPorReclamo, tieneGuardaDeReentrega, trazaFingida } from '../fixtures/clases-de-bug';
 
 const deDocumento = TRIGGERS.filter((t) => t.clase !== 'onSchedule');
 

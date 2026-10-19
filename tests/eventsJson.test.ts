@@ -7,8 +7,6 @@ import {
   resumenDe,
 } from '@/lib/eventsJson';
 import { toPublic } from '@/lib/toPublic';
-import { detalleDeActividad } from '@/lib/detallePublico';
-import { mapaDeEtiquetas } from '@/lib/listadoPublico';
 import { CENTINELA, actividadCentinela, opcionCentinela } from './fixtures/centinelas';
 import { ts } from './fixtures/tiempo';
 

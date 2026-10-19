@@ -33,7 +33,6 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
-import { construirIssue } from '../../functions/reportes.js';
 
 
 export const raiz = new URL('../..', import.meta.url);

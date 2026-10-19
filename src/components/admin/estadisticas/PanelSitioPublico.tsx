@@ -435,7 +435,6 @@ export function PanelSitioPublico({
 }) {
   const { ga4, searchConsole } = resumen;
   const hayNumerosDeGa4 = ga4.situacion === 'ok';
-  const periodo = periodoLegible(ga4.ventana);
 
   return (
     <div className="space-y-6">

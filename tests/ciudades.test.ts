@@ -24,7 +24,7 @@ import { ciudadDeClaims } from '@/lib/rolDelPanel';
 import { esSoloLectura } from '@/lib/formulario/autoria';
 import { formADocumento, documentoAForm } from '@/lib/actividades';
 import { payloadDeRestauracion } from '@/lib/historial';
-import { formVacio, modalidadVacia } from '@/lib/formulario/estadoInicial';
+import { modalidadVacia } from '@/lib/formulario/estadoInicial';
 import { formGuardable } from './fixtures/formulario';
 import type { ActividadForm, Sede } from '@/types/actividad';
 

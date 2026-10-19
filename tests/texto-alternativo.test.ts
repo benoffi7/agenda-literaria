@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { camposCambiados, huboCambioDeContenido } from '../functions/historial.js';
 import { documentoAForm, formADocumento } from '@/lib/actividades';
 import { duplicarActividadForm } from '@/lib/duplicar';
-import { formVacio } from '@/lib/formulario/estadoInicial';
 import { formGuardable } from './fixtures/formulario';
 import { CAMPOS } from '@/lib/formulario/camposFaltantes';
 import { CAMPOS_VALIDABLES } from '@/lib/analytics-eventos';

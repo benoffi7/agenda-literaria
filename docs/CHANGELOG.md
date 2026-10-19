@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **El chequeo de tipos frena el código que quedó sin usar** (B-2215). Se limpiaron 71
+  imports, constantes y parámetros que sobraban de cambios anteriores.
+
 - **El buscador de la home ya no arrastra código del panel** (B-2214), y el build arma el
   índice de actividades una vez y no en cada página.
 

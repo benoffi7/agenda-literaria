@@ -358,7 +358,7 @@ const NOMBRE_DEL_TEMATICO: Record<'online' | 'gratis', string> = {
 };
 
 /** La etiqueta del hub: la de la taxonomía, o el nombre del temático. */
-const etiquetaDelHub = (clase: ClaseDeHub, slug: string, etiqueta: string): string =>
+const etiquetaDelHub = (clase: ClaseDeHub, _slug: string, etiqueta: string): string =>
   clase === 'online' || clase === 'gratis' ? NOMBRE_DEL_TEMATICO[clase] : etiqueta;
 
 /**

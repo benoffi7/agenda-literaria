@@ -8,7 +8,6 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { opcionesPublicas } from '@/lib/toPublic';
 import { CENTINELA, CENTINELA_NUM, VALORES_NO_TEXTO, VOCABULARIO_CERRADO, actividadCentinela, opcionCentinela } from '../fixtures/centinelas';
 
 // ───────────────────────────────────────────────────────────────────────────
