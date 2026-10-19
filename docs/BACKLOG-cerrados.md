@@ -22965,6 +22965,23 @@ la doc: `dondeDelTitulo` pone barrio o ciudad sin la sede («Taller en Villa
 Crespo», «Taller online», «en Palermo y online»), que es la regla de la doc. El
 gate de títulos únicos pasa.
 
+### B-2212 · Costos escritos que ya no valen: Scheduler y lecturas diarias · P3 — ✅ hecho (2026-10-19): cuentas al día
+
+Son 7 jobs de Cloud Scheduler y 3 son gratis: ~USD 0,40/mes, el 8 % del
+presupuesto, y no está en `08-operacion.md` § Costos. `frescura-trigger.js:106`
+calcula sobre ~100 publicadas (hoy ~451: ~21.600 lecturas/día), y con
+`limpiarImagenesHuerfanas` y el panel ya se anda cerca de las 50.000 gratis. Una
+opción nueva relee todas las publicadas (`mismasEtiquetas`), aunque ese recorrido
+hoy repara de rebote el evento de la actividad que la creó. **Arreglo:** juntar
+los barridos diarios en una función de mantenimiento; corregir las cuentas; que
+la frescura compare primero `generadoEn` contra `despacho.cubreHasta`.
+
+**Hecho:** `08-operacion.md` § Costos tiene la cuenta del 2026-10-19 (Scheduler,
+lecturas, Actions) y el comentario de la frescura dejó de decir «~100 publicadas».
+No se juntaron los barridos ni se cambió la frescura: son ~USD 0,30/mes y
+centavos de lecturas, y los dos tocan código que avisa cuando algo se rompe. Queda
+escrito qué hacer primero si el costo un día molesta.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

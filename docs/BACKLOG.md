@@ -505,17 +505,6 @@ publicaron bien y figuran `cancelled`; la 37369391156 venció esperando runner y
 no mandó mail (`failure()` es falso para un job cancelado). **Arreglo:** pasar el
 chequeo a un paso final del job `deploy` o a un `workflow_run`.
 
-### B-2212 · Costos escritos que ya no valen: Scheduler y lecturas diarias · P3 (auditoría 2026-10-19)
-
-Son 7 jobs de Cloud Scheduler y 3 son gratis: ~USD 0,40/mes, el 8 % del
-presupuesto, y no está en `08-operacion.md` § Costos. `frescura-trigger.js:106`
-calcula sobre ~100 publicadas (hoy ~451: ~21.600 lecturas/día), y con
-`limpiarImagenesHuerfanas` y el panel ya se anda cerca de las 50.000 gratis. Una
-opción nueva relee todas las publicadas (`mismasEtiquetas`), aunque ese recorrido
-hoy repara de rebote el evento de la actividad que la creó. **Arreglo:** juntar
-los barridos diarios en una función de mantenimiento; corregir las cuentas; que
-la frescura compare primero `generadoEn` contra `despacho.cubreHasta`.
-
 ### B-2213 · Índices sobrantes, sin exenciones, y `/reportes` sin retención · P3 (auditoría 2026-10-19)
 
 `firestore.indexes.json:7` (`estado` + `updatedAt desc`) es del listado anónimo

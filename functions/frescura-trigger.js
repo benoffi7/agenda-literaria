@@ -105,10 +105,10 @@ const OPCIONES = {
    *  - La ventana de tolerancia es de 40 minutos, así que tickear más seguido no
    *    detecta antes: solo gasta.
    *  - Cada corrida cuesta **una lectura de Firestore por actividad publicada**
-   *    (el `.select()` de abajo no abarata el documento, solo lo adelgaza). Con ~100
-   *    publicadas son ~4.800 lecturas por día, holgado dentro de la cuota
-   *    gratuita de 50.000 y coherente con el §2.5, que puso a costo cero la parte
-   *    pública.
+   *    (el `.select()` de abajo no abarata el documento, solo lo adelgaza). Con
+   *    las 519 publicadas del 2026-10-19 son ~25.000 lecturas por día —la mitad
+   *    de la cuota gratuita—; la cuenta de cuando se escribió era ~100 y 4.800
+   *    (B-2212). La cuenta entera está en `08-operacion.md` § Costos.
    *  - Con 30 minutos, una divergencia real se ve como mucho ~70 minutos después
    *    del cambio. Frente a «nunca», que es lo que había.
    *

@@ -3778,3 +3778,22 @@ diez.
 
 El sitio público no lee Firestore (§2.5), así que el tráfico de visitas no
 genera costo de base de datos.
+
+**La cuenta del 2026-10-19 (B-2212), con 519 publicadas:**
+
+- **Cloud Scheduler: 7 jobs y 3 son gratis** por cuenta de facturación. Los otros
+  4 cuestan ~USD 0,10 cada uno: **~USD 0,40/mes, el 8 % del budget.** Son
+  `dispararRebuild` (cada 5 min), `verificarFrescuraDelSitio` (cada 30 min),
+  `traerAnaliticaDelSitio` (diario) y cuatro barridos diarios
+  (`borrarPropuestasVencidas`, `borrarFichasVencidas`,
+  `limpiarImagenesHuerfanas`, `limpiarVersionesHuerfanas`). Juntar los cuatro
+  barridos en una función de mantenimiento ahorraría ~USD 0,30/mes; por eso no se
+  sumó un schedule para destrabar reportes (B-2205) y va dentro de la frescura.
+- **Lecturas de Firestore: cerca de las 50.000 gratis por día.** La frescura lee
+  una por publicada en cada corrida: ~25.000/día. `limpiarImagenesHuerfanas` lee
+  las actividades y sus versiones una vez por día, cada build ~550, y cada vuelta
+  al listado del panel otras ~550 (B-2203). Pasarse cuesta USD 0,06 cada 100.000:
+  centavos. Si un día molesta, lo primero es que la frescura compare `generadoEn`
+  contra `despacho.cubreHasta` (una lectura) y haga la comparación por slugs cada
+  dos horas.
+- **GitHub Actions: gratis**, porque el repo es público.
