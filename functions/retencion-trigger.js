@@ -19,6 +19,7 @@
  */
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions/v2';
+import { conAlertaDeBarrido } from './barridos.js';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { CUENTA_DE_SERVICIO, REGION } from './despliegue.js';
@@ -107,7 +108,7 @@ const barrerOriginalesConCopia = async (db, bucket) => {
       pendientes,
     });
   } catch (e) {
-    logger.error('falló el barrido de originales de aceptadas', { error: e?.message });
+    logger.error('falló el barrido de originales de aceptadas', { alerta: 'barrido-fallo', error: e?.message });
   }
 };
 
@@ -224,7 +225,7 @@ const barrerFlyeresDePropuestas = async (db, bucket) => {
       logger.info('flyers de propuestas: barrido terminado', resumen);
     }
   } catch (e) {
-    logger.error('falló el barrido de flyers de propuestas', { error: e?.message });
+    logger.error('falló el barrido de flyers de propuestas', { alerta: 'barrido-fallo', error: e?.message });
   }
 };
 
@@ -249,7 +250,7 @@ export const borrarPropuestasVencidas = onSchedule(
     memory: '256MiB',
     timeoutSeconds: 300,
   },
-  async () => {
+  conAlertaDeBarrido(logger, 'borrarPropuestasVencidas', async () => {
     const db = getFirestore();
     const bucket = getStorage().bucket();
 
@@ -419,7 +420,7 @@ export const borrarPropuestasVencidas = onSchedule(
       // B-871 — después de B-1370, que borra antes lo que ya tiene copia.
       await barrerFlyeresDePropuestas(db, bucket);
     }
-  },
+  }),
 );
 
 /**
@@ -480,7 +481,7 @@ export const borrarFichasVencidas = onSchedule(
     memory: '256MiB',
     timeoutSeconds: 300,
   },
-  async () => {
+  conAlertaDeBarrido(logger, 'borrarFichasVencidas', async () => {
     const db = getFirestore();
     // Un solo reloj para las cuatro llamadas de cada colección, por lo mismo que
     // arriba: la lectura corta consultando la misma decisión que después borra.
@@ -582,10 +583,11 @@ export const borrarFichasVencidas = onSchedule(
          * deja de cumplir es un dato personal que se queda de más.
          */
         logger.error('falló la retención de una colección de la guía', {
+          alerta: 'barrido-fallo',
           coleccion,
           error: e?.message,
         });
       }
     }
-  },
+  }),
 );

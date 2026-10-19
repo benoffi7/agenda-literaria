@@ -21,6 +21,7 @@
  */
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions/v2';
+import { conAlertaDeBarrido } from './barridos.js';
 import { getStorage } from 'firebase-admin/storage';
 import { getFirestore } from 'firebase-admin/firestore';
 import { PREFIJO_MINIATURAS, PREFIJO_ORIGINALES } from './imagenes.js';
@@ -56,7 +57,7 @@ export const limpiarImagenesHuerfanas = onSchedule(
     memory: '256MiB',
     timeoutSeconds: 300,
   },
-  async () => {
+  conAlertaDeBarrido(logger, 'limpiarImagenesHuerfanas', async () => {
     const db = getFirestore();
     const bucket = getStorage().bucket();
 
@@ -112,5 +113,5 @@ export const limpiarImagenesHuerfanas = onSchedule(
         referenciados: referenciados.size,
       });
     }
-  },
+  }),
 );

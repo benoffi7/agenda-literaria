@@ -847,6 +847,21 @@ ráfaga, el sitio no tiene ese cambio hasta la próxima edición: guardar cualqu
 actividad, o correr `gh workflow run deploy.yml --ref main`, que reconstruye los
 datos. Si se repite, mirar el `codigo`: 7 es IAM de `calendar-sync@`.
 
+### Cuando suena `barrido-fallo` (B-2195)
+
+**Qué dice el mail:** un barrido diario falló **entero**, no un objeto suelto:
+`borrarPropuestasVencidas` o `borrarFichasVencidas` (la retención de 30 días de
+contactos, DEC-13), `limpiarImagenesHuerfanas` o `limpiarVersionesHuerfanas`. El
+log trae `barrido` y `error`. Un objeto que no se pudo borrar **no** manda mail: la
+corrida de mañana lo reintenta sola.
+
+**Por qué importa:** si es la retención, mientras no corra quedan datos personales
+de terceros más tiempo del prometido.
+
+**Qué hacer:** mirar el `error`. Un `PERMISSION_DENIED` es IAM de la cuenta de la
+Function; un índice faltante lo dice con el link para crearlo. Arreglado, se puede
+correr a mano desde Cloud Scheduler («Forzar ejecución») sin esperar a mañana.
+
 ### Cuando suena `sede-sin-ciudad` (B-2052)
 
 **Qué dice el mail:** una cuenta publicadora **con ciudad** guardó una actividad con

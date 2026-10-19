@@ -12,6 +12,7 @@
  */
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions/v2';
+import { conAlertaDeBarrido } from './barridos.js';
 import { getFirestore, FieldPath } from 'firebase-admin/firestore';
 import { CUENTA_DE_SERVICIO, REGION } from './despliegue.js';
 import {
@@ -50,7 +51,7 @@ export const limpiarVersionesHuerfanas = onSchedule(
     memory: '256MiB',
     timeoutSeconds: 300,
   },
-  async () => {
+  conAlertaDeBarrido(logger, 'limpiarVersionesHuerfanas', async () => {
     const db = getFirestore();
     const referencias = await subcoleccionesHuerfanas(db);
 
@@ -124,5 +125,5 @@ export const limpiarVersionesHuerfanas = onSchedule(
         huerfanas: huerfanas.length,
       });
     }
-  },
+  }),
 );

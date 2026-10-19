@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Si un barrido diario falla entero, llega un aviso** (B-2195). Incluye la retención
+  de 30 días de los contactos de terceros: antes podía dejar de cumplirse sin que
+  nadie se enterara.
+
 - **Una carga masiva ya no puede dejar una actividad sin calendario** (B-2193). Si
   marcar el rebuild del sitio falla por la cantidad de escrituras a la vez, se
   reintenta; y si igual falla, el calendario se sincroniza igual y llega un aviso.

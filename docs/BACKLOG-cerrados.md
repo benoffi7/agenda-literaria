@@ -18293,6 +18293,24 @@ escribir si ya está en `true`»: entre que el despachador manda el build y baja
 marca hay una ventana en la que saltear la escritura dejaría un cambio fuera del
 sitio. Las pausas en los scripts de lote tampoco: con el reintento no hacen falta.
 
+### B-2195 · Los barridos programados pueden fallar o dejar de correr sin aviso · P2 — ✅ hecho (2026-10-19), el latido sigue en B-2220
+
+Logs `error` sin `alerta` en `retencion-trigger.js` (110, 227, 369, 543, 584),
+`versiones-limpieza-trigger.js:103`, `imagenes-limpieza-trigger.js:95` y
+`propuestas-trigger.js` (138, 175, 201, 222). La retención de 30 días de
+contactos (DEC-13) es una promesa de privacidad. **Arreglo:** `alerta` en esos
+logs; un latido por schedule en `sistema/latidos` que vigile
+`verificarFrescuraDelSitio`; una política de GCP sobre `severity>=ERROR`.
+
+**Hecho:** los cuatro barridos diarios van envueltos en `conAlertaDeBarrido`
+(`functions/barridos.js`, puro), que avisa con `alerta: 'barrido-fallo'` y vuelve
+a tirar; los tres `catch` de barrido entero de `retencion-trigger.js` también
+avisan. Runbook en `08-operacion.md`; `tests/barridos.test.ts`. **No** se puso
+`alerta` en el fallo de cada objeto, y es a propósito, como ya decían los
+comentarios: la corrida de mañana lo reintenta, y un mail diario por objeto sería
+ruido. Lo que no cubre —un schedule pausado o borrado, un crash antes de entrar
+al cuerpo— quedó en B-2220.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

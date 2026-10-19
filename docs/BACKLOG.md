@@ -143,6 +143,15 @@ contra `before` (resuelve también el desorden de B-2194); o un barrido diario c
 sesión con fecha ilegible se saltee y no frene a las demás (hoy avisa y no manda
 ninguna).
 
+### B-2220 · Un schedule que deja de correr no avisa · P3 (sale de B-2195, 2026-10-19)
+
+`barrido-fallo` avisa si un barrido falla **corriendo**; si el job de Cloud
+Scheduler queda pausado o se borra, o la Function crashea antes del cuerpo, no hay
+log que filtrar. **Arreglo:** que cada schedule escriba un latido en
+`sistema/latidos.<nombre>` y que `verificarFrescuraDelSitio` avise si alguno tiene
+más de 48 h; más una segunda política de GCP sobre `severity>=ERROR` en los
+servicios de Cloud Run (es configuración de consola, no del repo).
+
 ### B-2191 · `events.json` lleva todo el histórico y crece sin tope · P2 (auditoría 2026-10-19)
 
 Producción, 2026-10-18: 1.080.883 B (168 KB gzip), 519 actividades, 382 ya
@@ -158,15 +167,6 @@ buscador. Actualizar el barrido de salidas y el gate post-build.
 El evento se arma con `event.data.after` de cada invocación, y Firestore no
 garantiza orden. **Arreglo:** releer el documento al ejecutar y comparar contra un
 hash del último evento enviado por sesión (el mismo campo de B-2186).
-
-### B-2195 · Los barridos programados pueden fallar o dejar de correr sin aviso · P2 (auditoría 2026-10-19)
-
-Logs `error` sin `alerta` en `retencion-trigger.js` (110, 227, 369, 543, 584),
-`versiones-limpieza-trigger.js:103`, `imagenes-limpieza-trigger.js:95` y
-`propuestas-trigger.js` (138, 175, 201, 222). La retención de 30 días de
-contactos (DEC-13) es una promesa de privacidad. **Arreglo:** `alerta` en esos
-logs; un latido por schedule en `sistema/latidos` que vigile
-`verificarFrescuraDelSitio`; una política de GCP sobre `severity>=ERROR`.
 
 ### B-2196 · Hosting no manda ningún header de seguridad · P2 (auditoría 2026-10-19)
 
