@@ -523,7 +523,7 @@ que D-128 sacó. `fieldOverrides` vacío: cada versión indexa el documento ente
 y en `actividades` se indexan `descripcion` y `searchText`. `/reportes` tiene
 `delete: if false` y guarda `reportadoPor.email` sin retención.
 
-### B-2214 · CSS del panel en el sitio público, una lib del panel en el bundle del Buscador, `indiceDelSitio()` sin memo · P3 (auditoría 2026-10-19)
+### B-2214 · CSS del panel en el sitio público, una lib del panel en el bundle del Buscador, `indiceDelSitio()` sin memo · P3 — 🟡 dos de cuatro (2026-10-19)
 
 168 de 769 selectores de `Base.*.css` son solo del panel (~12 KB sin comprimir).
 `listadoPublico.ts:34` y `tarjetaPublica.ts:44` importan `ETIQUETA_MODALIDAD` de
@@ -531,6 +531,13 @@ y en `actividades` se indexan `descripcion` y `searchText`. `/reportes` tiene
 (`contenidoDelSitio.ts:976`) no está memoizada aunque `agenda/[mes].astro:19`
 diga que sí. `events.json` va `no-cache` aunque la URL lleva `?v=`: se podría
 publicar `/indice/<version>.json` inmutable.
+
+**Hecho (2026-10-19):** `ETIQUETA_MODALIDAD` vive en `lib/etiquetaDeModalidad.ts`
+(hoja; `filtrosActividades` la reexporta) y el chunk del buscador público ya no
+importa `filtrosActividades` —verificado en el `dist/`: solo lo importan chunks del
+panel—. `indiceDelSitio()` está memoizado atado a la promesa del contenido, así que
+`olvidarContenido()` lo invalida; ningún consumidor muta el índice. **Falta:** el
+CSS del panel en la hoja pública (~12 KB) y el `/indice/<version>.json` inmutable.
 
 ### B-2215 · Sin linter, y exports muertos que tsc no ve · P3 (auditoría 2026-10-19)
 

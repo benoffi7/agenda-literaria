@@ -41,7 +41,7 @@ import {
   partesDeMes,
 } from '@/lib/fechasPublicas';
 import { HORARIO_A_CONFIRMAR_CORTO } from '@calendario';
-import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
+import { ETIQUETA_MODALIDAD } from '@/lib/etiquetaDeModalidad';
 import { admiteMonto, esSinCosto, montoLegible } from '@/lib/arancel';
 import { etiquetaDe, type EstadoDeEntrada, type MapaDeEtiquetas } from '@/lib/listadoPublico';
 import {

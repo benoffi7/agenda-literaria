@@ -31,7 +31,7 @@
  */
 import { primeroSinCosto } from '@/lib/arancel';
 import type { Chip } from '@/lib/chip';
-import { ETIQUETA_MODALIDAD } from '@/lib/filtrosActividades';
+import { ETIQUETA_MODALIDAD } from '@/lib/etiquetaDeModalidad';
 import {
   claveDeDia,
   claveDeMes,

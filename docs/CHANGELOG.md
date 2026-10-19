@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **El buscador de la home ya no arrastra código del panel** (B-2214), y el build arma el
+  índice de actividades una vez y no en cada página.
+
 - **El título de cada actividad en Google dice el barrio** (B-2216): «Taller de crónica ·
   Taller en Villa Crespo» en vez de empezar por la sede, que dejaba el barrio después
   del corte. Las virtuales dicen «online».

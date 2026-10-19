@@ -972,15 +972,29 @@ export const olvidarMiniaturas = (): void => {
   cacheMiniaturas = null;
 };
 
+/*
+ * B-2214 — memoizado de verdad. Los comentarios de más de quince consumidores ya
+ * decían «el `indiceDelSitio()` memoizado», y no lo estaba: cada uno rearmaba el
+ * índice entero (519 actividades, con un `find` de organizador por cada una). Se
+ * ata a la promesa del contenido y no a un flag propio, así `olvidarContenido()`
+ * —lo que usan los tests al cambiar el entorno— también lo invalida.
+ */
+let indiceMemo: { de: Promise<ContenidoDelSitio>; indice: Promise<Indice> } | null = null;
+
 /** El `events.json` completo (§4.4: las opciones viajan adentro). */
-export const indiceDelSitio = async (): Promise<Indice> => {
-  const { actividades, opciones } = await contenidoDelSitio();
-  return construirIndice({
-    actividades,
-    opciones,
-    version: INFO_VERSION.version,
-    generadoEn: INFO_VERSION.generadoEn,
-  });
+export const indiceDelSitio = (): Promise<Indice> => {
+  const contenido = contenidoDelSitio();
+  if (indiceMemo?.de === contenido) return indiceMemo.indice;
+  const indice = contenido.then(({ actividades, opciones }) =>
+    construirIndice({
+      actividades,
+      opciones,
+      version: INFO_VERSION.version,
+      generadoEn: INFO_VERSION.generadoEn,
+    }),
+  );
+  indiceMemo = { de: contenido, indice };
+  return indice;
 };
 
 /**

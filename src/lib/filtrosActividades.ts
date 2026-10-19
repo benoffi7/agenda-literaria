@@ -607,12 +607,8 @@ export const ETIQUETA_ESTADO: Record<Estado, string> = {
   cancelado: 'Cancelado',
 };
 
-/** Las tres modalidades, con el mismo texto que usa la descripción del evento. */
-export const ETIQUETA_MODALIDAD: Record<Modalidad, string> = {
-  presencial: 'Presencial',
-  virtual: 'Virtual',
-  hibrido: 'Presencial y virtual',
-};
+// B-2214 — vive en un módulo hoja para no arrastrar este al bundle público.
+export { ETIQUETA_MODALIDAD } from '@/lib/etiquetaDeModalidad';
 
 /**
  * `'villa-crespo'` → `'Villa Crespo'`. **Último recurso** para un valor de
