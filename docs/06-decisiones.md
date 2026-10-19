@@ -778,6 +778,11 @@ accidente. Si más adelante molesta, agregar `on: push` es una línea.
 - **`concurrency` con `cancel-in-progress: true`.** Si llega un dispatch nuevo
   mientras corre un build, el viejo se cancela: el nuevo lee los mismos datos y
   más frescos.
+  > **Dado vuelta por B-2211 (2026-10-19): `false`.** Cancelar se llevaba puesto
+  > también el aviso «volvió a publicar» de una corrida que ya había publicado, y
+  > el historial que leen los avisos marcaba deploys buenos como cancelados. Con
+  > `false` el dispatch nuevo espera y GitHub deja uno solo pendiente: la ráfaga
+  > sigue siendo un build en curso más uno, con uno o dos minutos más de atraso.
 - **Una service account propia (`deploy-ci@`) con `datastore.viewer` +
   `firebasehosting.admin`,** no la de las Functions. El workflow solo lee
   Firestore; si la key se filtrara, el daño se limita a datos ya públicos.

@@ -275,9 +275,10 @@ describe('la ventana: el sitio siempre está atrasado un rato', () => {
     const tope = /timeout-minutes:\s*(\d+)/.exec(workflow);
     expect(tope, 'el workflow ya no declara timeout-minutes').not.toBeNull();
     expect(TOPE_DEL_BUILD_MS).toBe(Number(tope![1]) * MINUTO);
-    // El reintento es otro build entero, porque el workflow cancela el que está
-    // en curso cuando llega un dispatch nuevo.
-    expect(workflow).toContain('cancel-in-progress: true');
+    // El reintento es otro build entero: un dispatch que llega con uno en curso
+    // espera a que termine (B-2211, `cancel-in-progress: false`) y después corre
+    // el suyo. Antes cancelaba el de curso; el peor caso suma lo mismo.
+    expect(workflow).toContain('cancel-in-progress: false');
     expect(REINTENTO_DEL_BUILD_MS).toBe(TOPE_DEL_BUILD_MS);
 
     const rebuild = fuente('functions/rebuild-trigger.js');

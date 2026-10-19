@@ -28,12 +28,19 @@ on:
         type: boolean
         default: false
 
-# Un deploy a la vez. Si mientras corre uno llega otro dispatch, el que está a
-# medias se cancela: el build nuevo lee los mismos datos y además los más
-# frescos, así que terminar el viejo solo retrasa el resultado bueno.
+# Un deploy a la vez. Si mientras corre uno llega otro dispatch, el nuevo
+# **espera** y el que está en curso termina: GitHub deja una sola corrida
+# pendiente por grupo (la más nueva reemplaza a la que esperaba), así que una
+# ráfaga de ediciones sigue siendo un build en curso más uno.
+#
+# B-2211 — hasta acá era `cancel-in-progress: true`, y cancelaba también el job
+# `avisar-recuperado` de una corrida que **ya había publicado**: el 2026-10-05
+# dos deploys buenos figuraron como cancelados, y el historial que leen los
+# avisos salía mal. Esperar cuesta uno o dos minutos de atraso en el build bueno;
+# los minutos de Actions no se cobran porque el repo es público.
 concurrency:
   group: deploy-produccion
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 # Este workflow no escribe nada en el repo. `actions: read` es para preguntar
 # si la suite ya pasó en `push-main.yml` para este mismo commit (M-14).

@@ -22982,6 +22982,21 @@ No se juntaron los barridos ni se cambió la frescura: son ~USD 0,30/mes y
 centavos de lecturas, y los dos tocan código que avisa cuando algo se rompe. Queda
 escrito qué hacer primero si el costo un día molesta.
 
+### B-2211 · El aviso «volvió a publicar» hace figurar como canceladas corridas que publicaron · P3 — ✅ hecho (2026-10-19)
+
+`deploy.yml:340`: `avisar-recuperado` corre en otro runner bajo
+`cancel-in-progress`. El 2026-10-05, las corridas 37365196921 y 37368874735
+publicaron bien y figuran `cancelled`; la 37369391156 venció esperando runner y
+no mandó mail (`failure()` es falso para un job cancelado). **Arreglo:** pasar el
+chequeo a un paso final del job `deploy` o a un `workflow_run`.
+
+**Hecho de otra forma, más chica:** `cancel-in-progress: false` en `deploy.yml`.
+El dispatch nuevo espera y la corrida en curso termina con su aviso; GitHub deja
+una sola pendiente por grupo, así que una ráfaga sigue siendo un build en curso
+más uno. La ventana de la frescura no cambia (el peor caso sigue siendo dos builds
+seguidos) y `tests/frescura.test.ts` lo fija. Mover el chequeo al job `deploy`
+obligaba a rehacer los tres cinturones de los tests de avisos sin ganar nada más.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

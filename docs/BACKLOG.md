@@ -497,14 +497,6 @@ arreglo es todo junto: esos módulos más las dos conversiones, con la suite en 
 zonas como red (el gate ya corre la de Tokio). La red de `TZ` que pedía el ítem ya
 existe: `verificar-todo.sh` corre `unidad` y `render` con `TZ=Asia/Tokyo`.
 
-### B-2211 · El aviso «volvió a publicar» hace figurar como canceladas corridas que publicaron · P3 (auditoría 2026-10-19)
-
-`deploy.yml:340`: `avisar-recuperado` corre en otro runner bajo
-`cancel-in-progress`. El 2026-10-05, las corridas 37365196921 y 37368874735
-publicaron bien y figuran `cancelled`; la 37369391156 venció esperando runner y
-no mandó mail (`failure()` es falso para un job cancelado). **Arreglo:** pasar el
-chequeo a un paso final del job `deploy` o a un `workflow_run`.
-
 ### B-2213 · Índices sobrantes, sin exenciones, y `/reportes` sin retención · P3 (auditoría 2026-10-19)
 
 `firestore.indexes.json:7` (`estado` + `updatedAt desc`) es del listado anónimo
