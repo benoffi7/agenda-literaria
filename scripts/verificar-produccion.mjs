@@ -31,8 +31,9 @@
  *
  * ── Qué está derivado y qué no ─────────────────────────────────────────────
  * Las **cabeceras de cache** salen de `firebase.json`, que es donde se declaran:
- * el script recorre las reglas de `hosting.headers` con `source` literal y
- * compara contra lo que el sitio devuelve. Una regla nueva se verifica sola. Es
+ * el script recorre las reglas de `hosting.headers` con `source` literal —y las
+ * de `regex`, con las URLs de `MUESTRAS_DE_REGEX` (B-2188)— y compara contra lo
+ * que el sitio devuelve. Una regla nueva se verifica sola. Es
  * el chequeo que más se presta a envejecer —la lista escrita a mano en la doc ya
  * decía tres rutas de las cinco que hay— y por eso es el que se derivó.
  *
@@ -180,17 +181,35 @@ const verificarFirestore = async () => {
 };
 
 // ── 2 · Las cabeceras de cache, derivadas de firebase.json ───────────────
+const cacheControlDe = (h) =>
+  (h.headers ?? []).find((k) => k.key.toLowerCase() === 'cache-control')?.value;
+
+/**
+ * B-2188 — las URLs que se piden para verificar las reglas con `regex`. Un
+ * comodín no dice qué URL pedir; estas sí, y cada una **tiene que matchear** la
+ * regex que verifica (`reglasDeCache` las filtra con ella, y un test lo fija).
+ * Son páginas que existen siempre, con o sin actividades: la regla de las rutas
+ * sin extensión es la que hizo que todo menos la home se cacheara una hora.
+ */
+const MUESTRAS_DE_REGEX = ['/cartelera/', '/pasadas/', '/ayuda/', '/guia/'];
+
 const reglasDeCache = () => {
   const cfg = JSON.parse(leer('firebase.json'));
-  return (cfg.hosting?.headers ?? [])
+  const reglas = cfg.hosting?.headers ?? [];
+  const literales = reglas
     // Solo las de `source` literal: un comodín no dice qué URL pedir, y
     // adivinarla sería inventar el chequeo.
-    .filter((h) => !h.source.includes('*'))
-    .map((h) => ({
-      ruta: h.source,
-      esperado: (h.headers ?? []).find((k) => k.key.toLowerCase() === 'cache-control')?.value,
-    }))
-    .filter((h) => h.esperado);
+    .filter((h) => typeof h.source === 'string' && !h.source.includes('*'))
+    .map((h) => ({ ruta: h.source, esperado: cacheControlDe(h) }));
+  const deRegex = reglas
+    .filter((h) => typeof h.regex === 'string')
+    .flatMap((h) =>
+      MUESTRAS_DE_REGEX.filter((ruta) => new RegExp(h.regex).test(ruta)).map((ruta) => ({
+        ruta,
+        esperado: cacheControlDe(h),
+      })),
+    );
+  return [...literales, ...deRegex].filter((h) => h.esperado);
 };
 
 const verificarCache = async () => {
@@ -434,5 +453,5 @@ if (process.argv[1] && process.argv[1].endsWith('verificar-produccion.mjs')) {
   process.exit(await main());
 }
 
-export { esRechazo, reglasDeCache, PLATAFORMAS };
+export { esRechazo, reglasDeCache, MUESTRAS_DE_REGEX, PLATAFORMAS };
 

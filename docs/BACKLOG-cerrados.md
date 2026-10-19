@@ -15678,6 +15678,26 @@ descripción sale en el HTML, la meta description y el JSON-LD.
 **Hecho:** `toPublic` sanea `descripcion` con los `online.url` del documento;
 el caso con `urlPublica: false` está en `tests/descripcionEnlazada.test.ts`.
 
+### B-2188 · Todas las páginas salvo la home se cachean una hora en el navegador · P1 — ✅ hecho (2026-10-19)
+
+Medido en producción el 2026-10-19: `/`  y `/events.json` dan `no-cache`;
+`/cartelera/`, `/pasadas/`, `/actividad/<slug>/` y `/bibliotecas.json` dan
+`max-age=3600`. La regla `**/*.html` de `firebase.json:105` no matchea las URLs
+limpias. Una cancelación tarda hasta 60 min más en verse, y un HTML viejo puede
+pedir chunks `/_astro/*` que ya no existen. `docs/02-infraestructura.md:516` dice
+`no-cache`; `scripts/verificar-produccion.mjs` saltea las reglas con comodín.
+
+**Arreglo:** `no-cache` para los paths sin extensión (probar la precedencia en un
+canal de preview), regla para `/bibliotecas.json`, y que el verificador pida
+`/cartelera/` y una página de detalle concretas.
+
+**Hecho:** regla `regex` `^[^.]*$` con `no-cache` en `firebase.json`, más
+`/bibliotecas.json`, `/sitemap.xml` y `/robots.txt`. Medido en el emulador de
+Hosting sobre el `dist/`: todas las páginas dan `no-cache` y `/_astro/*` sigue
+`immutable`. El verificador pide `MUESTRAS_DE_REGEX`; el test fija la regla con
+la mutación probada. Falta confirmarlo en producción con
+`node scripts/verificar-produccion.mjs` después del deploy.
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)

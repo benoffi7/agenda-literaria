@@ -94,19 +94,6 @@ panel nuevo antes que las reglas nuevas.
 `push-main` (el tag del job `etiquetar`), nunca desde HEAD; compartir el grupo de
 concurrency con el job de hosting de `push-main`.
 
-### B-2188 · Todas las páginas salvo la home se cachean una hora en el navegador · P1 (auditoría 2026-10-19)
-
-Medido en producción el 2026-10-19: `/`  y `/events.json` dan `no-cache`;
-`/cartelera/`, `/pasadas/`, `/actividad/<slug>/` y `/bibliotecas.json` dan
-`max-age=3600`. La regla `**/*.html` de `firebase.json:105` no matchea las URLs
-limpias. Una cancelación tarda hasta 60 min más en verse, y un HTML viejo puede
-pedir chunks `/_astro/*` que ya no existen. `docs/02-infraestructura.md:516` dice
-`no-cache`; `scripts/verificar-produccion.mjs` saltea las reglas con comodín.
-
-**Arreglo:** `no-cache` para los paths sin extensión (probar la precedencia en un
-canal de preview), regla para `/bibliotecas.json`, y que el verificador pida
-`/cartelera/` y una página de detalle concretas.
-
 ### B-2189 · `sharp` vulnerable en `functions/` procesa imágenes de anónimos, y sin tope de píxeles · P1 (auditoría 2026-10-19)
 
 `npm audit` del 2026-10-19: `sharp ^0.34.5` (`functions/package.json:17`) tiene

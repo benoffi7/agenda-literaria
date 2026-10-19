@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **Un cambio se ve enseguida en todas las páginas, no solo en la home** (B-2188). La
+  cartelera, las pasadas, cada actividad y las demás páginas se guardaban una hora en
+  el navegador: una cancelación podía tardar hasta una hora más en verse. Ahora todas
+  piden la versión nueva al recargar.
+
 - **El link de la reunión pegado en la descripción ya no se publica por ningún lado**
   (B-2185, B-2190). Salía entero en el índice de búsqueda (`/events.json`), y en la
   página de detalle cuando era de una plataforma poco común y privado. Ahora se saca

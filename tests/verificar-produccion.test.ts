@@ -8,6 +8,7 @@ import {
   estadoDeLoPublicado,
   fugasEnICS,
   reglasDeCache,
+  MUESTRAS_DE_REGEX,
 } from '../scripts/verificar-produccion.mjs';
 
 /**
@@ -49,10 +50,10 @@ describe('las cabeceras de cache se derivan de firebase.json — B-116', () => {
 
     // Lo mismo, calculado acá de otra forma: desde el JSON parseado.
     const esperadas = (firebaseJson.hosting?.headers ?? [])
-      .filter((h: { source: string }) => !h.source.includes('*'))
+      .filter((h: { source?: string }) => typeof h.source === 'string' && !h.source.includes('*'))
       .map((h: { source: string; headers: { key: string; value: string }[] }) => h.source);
 
-    expect(reglas.map((r) => r.ruta)).toEqual(esperadas);
+    expect(reglas.map((r) => r.ruta).slice(0, esperadas.length)).toEqual(esperadas);
     // Control positivo: si `firebase.json` dejara de declarar cabeceras, la
     // comparación de arriba sería `[] === []` y no probaría nada.
     expect(reglas.length).toBeGreaterThanOrEqual(3);
@@ -63,8 +64,8 @@ describe('las cabeceras de cache se derivan de firebase.json — B-116', () => {
     expect(reglas.some((r) => r.ruta.includes('*'))).toBe(false);
     // Y hay comodines de verdad en el archivo, si no este caso no prueba nada:
     // `/_astro/**` y `**/*.html` son dos.
-    const conComodin = (firebaseJson.hosting?.headers ?? []).filter((h: { source: string }) =>
-      h.source.includes('*'),
+    const conComodin = (firebaseJson.hosting?.headers ?? []).filter((h: { source?: string }) =>
+      h.source?.includes('*'),
     );
     expect(conComodin.length).toBeGreaterThan(0);
   });
@@ -73,6 +74,36 @@ describe('las cabeceras de cache se derivan de firebase.json — B-116', () => {
     const reglas = reglasDeCache() as { ruta: string; esperado: string }[];
     const version = reglas.find((r) => r.ruta === '/version.json');
     expect(version?.esperado).toBe('no-store, max-age=0');
+  });
+});
+
+describe('las páginas con URL limpia no se cachean una hora — B-2188', () => {
+  /*
+   * `**\/*.html` compara contra la URL pedida, y `/cartelera/` no termina en
+   * `.html`: hasta B-2188 todo menos la home salía con el `max-age=3600` por
+   * defecto de Hosting. Mutación probada: sacar la regla `regex` de
+   * `firebase.json` pone en rojo los dos casos.
+   */
+  type Regla = { source?: string; regex?: string; headers: { key: string; value: string }[] };
+  const reglas: Regla[] = firebaseJson.hosting?.headers ?? [];
+  const deRegex = reglas.filter((h) => typeof h.regex === 'string');
+
+  it('una regla `regex` pone `no-cache` a toda ruta sin extensión, y no toca los archivos con hash', () => {
+    const sinExtension = deRegex.find((h) =>
+      ['/cartelera/', '/actividad/un-taller/', '/guia/librerias/', '/admin'].every((r) =>
+        new RegExp(h.regex!).test(r),
+      ),
+    );
+    expect(sinExtension?.headers.find((k) => k.key === 'Cache-Control')?.value).toBe('no-cache');
+    for (const archivo of ['/_astro/x.abc123.js', '/fuentes/a.woff2', '/events.json', '/marca-512.png'])
+      expect(new RegExp(sinExtension!.regex!).test(archivo)).toBe(false);
+  });
+
+  it('el verificador pide muestras de esa regla, y cada muestra la matchea', () => {
+    const rutas = (reglasDeCache() as { ruta: string }[]).map((r) => r.ruta);
+    expect(rutas).toEqual(expect.arrayContaining([...MUESTRAS_DE_REGEX]));
+    for (const muestra of MUESTRAS_DE_REGEX)
+      expect(deRegex.some((h) => new RegExp(h.regex!).test(muestra))).toBe(true);
   });
 });
 

@@ -513,10 +513,18 @@ Rewrite de `/admin/**` a `/admin/index.html` para el router propio de la SPA.
 |---|---|
 | `/_astro/**` (assets con hash) | `public, max-age=31536000, immutable` |
 | `/version.json` | `no-store, max-age=0` |
-| `**/*.html`, `/`, `/admin`, `/admin/**` | `no-cache` |
+| toda ruta sin extensión (`regex` `^[^.]*$`: `/cartelera/`, `/actividad/{slug}/`, `/admin`…), `**/*.html`, `/` | `no-cache` |
+| los `*.json` de índice, `/sitemap.xml`, `/robots.txt`, `**/*.ics` | `no-cache` |
 
 Es lo que hace que un panel abierto pueda actualizarse: con el HTML cacheado,
-recargar vuelve a pedir los mismos assets viejos. Verificarlas después de cada
+recargar vuelve a pedir los mismos assets viejos.
+
+**La regla `regex` es la que hace el trabajo** (B-2188). Hosting compara el
+`source` contra la **URL pedida**, no contra el archivo que sirve: `/cartelera/`
+no termina en `.html`, así que `**/*.html` no la tocaba y hasta el 2026-10-19
+todo menos la home salía con el `max-age=3600` por defecto —una cancelación
+tardaba hasta una hora más en verse—. `scripts/verificar-produccion.mjs` la
+verifica pidiendo las URLs de `MUESTRAS_DE_REGEX`. Verificarlas después de cada
 deploy con los `curl` de [`08-operacion.md`](08-operacion.md).
 
 ## Cloud Functions (v2)
