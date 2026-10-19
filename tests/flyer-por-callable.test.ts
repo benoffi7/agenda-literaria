@@ -283,6 +283,41 @@ describe('el saneado del servidor — la capa que no se puede saltear (B-896, §
     });
   });
 
+  it('una imagen de más de 64 MP se rechaza leyendo la cabecera, sin decodificarla (B-2189)', async () => {
+    /*
+     * Un PNG que **declara** 20000 × 20000 en su IHDR y no trae los píxeles: pesa
+     * unos pocos bytes, así que pasa el tope de 3 MB, y decodificarlo es lo que
+     * tiraría la instancia de 512 MiB. El rechazo tiene que salir de `metadata()`,
+     * que lee solo la cabecera. Mutación probada: sacar el chequeo de `pixeles`
+     * en `sanearFlyer` lo rechaza como `tipo`, con un mensaje que no es el problema.
+     */
+    const { deflateSync, crc32 } = await import('node:zlib');
+    const chunk = (tipo: string, datos: Buffer) => {
+      const largo = Buffer.alloc(4);
+      largo.writeUInt32BE(datos.length);
+      const cuerpo = Buffer.concat([Buffer.from(tipo), datos]);
+      const crc = Buffer.alloc(4);
+      crc.writeUInt32BE(crc32(cuerpo));
+      return Buffer.concat([largo, cuerpo, crc]);
+    };
+    const ihdr = Buffer.alloc(13);
+    ihdr.writeUInt32BE(20000, 0);
+    ihdr.writeUInt32BE(20000, 4);
+    ihdr[8] = 8; // 8 bits, escala de grises
+    const gigante = Buffer.concat([
+      Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
+      chunk('IHDR', ihdr),
+      chunk('IDAT', deflateSync(Buffer.alloc(16))),
+      chunk('IEND', Buffer.alloc(0)),
+    ]);
+
+    expect(gigante.length).toBeLessThan(1000);
+    await expect(sanearFlyer(gigante)).rejects.toMatchObject({
+      name: 'FlyerRechazado',
+      causa: 'tamano',
+    });
+  });
+
   it('y algo que no es una imagen tampoco revienta: se rechaza con un motivo', async () => {
     await expect(sanearFlyer(Buffer.from('no soy una imagen, soy un PDF con suerte'))).rejects
       .toMatchObject({ name: 'FlyerRechazado', causa: 'tipo' });

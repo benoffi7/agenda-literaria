@@ -222,16 +222,30 @@ const codificar = (tubo, formato, calidad) =>
  * `sharp` avise, y abortar por eso dejaría sin optimizar justamente a la foto de
  * teléfono, que es la que más lo necesita.
  */
+/**
+ * B-2189 — el tope de píxeles que `sharp` decodifica: 64 megapíxeles.
+ *
+ * El default de `sharp` es ~268 MP, y la Function tiene 512 MiB: un PNG de un solo
+ * color de 16000 × 16000 pesa menos de 3 MB —pasa el tope de bytes— y al
+ * decodificarlo pide cerca de 1 GB. Con el flyer de propuesta eso lo puede mandar
+ * cualquiera. 64 MP deja entrar las fotos de celular de 48 y 50 MP y rechaza los
+ * modos de 108 y 200 MP, que de todas formas se publican a `LADO_MAXIMO`.
+ */
+export const MAXIMO_PIXELES = 64_000_000;
+
+/** Las opciones de todo `sharp()` sobre bytes que llegan de afuera. */
+export const OPCIONES_DE_SHARP = Object.freeze({ failOn: 'none', limitInputPixels: MAXIMO_PIXELES });
+
 /** @param {Buffer | Uint8Array} bytes */
 export const optimizar = async (bytes) => {
-  const original = sharp(bytes, { failOn: 'none' });
+  const original = sharp(bytes, OPCIONES_DE_SHARP);
   const meta = await original.metadata();
   // `stats()` es la única forma de distinguir «declara canal alfa» de «usa el
   // canal alfa». Los tres PNG de producción declaran alfa y son opacos.
   const opaca = meta.hasAlpha ? (await original.stats()).isOpaque : true;
   const formato = formatoDeSalida({ formato: meta.format, opaca });
 
-  const base = () => sharp(bytes, { failOn: 'none' }).rotate();
+  const base = () => sharp(bytes, OPCIONES_DE_SHARP).rotate();
 
   const principal = await codificar(
     base().resize({

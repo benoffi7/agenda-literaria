@@ -75,20 +75,6 @@ panel nuevo antes que las reglas nuevas.
 `push-main` (el tag del job `etiquetar`), nunca desde HEAD; compartir el grupo de
 concurrency con el job de hosting de `push-main`.
 
-### B-2189 · `sharp` vulnerable en `functions/` procesa imágenes de anónimos, y sin tope de píxeles · P1 (auditoría 2026-10-19)
-
-`npm audit` del 2026-10-19: `sharp ^0.34.5` (`functions/package.json:17`) tiene
-CVEs altas de libvips/libheif, fix en 0.35.5. Desde B-896 `subirFlyerDePropuesta`
-decodifica bytes de cualquiera con token de App Check, así que la frase de
-`10-salud-del-codigo.md:1682` («no procesa nada que llegue de un anónimo») es
-falsa. Además ninguna llamada pone `limitInputPixels`: un PNG de 16000×16000 de un
-color pesa < 3 MB y puede tirar la instancia de 512 MiB. Y `functions/node_modules`
-no tiene `sharp`: los tests corren con la 0.35.4 de la raíz, no con la de prod.
-En el mismo lock salen `proxy-addr` (crítica), `qs` y `@grpc/grpc-js` sin breaking.
-
-**Arreglo:** subir a ≥0.35.5, `limitInputPixels: 40_000_000` y rechazo por
-`width*height` antes de optimizar, `npm ci` en `functions/`, y corregir 10-salud.
-
 ### B-1235 · La imagen de una propuesta no queda en la actividad al promoverla · P1 — 🟡 arreglado y verificado por partes, falta una conversión real (2026-09-24)
 
 > 🟡 **Causa encontrada y verificada contra el bucket de producción (2026-09-23).** No era la cadena de guardado: era el **CORS**. La respuesta con los bytes (`alt=media`) no manda `Access-Control-Allow-Origin` para ningún origen, así que el `fetch` de `promoverImagenDePropuesta` falla en el navegador («Failed to fetch»); en el emulador anda porque no aplica el CORS del bucket, y en la bandeja la foto «se ve» porque un `<img>` no lo necesita. **Hecho** (`de19dc2`, `d245919`): `cors.json` en la raíz (solo GET/HEAD desde los cuatro orígenes del sitio), y una alerta visible arriba del formulario cuando la foto no entra, con la causa y qué hacer (`avisoDeImagenNoPromovida`, `Conversion.imagenNoPromovida`). **Falta:** B-1235a, y probar una conversión real. Se cierra cuando una propuesta con foto se convierta y la actividad reabra con el flyer.

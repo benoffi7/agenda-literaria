@@ -15752,6 +15752,30 @@ que el fixture los siembra y la mutación probada en cada salida. Quedan fuera,
 por ser menos probables: `libro.titulo/autor`, `material.items[].titulo` y el
 epígrafe de las imágenes.
 
+### B-2189 · `sharp` vulnerable en `functions/` procesa imágenes de anónimos, y sin tope de píxeles · P1 — ✅ hecho (2026-10-19)
+
+`npm audit` del 2026-10-19: `sharp ^0.34.5` (`functions/package.json:17`) tiene
+CVEs altas de libvips/libheif, fix en 0.35.5. Desde B-896 `subirFlyerDePropuesta`
+decodifica bytes de cualquiera con token de App Check, así que la frase de
+`10-salud-del-codigo.md:1682` («no procesa nada que llegue de un anónimo») es
+falsa. Además ninguna llamada pone `limitInputPixels`: un PNG de 16000×16000 de un
+color pesa < 3 MB y puede tirar la instancia de 512 MiB. Y `functions/node_modules`
+no tiene `sharp`: los tests corren con la 0.35.4 de la raíz, no con la de prod.
+En el mismo lock salen `proxy-addr` (crítica), `qs` y `@grpc/grpc-js` sin breaking.
+
+**Arreglo:** subir a ≥0.35.5, `limitInputPixels: 40_000_000` y rechazo por
+`width*height` antes de optimizar, `npm ci` en `functions/`, y corregir 10-salud.
+
+**Hecho:** `sharp` ^0.35.5 en `functions/` (con `node_modules` instalado: los
+tests ya no toman la copia de la raíz) y `npm audit fix` sin breaking. Quedan 10
+moderadas, todas `uuid` dentro de la cadena de `googleapis`: van con el salto de
+B-2208. `OPCIONES_DE_SHARP` (`imagenes-optimizar.js`) pone `limitInputPixels` de
+64 MP en las cuatro llamadas; `sanearFlyer` lo rechaza como `tamano` con un
+mensaje propio, probado con un PNG que declara 20000 × 20000 y pesa menos de 1
+KB (mutación probada). Una imagen del panel por encima del tope hace fallar
+`optimizarImagen` y queda como se subió, sin miniatura: igual que antes por
+encima de 268 MP.
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)

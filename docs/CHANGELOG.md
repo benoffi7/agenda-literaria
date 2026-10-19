@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **Las imágenes que sube cualquiera se procesan con una librería sin vulnerabilidades
+  conocidas, y con tope** (B-2189). `sharp` pasó a la 0.35.5 en las Functions, y una
+  imagen de más de 64 megapíxeles se rechaza con un mensaje claro antes de ocupar la
+  memoria del servidor.
+
 - **El link de la reunión tampoco se cuela por las indicaciones, las notas del arancel
   ni la bio** (B-2219). Si alguien lo pega ahí («si venís por compu, entrá a meet…»),
   en el sitio, en el calendario y en el texto para redes sale el aviso de que lo manda

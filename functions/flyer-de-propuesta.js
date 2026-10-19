@@ -35,7 +35,13 @@
  * de marcadores sería la clase de B-88 con tres cabezas.
  */
 import sharp from 'sharp';
-import { estructuraConocida, optimizar, traeMetadatos } from './imagenes-optimizar.js';
+import {
+  MAXIMO_PIXELES,
+  OPCIONES_DE_SHARP,
+  estructuraConocida,
+  optimizar,
+  traeMetadatos,
+} from './imagenes-optimizar.js';
 
 /**
  * Dónde vive el flyer. **Tiene que coincidir con `PREFIJO_PROPUESTAS` de
@@ -244,7 +250,7 @@ export const validarPedido = (pedido = {}) => {
  * casa particular guardada en el bucket no se despublica.
  */
 export const salidaLimpia = async (bytes) => {
-  const meta = await sharp(bytes, { failOn: 'none' }).metadata();
+  const meta = await sharp(bytes, OPCIONES_DE_SHARP).metadata();
   return !traeMetadatos(meta) && estructuraConocida(bytes, meta.format);
 };
 
@@ -277,10 +283,25 @@ export const salidaLimpia = async (bytes) => {
  */
 export const sanearFlyer = async (bytes) => {
   let formatoOriginal;
+  let pixeles = 0;
   try {
-    formatoOriginal = (await sharp(bytes, { failOn: 'none' }).metadata()).format;
-  } catch {
+    const meta = await sharp(bytes, OPCIONES_DE_SHARP).metadata();
+    formatoOriginal = meta.format;
+    pixeles = (meta.width ?? 0) * (meta.height ?? 0);
+  } catch (e) {
     formatoOriginal = null;
+    // B-2189 — con `limitInputPixels`, `sharp` rechaza ya al leer la cabecera.
+    if (/exceeds pixel limit/i.test(e?.message ?? '')) pixeles = Infinity;
+  }
+  // B-2189 — antes que el tipo y antes de decodificar: `metadata()` lee la
+  // cabecera, no los píxeles.
+  if (pixeles > MAXIMO_PIXELES) {
+    throw new FlyerRechazado(
+      'invalid-argument',
+      'tamano',
+      'La imagen es demasiado grande en píxeles para procesarla. Exportala más chica ' +
+        '(con 4000 píxeles de lado alcanza de sobra) y volvé a intentar.',
+    );
   }
   if (!FORMATOS_DE_ENTRADA.includes(formatoOriginal)) {
     throw new FlyerRechazado(

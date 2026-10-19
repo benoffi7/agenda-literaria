@@ -1680,6 +1680,13 @@ Las tres, leídas contra este proyecto:
 - **`sharp` es la única que vale mirar**, y es la que menos urge: `sharp` solo
   corre en la Function de imágenes (`functions/imagenes.js`) sobre archivos que
   ya subió un admin autenticado. No procesa nada que llegue de un anónimo.
+
+  > **Dejó de ser cierto con B-896, y se corrigió con B-2189 (2026-10-19).**
+  > `subirFlyerDePropuesta` decodifica el flyer de cualquiera que pase App Check, y
+  > `optimizarImagen` lo que sube un publicador. `functions/` está en `sharp`
+  > 0.35.5 (sin las CVE de libvips/libheif de la 0.34) y todo `sharp()` sobre bytes
+  > de afuera lleva `OPCIONES_DE_SHARP`, con un tope de 64 MP: el flyer más grande
+  > se rechaza al leer la cabecera, antes de decodificar.
 - **`uuid` se arregla sin romper nada** y es la única de las tres que se puede
   cerrar con un `npm audit fix`. No se hizo acá a propósito: toca
   `package-lock.json`, que es de todos los frentes, y en medio de una tanda un
