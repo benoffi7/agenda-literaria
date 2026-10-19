@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type Dispatch, type SetStateAction } from 'react';
 import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { listarActividades } from '@/lib/actividades';
 import type { RolDelPanel } from '@/lib/rolDelPanel';
@@ -73,22 +73,73 @@ const sacarLaFotoDelMes = (actividades: ActividadConId[]) => {
     .catch((e: unknown) => console.warn('[fotoDelCatalogo] no se pudo sacar la foto del mes', e));
 };
 
+/*
+ * B-2203 — **la última lectura, compartida entre las vistas del panel.** Cada
+ * vuelta al listado o cambio lista ↔ calendario desmontaba el componente y releía
+ * la colección entera: ~550 lecturas por vuelta. Ahora la vista que se monta con
+ * la misma clave —versión, rol, uid y ciudad— y dentro de la vigencia usa lo que
+ * ya se leyó.
+ *
+ * Lo que la tira, porque es lo que puede haberla dejado vieja:
+ *  - **la versión**, que sube al guardar o restaurar (es parte de la clave);
+ *  - **salir del formulario** (`olvidarActividadesLeidas`, lo llama el formulario
+ *    al desmontarse): el autoguardado escribe sin subir la versión;
+ *  - **los dos minutos**, por lo que cargue otra cuenta mientras tanto.
+ * Los parches en memoria de `ListaActividades` (cupo, borrar) pasan por
+ * `setActividades` y quedan también acá.
+ */
+const VIGENCIA_DE_LA_LECTURA_MS = 2 * 60_000;
+let ultimaLectura: { clave: string; en: number; actividades: ActividadConId[] } | null = null;
+
+const claveDe = (version: number, rol: RolDelPanel, uid: string, ciudad: string) =>
+  `${version}|${rol}|${uid}|${ciudad}`;
+
+const leidaVigente = (clave: string): ActividadConId[] | null =>
+  ultimaLectura && ultimaLectura.clave === clave && Date.now() - ultimaLectura.en < VIGENCIA_DE_LA_LECTURA_MS
+    ? ultimaLectura.actividades
+    : null;
+
+/** Tira la lectura compartida. Lo llama el formulario de actividad al cerrarse. */
+export const olvidarActividadesLeidas = () => {
+  ultimaLectura = null;
+};
+
 export const useActividades = (
   version: number,
   rol: RolDelPanel,
   uid: string,
   ciudad = '',
 ) => {
-  const [actividades, setActividades] = useState<ActividadConId[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const clave = claveDe(version, rol, uid, ciudad);
+  const [actividades, setActividadesLocal] = useState<ActividadConId[]>(() => leidaVigente(clave) ?? []);
+  const [cargando, setCargando] = useState(() => leidaVigente(clave) === null);
   const [fallo, setFallo] = useState<string | null>(null);
 
+  // Los parches en memoria actualizan también la lectura compartida, para que la
+  // otra vista no muestre la fila borrada o el cupo viejo.
+  const setActividades: Dispatch<SetStateAction<ActividadConId[]>> = useCallback(
+    (siguiente) =>
+      setActividadesLocal((previas) => {
+        const nuevas = typeof siguiente === 'function' ? siguiente(previas) : siguiente;
+        if (ultimaLectura?.clave === clave) ultimaLectura = { ...ultimaLectura, actividades: nuevas };
+        return nuevas;
+      }),
+    [clave],
+  );
+
   useEffect(() => {
+    const guardada = leidaVigente(clave);
+    if (guardada) {
+      setActividadesLocal(guardada);
+      setCargando(false);
+      return;
+    }
     let vivo = true;
     setCargando(true);
     listarActividades(rol, uid, ciudad)
       .then((as) => {
-        if (vivo) setActividades(as);
+        ultimaLectura = { clave, en: Date.now(), actividades: as };
+        if (vivo) setActividadesLocal(as);
         if (rol === 'admin') sacarLaFotoDelMes(as);
       })
       .catch((e: unknown) => vivo && setFallo(textoDeFallo(e, { respaldo: 'Error al listar' })))
@@ -96,7 +147,8 @@ export const useActividades = (
     return () => {
       vivo = false;
     };
-  }, [version, rol, uid, ciudad]);
+    // `clave` resume las cuatro de antes: versión, rol, uid y ciudad.
+  }, [clave, rol, uid, ciudad]);
 
   return { actividades, setActividades, cargando, fallo, setFallo };
 };

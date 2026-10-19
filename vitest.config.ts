@@ -104,6 +104,8 @@ export default defineConfig({
           name: 'render',
           environment: 'jsdom',
           include: ['tests/**/*.render.test.tsx'],
+          // B-2203 — cada caso arranca sin la lectura compartida del panel.
+          setupFiles: ['tests/fixtures/aislar-render.ts'],
         },
       },
       {

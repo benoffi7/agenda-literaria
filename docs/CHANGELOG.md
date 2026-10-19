@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Pasar de la lista al calendario del panel ya no relee todo** (B-2203). Las vistas
+  comparten la última lectura por dos minutos: son unas 550 lecturas de Firestore menos
+  por cambio de vista. Guardar o salir del formulario siguen trayendo lo último.
+
 - **Escribir en el buscador de la home no traba el teléfono** (B-2202). La lista y los
   filtros se recalculan cuando hay un hueco y no en cada tecla, y las fechas se
   formatean sin rearmar el formateador cada vez.

@@ -215,7 +215,7 @@ la página de conversión no se mide. Quedó así de cuando no estaba anunciada;
 hay D. **Arreglo:** ids `${htmlFor}-rotulo` y una red que barra ids repetidos en
 `dist/`; darle a `/proponer` el chrome como a `/anunciar`.
 
-### B-2203 · El panel relee la colección entera de `/actividades` cada vez que se vuelve al listado · P2 (auditoría 2026-10-19)
+### B-2203 · El panel relee la colección entera de `/actividades` cada vez que se vuelve al listado · P2 — 🟡 entre vistas resuelto (2026-10-19), falta la vuelta del formulario
 
 `useActividades.ts` hace `getDocs` completo sin caché, y `ListaActividades` /
 `CalendarioActividades` se desmontan al cambiar de vista: ~550 lecturas por
@@ -224,6 +224,20 @@ vuelta, más de 11.000 en una sesión de 20 ediciones. El badge de propuestas
 **Arreglo:** caché de módulo por `rol|uid|ciudad` invalidada por `version` (como
 `useContactoDeOrganizador`) o un `onSnapshot` compartido; `getCountFromServer`
 para el badge.
+
+**Hecho en parte (2026-10-19):** `useActividades` comparte la última lectura entre
+las vistas del panel (lista ↔ calendario y las demás secciones) con la clave
+versión/rol/uid/ciudad y dos minutos de vigencia; los parches en memoria la
+actualizan y el formulario la tira al cerrarse, porque el autoguardado escribe sin
+subir la versión. `tests/lectura-compartida-del-panel.render.test.tsx` (mutación
+probada); el proyecto `render` de vitest la resetea antes de cada caso
+(`tests/fixtures/aislar-render.ts`).
+
+**Falta:** la vuelta del formulario sigue releyendo todo; lo justo sería releer
+solo la actividad tocada (`getDoc`) y parcharla. Al volver se ve un instante la
+lista anterior hasta que llega la nueva, porque el estado inicial de la vista se
+arma antes de la limpieza del formulario. Y el badge de propuestas sigue leyendo
+hasta 50 documentos en vivo (`getCountFromServer`).
 
 ### B-2206 · Cada arranque en frío de las 25 Functions carga `googleapis` entero · P2 (auditoría 2026-10-19)
 

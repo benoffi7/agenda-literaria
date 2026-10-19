@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { useAutoguardado } from '@/components/admin/useAutoguardado';
+import { olvidarActividadesLeidas } from '@/components/admin/useActividades';
 import { useFormularioSucio } from '@/components/admin/useFormularioSucio';
 import { useMedicionFormulario } from '@/components/admin/useMedicionFormulario';
 import { AvisoBorradorLocal } from '@/components/admin/formulario/AvisoBorradorLocal';
@@ -456,6 +457,10 @@ export function ActividadFormulario({
    * Es un `pedidoDeApertura`, así que **solo abre**: quien cierre el acordeón
    * dentro de la pestaña activa lo deja cerrado hasta que se vaya y vuelva.
    */
+  // B-2203 — al cerrarse, la lectura compartida del listado puede estar vieja: el
+  // autoguardado escribió sin subir la versión. La vista que se monte relee.
+  useEffect(() => () => olvidarActividadesLeidas(), []);
+
   useEffect(() => {
     /*
      * B-814 — apilado esto no corre, y es a propósito: **la pestaña era el
