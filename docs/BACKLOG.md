@@ -155,15 +155,6 @@ no tiene emulador. Ojo con dos cosas: el panel tiene que **conservar** la huella
 guardar, como el `calendarEventId`, y `construirEvento` tiene que ser
 determinista, o el write-back de la huella dispara el trigger sin fin.
 
-### B-2220 · Un schedule que deja de correr no avisa · P3 (sale de B-2195, 2026-10-19)
-
-`barrido-fallo` avisa si un barrido falla **corriendo**; si el job de Cloud
-Scheduler queda pausado o se borra, o la Function crashea antes del cuerpo, no hay
-log que filtrar. **Arreglo:** que cada schedule escriba un latido en
-`sistema/latidos.<nombre>` y que `verificarFrescuraDelSitio` avise si alguno tiene
-más de 48 h; más una segunda política de GCP sobre `severity>=ERROR` en los
-servicios de Cloud Run (es configuración de consola, no del repo).
-
 ### B-2194 · Dos guardados seguidos procesados fuera de orden dejan Calendar con el contenido anterior · P2 (auditoría 2026-10-19)
 
 El evento se arma con `event.data.after` de cada invocación, y Firestore no

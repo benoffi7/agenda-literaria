@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **Si un barrido diario deja de correr, llega un aviso** (B-2220): cada uno anota que
+  corrió, y si pasan dos días sin noticias, suena `barrido-sin-correr`.
+
 - **El chequeo de tipos frena el código que quedó sin usar** (B-2215). Se limpiaron 71
   imports, constantes y parámetros que sobraban de cambios anteriores.
 

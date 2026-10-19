@@ -18496,6 +18496,24 @@ edición de una actividad y la corrida diaria de la analítica después del depl
 dicen, y si falla suena `calendar-fallo`. El `import()` perezoso de `sharp` no se
 hizo.
 
+### B-2220 · Un schedule que deja de correr no avisa · P3 — ✅ hecho (2026-10-19), la política de GCP queda a mano
+
+`barrido-fallo` avisa si un barrido falla **corriendo**; si el job de Cloud
+Scheduler queda pausado o se borra, o la Function crashea antes del cuerpo, no hay
+log que filtrar. **Arreglo:** que cada schedule escriba un latido en
+`sistema/latidos.<nombre>` y que `verificarFrescuraDelSitio` avise si alguno tiene
+más de 48 h; más una segunda política de GCP sobre `severity>=ERROR` en los
+servicios de Cloud Run (es configuración de consola, no del repo).
+
+**Hecho:** los cuatro barridos diarios laten al terminar bien
+(`conAlertaDeBarrido` + `latido`, `functions/latidos-firestore.js`) y
+`verificarFrescuraDelSitio` avisa con `alerta: 'barrido-sin-correr'` si alguno
+pasa las 48 h, una vez por día por barrido. Sin falsa alarma al estrenarlo: la
+cuenta arranca desde la primera vez que la frescura ve el documento.
+`tests/latidos.test.ts`; runbook en `08-operacion.md`. **Queda a mano:** la
+segunda política de GCP sobre `severity>=ERROR` para los crashes de Cloud Run, que
+es configuración de consola.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

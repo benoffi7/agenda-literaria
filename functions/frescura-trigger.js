@@ -56,6 +56,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { OPCIONES_BASE } from './despliegue.js';
 import { crearIssue } from './github-issues.js';
 import { ERROR_DE_ENVIO_CORTADO, reportesAtascados } from './reportes.js';
+import { DOC_LATIDOS, latidosVencidos } from './latidos.js';
 import { remarcarPorFrescura } from './marca-de-rebuild.js';
 import {
   compararFrescura,
@@ -261,6 +262,23 @@ const destrabarReportes = async (db, ahora) => {
   }
 };
 
+/** B-2220 — ver `latidosVencidos` en `latidos.js`. Una lectura por corrida. */
+const vigilarLatidos = async (db, ahora) => {
+  const ref = db.doc(DOC_LATIDOS);
+  const snap = await ref.get();
+  const datos = snap.exists ? snap.data() : null;
+  // La primera vez que se ve el documento se anota desde cuándo se cuenta: sin
+  // esto, el deploy que estrena el latido avisaría de los cuatro barridos.
+  if (!datos?.desde) await ref.set({ desde: ahora }, { merge: true });
+  const vencidos = latidosVencidos(datos ? { desde: ahora, ...datos } : { desde: ahora }, ahora);
+  if (vencidos.length === 0) return;
+  logger.error('hay barridos diarios que dejaron de correr', {
+    alerta: 'barrido-sin-correr',
+    barridos: vencidos,
+  });
+  await ref.set({ avisado: Object.fromEntries(vencidos.map((n) => [n, ahora])) }, { merge: true });
+};
+
 export const verificarFrescuraDelSitio = onSchedule(OPCIONES, async () => {
   const db = getFirestore();
   const ref = db.doc(DOC);
@@ -274,6 +292,15 @@ export const verificarFrescuraDelSitio = onSchedule(OPCIONES, async () => {
   } catch (e) {
     logger.error('no se pudieron destrabar los reportes en «enviando»', {
       alerta: 'reportes-atascados',
+      error: e?.message,
+    });
+  }
+  // B-2220 — y los barridos diarios que dejaron de latir. Mismo criterio.
+  try {
+    await vigilarLatidos(db, ahora);
+  } catch (e) {
+    logger.error('no se pudieron revisar los latidos de los barridos', {
+      alerta: 'barrido-sin-correr',
       error: e?.message,
     });
   }

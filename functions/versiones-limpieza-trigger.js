@@ -13,6 +13,7 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions/v2';
 import { conAlertaDeBarrido } from './barridos.js';
+import { latido } from './latidos-firestore.js';
 import { getFirestore, FieldPath } from 'firebase-admin/firestore';
 import { CUENTA_DE_SERVICIO, REGION } from './despliegue.js';
 import {
@@ -125,5 +126,5 @@ export const limpiarVersionesHuerfanas = onSchedule(
         huerfanas: huerfanas.length,
       });
     }
-  }),
+  }, latido('limpiarVersionesHuerfanas')),
 );

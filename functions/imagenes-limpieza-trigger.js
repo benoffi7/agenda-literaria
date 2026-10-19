@@ -22,6 +22,7 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions/v2';
 import { conAlertaDeBarrido } from './barridos.js';
+import { latido } from './latidos-firestore.js';
 import { getStorage } from 'firebase-admin/storage';
 import { getFirestore } from 'firebase-admin/firestore';
 import { PREFIJO_MINIATURAS, PREFIJO_ORIGINALES } from './imagenes.js';
@@ -113,5 +114,5 @@ export const limpiarImagenesHuerfanas = onSchedule(
         referenciados: referenciados.size,
       });
     }
-  }),
+  }, latido('limpiarImagenesHuerfanas')),
 );

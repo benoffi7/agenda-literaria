@@ -18,14 +18,27 @@
  */
 
 /**
- * @param {{ error: (mensaje: string, datos: object) => void }} logger
+ * B-2220 — y si sale bien, **late**: `latir` anota en `sistema/latidos` que corrió.
+ * Un latido que no se pudo anotar se loguea y no tira la corrida: el barrido ya
+ * hizo su trabajo, y lo peor que pasa es un aviso de más dentro de dos días.
+ *
+ * @param {{ error: (mensaje: string, datos: object) => void, warn?: (mensaje: string, datos: object) => void }} logger
  * @param {string} barrido el nombre de la Function, para el log
  * @param {() => Promise<unknown>} cuerpo
+ * @param {() => Promise<unknown>} [latir]
  * @returns {() => Promise<unknown>}
  */
-export const conAlertaDeBarrido = (logger, barrido, cuerpo) => async () => {
+export const conAlertaDeBarrido = (logger, barrido, cuerpo, latir) => async () => {
   try {
-    return await cuerpo();
+    const resultado = await cuerpo();
+    if (latir) {
+      try {
+        await latir();
+      } catch (e) {
+        logger.warn?.('no se pudo anotar el latido del barrido', { barrido, error: e?.message });
+      }
+    }
+    return resultado;
   } catch (e) {
     logger.error('falló un barrido programado entero', {
       alerta: 'barrido-fallo',

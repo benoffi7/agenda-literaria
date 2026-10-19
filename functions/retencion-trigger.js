@@ -20,6 +20,7 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions/v2';
 import { conAlertaDeBarrido } from './barridos.js';
+import { latido } from './latidos-firestore.js';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { CUENTA_DE_SERVICIO, REGION } from './despliegue.js';
@@ -420,7 +421,7 @@ export const borrarPropuestasVencidas = onSchedule(
       // B-871 — después de B-1370, que borra antes lo que ya tiene copia.
       await barrerFlyeresDePropuestas(db, bucket);
     }
-  }),
+  }, latido('borrarPropuestasVencidas')),
 );
 
 /**
@@ -589,5 +590,5 @@ export const borrarFichasVencidas = onSchedule(
         });
       }
     }
-  }),
+  }, latido('borrarFichasVencidas')),
 );

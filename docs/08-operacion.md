@@ -874,6 +874,20 @@ GitHub si el issue **ya está**: si lo que se cortó fue la escritura de vuelta,
 issue existe y reintentar lo duplicaría en un repo público. Si está, no hace falta
 nada más; si no, reintentar.
 
+### Cuando suena `barrido-sin-correr` (B-2220)
+
+**Qué dice el mail:** uno o más barridos diarios (`barridos`) no anotaron su
+latido en `sistema/latidos` en las últimas 48 horas. No es que fallaron corriendo
+—eso es `barrido-fallo`—: es que **no corrieron**. Avisa una vez por día por
+barrido.
+
+**Qué hacer:** Cloud Scheduler → buscar el job del barrido. Si está **pausado**,
+reanudarlo; si **no está**, el último deploy de Functions no lo creó: correr
+`gh workflow run push-main.yml --ref main -f forzar_todo=true`. Si el job está y
+corre, mirar los logs de la Function: un crash antes de entrar al cuerpo
+(configuración, memoria) no deja `barrido-fallo`. Para probarlo sin esperar,
+«Forzar ejecución» en Scheduler: si termina bien, el latido se anota solo.
+
 ### Cuando suena `sede-sin-ciudad` (B-2052)
 
 **Qué dice el mail:** una cuenta publicadora **con ciudad** guardó una actividad con
