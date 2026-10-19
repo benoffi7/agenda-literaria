@@ -61,7 +61,93 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## P0 — rompe algo o pierde datos
 
+### B-2185 · Un link de reunión pegado en la descripción sale en `events.json` dentro de `searchText` · P0 (auditoría 2026-10-19)
+
+Trampa 5. `buildSearchText` (`functions/busqueda.js:82`) mete `descripcion` sin
+sanear, y `searchText` se publica en `/events.json` (`toPublic.ts:701`,
+`eventsJson.ts:511`). `sinLinksDeReunion` corre solo en el detalle y en Calendar.
+Un «Nos vemos en https://meet.google.com/abc-defg-hij» sale entero: `normalize`
+solo pasa a minúsculas. B-1690 descartó sanear en `toPublic` porque «events.json
+no lleva la descripción»; `searchText` **es** la descripción normalizada.
+Confirmado leyendo los tres escritores (`functions/derivados.js:132`,
+`src/lib/actividades.ts:400`, `src/lib/historial.ts:627`).
+
+**Arreglo:** aplicar `sinLinksDeReunion(a.descripcion, linksDeReunionDe(a))`
+adentro de `buildSearchText`, con un caso en
+`tests/barrido-de-salidas-publicas.test.ts`, y recalcular el `searchText` de las
+publicadas (script de una vez o el servidor al próximo guardado).
+
 ## P1 — bloquean el objetivo del proyecto
+
+### B-2186 · Un fallo de Calendar que no es 404 se traga: sin reintento, sin alerta, y puede no repararse nunca · P1 (auditoría 2026-10-19)
+
+`decidirAnteFallo` (`functions/sincronizacion.js:159`) devuelve `registrar-error`
+ante un 429, un 403 de cuota, un 5xx o un timeout; el `logger.error` de
+`calendario-trigger.js:304,313` no lleva `alerta`, y ningún trigger tiene
+`retry`. Como `planificar` solo emite `actualizar` si el evento calculado cambió,
+un `update` de sede que falla deja la sede vieja **para siempre**; un `delete`
+fallido al despublicar deja el evento en el calendario público. Igual en
+`opciones-trigger.js:135,145` (y su comentario «una que vence se reintenta» es
+falso). Agravantes: `syncCalendar` usa el timeout por defecto de 60 s sin tope de
+sesiones (un ciclo de ~200 encuentros no entra), y una sesión con fecha ilegible
+hace tirar `aIso` (`calendario.js:983`) antes de sincronizar las demás.
+
+**Arreglo:** reintento con backoff para 429/403-cuota/5xx; `alerta:
+'calendar-fallo'` en esos logs; una marca `calendarPendiente` (o hash del último
+evento enviado) que haga reemitir; `timeoutSeconds: 540` con
+`aplicarConPresupuesto`; `aIso` que devuelva `null` y saltee la sesión con log.
+Opcional: correr `reconciliacion.js` en un schedule diario.
+
+### B-2187 · El rebuild por contenido publica `main` HEAD aunque `push-main` lo haya rechazado · P1 (auditoría 2026-10-19)
+
+`deploy.yml:81` hace checkout de HEAD y, si la suite de ese SHA no está en verde,
+corre `npm test` sin emuladores ni `tsc` (`:118`, `:132`). Con concurrency
+distinta de `push-main.yml:28`, un push rojo se publica igual con la próxima
+edición de una actividad, y un rebuild a mitad de `push-main` puede publicar el
+panel nuevo antes que las reglas nuevas.
+
+**Arreglo:** que `deploy.yml` construya desde el último commit que publicó
+`push-main` (el tag del job `etiquetar`), nunca desde HEAD; compartir el grupo de
+concurrency con el job de hosting de `push-main`.
+
+### B-2188 · Todas las páginas salvo la home se cachean una hora en el navegador · P1 (auditoría 2026-10-19)
+
+Medido en producción el 2026-10-19: `/`  y `/events.json` dan `no-cache`;
+`/cartelera/`, `/pasadas/`, `/actividad/<slug>/` y `/bibliotecas.json` dan
+`max-age=3600`. La regla `**/*.html` de `firebase.json:105` no matchea las URLs
+limpias. Una cancelación tarda hasta 60 min más en verse, y un HTML viejo puede
+pedir chunks `/_astro/*` que ya no existen. `docs/02-infraestructura.md:516` dice
+`no-cache`; `scripts/verificar-produccion.mjs` saltea las reglas con comodín.
+
+**Arreglo:** `no-cache` para los paths sin extensión (probar la precedencia en un
+canal de preview), regla para `/bibliotecas.json`, y que el verificador pida
+`/cartelera/` y una página de detalle concretas.
+
+### B-2189 · `sharp` vulnerable en `functions/` procesa imágenes de anónimos, y sin tope de píxeles · P1 (auditoría 2026-10-19)
+
+`npm audit` del 2026-10-19: `sharp ^0.34.5` (`functions/package.json:17`) tiene
+CVEs altas de libvips/libheif, fix en 0.35.5. Desde B-896 `subirFlyerDePropuesta`
+decodifica bytes de cualquiera con token de App Check, así que la frase de
+`10-salud-del-codigo.md:1682` («no procesa nada que llegue de un anónimo») es
+falsa. Además ninguna llamada pone `limitInputPixels`: un PNG de 16000×16000 de un
+color pesa < 3 MB y puede tirar la instancia de 512 MiB. Y `functions/node_modules`
+no tiene `sharp`: los tests corren con la 0.35.4 de la raíz, no con la de prod.
+En el mismo lock salen `proxy-addr` (crítica), `qs` y `@grpc/grpc-js` sin breaking.
+
+**Arreglo:** subir a ≥0.35.5, `limitInputPixels: 40_000_000` y rechazo por
+`width*height` antes de optimizar, `npm ci` en `functions/`, y corregir 10-salud.
+
+### B-2190 · En el detalle, un link privado de una plataforma desconocida pegado en la descripción se publica · P1 (auditoría 2026-10-19)
+
+`detalleDeActividad` (`detallePublico.ts:1525`) recibe la `ActividadPublica`, a la
+que `onlinePublico` ya le sacó la `url` cuando `urlPublica` es false: la lista de
+«conocidos» de D-1036 llega vacía justo en el caso privado, y solo protege el
+regex de hosts. Un `https://bbb.miescuela.edu.ar/b/tal-ler` pegado en la
+descripción sale en el HTML, la meta description y el JSON-LD.
+`tests/descripcionEnlazada.test.ts:247` cubre solo `urlPublica: true`.
+
+**Arreglo:** sanear `descripcion` en `toPublic`, que tiene el documento entero
+(lo mismo que B-2185 para el índice), con el caso que falta en el test.
 
 ### B-1235 · La imagen de una propuesta no queda en la actividad al promoverla · P1 — 🟡 arreglado y verificado por partes, falta una conversión real (2026-09-24)
 
@@ -131,6 +217,162 @@ sale, lo que queda es una actividad sin flyer y un original huérfano que nadie
 barre (`propuestas/` no lo recorre `limpiarImagenesHuerfanas`).
 
 ## P2 — mejoras reales
+
+### B-2191 · `events.json` lleva todo el histórico y crece sin tope · P2 (auditoría 2026-10-19)
+
+Producción, 2026-10-18: 1.080.883 B (168 KB gzip), 519 actividades, 382 ya
+terminadas (534 KB del array). `imagenUrl` ocupa 94 KB y no tiene lector
+(`eventsJson.ts:385`); el `JSON.stringify(…, null, 2)` suma 278 KB sin comprimir.
+La home lo baja en cada visita y `/pasadas` lo baja entero aunque ya trae las 382
+filas en el HTML. **Arreglo:** partir en vigentes + `pasadas.json`, sacar
+`imagenUrl`, emitir minificado, y que `/pasadas` haga el fetch al usar el
+buscador. Actualizar el barrido de salidas y el gate post-build.
+
+### B-2192 · El caché de etiquetas de `syncCalendar` no vence y puede deshacer un renombre · P2 (auditoría 2026-10-19)
+
+`functions/etiquetas.js:117`: `invalidarLabels` limpia solo la instancia de
+`rebuildPorOpciones`, que es otro servicio. Una instancia tibia de `syncCalendar`
+reescribe la etiqueta vieja (o el `desSlug` de una opción nueva) en la próxima
+edición. **Arreglo:** TTL de ~60 s a 5 min en `cargarLabels`.
+
+### B-2193 · `marcarRebuild` sin `try`, y una carga masiva concentra cientos de escrituras en `sistema/rebuild` · P2 (auditoría 2026-10-19)
+
+`calendario-trigger.js:74`: un error de contención en el `set` aborta la
+invocación antes del sync, sin reintento ni alerta. Los scripts de lote (de a 400)
+disparan hasta 400 `syncCalendar` sobre el mismo documento (~1 escritura/s
+sostenida) y una ráfaga de `events.update` contra la cuota de Calendar.
+**Arreglo:** no escribir si `pendiente` ya está en `true` y es reciente; `try` con
+`alerta: 'rebuild-sin-marcar'` (manteniendo la llamada arriba, B-83); pausas en
+los scripts de lote.
+
+### B-2194 · Dos guardados seguidos procesados fuera de orden dejan Calendar con el contenido anterior · P2 (auditoría 2026-10-19)
+
+El evento se arma con `event.data.after` de cada invocación, y Firestore no
+garantiza orden. **Arreglo:** releer el documento al ejecutar y comparar contra un
+hash del último evento enviado por sesión (el mismo campo de B-2186).
+
+### B-2195 · Los barridos programados pueden fallar o dejar de correr sin aviso · P2 (auditoría 2026-10-19)
+
+Logs `error` sin `alerta` en `retencion-trigger.js` (110, 227, 369, 543, 584),
+`versiones-limpieza-trigger.js:103`, `imagenes-limpieza-trigger.js:95` y
+`propuestas-trigger.js` (138, 175, 201, 222). La retención de 30 días de
+contactos (DEC-13) es una promesa de privacidad. **Arreglo:** `alerta` en esos
+logs; un latido por schedule en `sistema/latidos` que vigile
+`verificarFrescuraDelSitio`; una política de GCP sobre `severity>=ERROR`.
+
+### B-2196 · Hosting no manda ningún header de seguridad · P2 (auditoría 2026-10-19)
+
+`firebase.json` solo declara `Cache-Control`. Faltan `X-Frame-Options` /
+`frame-ancestors` (cualquiera puede enmarcar `/proponer`, los `/sumar` o
+`/admin`), `X-Content-Type-Options`, `Referrer-Policy` global y una CSP.
+**Arreglo:** bloque `"source": "**"` con los tres primeros y la CSP en
+`Report-Only` primero (GA y reCAPTCHA obligan a enumerar dominios).
+
+### B-2197 · Una Action de terceros en un tag móvil recibe la key de deploy · P2 (auditoría 2026-10-19)
+
+`FirebaseExtended/action-hosting-deploy@v0` en `push-main.yml:264` y
+`deploy.yml`, con `secrets.FIREBASE_SERVICE_ACCOUNT` (lee todo Firestore, D-132).
+**Arreglo:** fijar por SHA esa y `checkout`/`setup-node`/`setup-java`, o
+reemplazarla por `npx firebase deploy --only hosting`.
+
+### B-2198 · Ni los `.astro` ni el JS de `functions/` pasan por un type checker · P2 (auditoría 2026-10-19)
+
+`tsc --noEmit` no lee `.astro` (48 archivos, 8.369 LOC, incluido el frontmatter
+que importa `firebase-admin`), y `astro check` no anda: falta `@astrojs/check`.
+`functions/` (65 archivos, ~15.000 LOC, el sync a Calendar) y los 46 `.mjs` de
+`scripts/` no tienen `checkJs`. **Arreglo:** instalar `@astrojs/check` y sumarlo a
+CI; un `functions/jsconfig.json` con `checkJs`, adoptado de a poco con
+`// @ts-check` empezando por `calendario.js`, `sincronizacion.js` y
+`calendario-trigger.js`.
+
+### B-2199 · El foco de los campos de formulario no llega a 3:1 · P2 (auditoría 2026-10-19)
+
+`claseInput` (`src/components/campos/Campo.tsx:105`) hace `focus:outline-none` y
+deja solo el cambio de borde (1,49:1) y un anillo al 15 % (1,27:1). Lo usan
+`/proponer`, los cuatro `/sumar` y todo el panel. **Arreglo:**
+`focus-visible:outline-2 outline-acento outline-offset-1`, y sumarlo al chequeo de
+`lib/contraste.ts`.
+
+### B-2200 · `/proponer` repite ids y no tiene encabezado, pie ni GA · P2 (auditoría 2026-10-19)
+
+`FormularioPublico.tsx` (370, 441, 471, 504, 587) repite en el `<div>` el `id` que
+`Campo comoGrupo` ya puso en el rótulo: `prop-modalidad`, `prop-arancel`,
+`prop-inscripcion`, `prop-via` salen dos veces y el `aria-labelledby` es ambiguo.
+Además `seccion="ninguna"` (`proponer.astro:75`) apaga encabezado, pie, «saltar
+al contenido» y el aviso de cookies: quien llega desde Google no puede navegar, y
+la página de conversión no se mide. Quedó así de cuando no estaba anunciada; no
+hay D. **Arreglo:** ids `${htmlFor}-rotulo` y una red que barra ids repetidos en
+`dist/`; darle a `/proponer` el chrome como a `/anunciar`.
+
+### B-2201 · El logo del encabezado es un PNG de 91 KB mostrado a 40 px · P2 (auditoría 2026-10-19)
+
+`Encabezado.astro:271` usa `marca-512.png` (90.944 B) en todas las páginas: pesa
+más que las tres fuentes precargadas juntas. **Arreglo:** una versión de ~80 px
+con `srcset` 1x/2x (o SVG) por `astro:assets`, con hash e inmutable.
+
+### B-2202 · El buscador de la home recalcula todo en cada tecla · P2 (auditoría 2026-10-19)
+
+`Buscador.tsx:617` va directo a `setFiltros`; `chipsDe` (`:760`) corre
+`filtrarPublico` entero por eje sin memo; `estadoDe` corre dentro del comparador
+del `sort` (`listadoPublico.ts:573`) y parsea cada ISO 3-4 veces;
+`fechasPublicas.ts:26` crea un `Intl.DateTimeFormat` por llamada (~1000 por
+render). Se traba en un Android de gama media. **Arreglo:** `estadoDe`
+precalculado por `(indice, ahora)`, chips memoizados, `useDeferredValue` para `q`,
+formatters cacheados.
+
+### B-2203 · El panel relee la colección entera de `/actividades` cada vez que se vuelve al listado · P2 (auditoría 2026-10-19)
+
+`useActividades.ts` hace `getDocs` completo sin caché, y `ListaActividades` /
+`CalendarioActividades` se desmontan al cambiar de vista: ~550 lecturas por
+vuelta, más de 11.000 en una sesión de 20 ediciones. El badge de propuestas
+(`bandejaDePropuestas.ts:516`) cuenta leyendo hasta 50 documentos en vivo.
+**Arreglo:** caché de módulo por `rol|uid|ciudad` invalidada por `version` (como
+`useContactoDeOrganizador`) o un `onSnapshot` compartido; `getCountFromServer`
+para el badge.
+
+### B-2204 · `optimizarImagen` no tiene guarda de reentrega y recomprime un JPEG ya optimizado · P2 (auditoría 2026-10-19)
+
+`imagenes-trigger.js:84` decide con los metadatos del evento: si el evento del
+upload llega dos veces, la segunda descarga el objeto ya optimizado y lo vuelve a
+codificar con pérdida. **Arreglo:** leer `getMetadata()` del objeto antes de
+descargar y salir si tiene `MARCA_OPTIMIZADA`, o fijar el `generation`.
+
+### B-2205 · Un reporte que queda en `enviando` no tiene salida · P2 (auditoría 2026-10-19)
+
+`reportes-trigger.js:114` y `reportes.js:143`: si el contenedor muere entre la
+transacción y el `update` final, el reporte queda en `enviando` y nadie lo
+retoma (se pierde, o el issue existe y el panel nunca muestra el número).
+**Arreglo:** `actualizadoEn` y tratar `enviando` de más de ~5 min como
+`pendiente`.
+
+### B-2206 · Cada arranque en frío de las 25 Functions carga `googleapis` entero · P2 (auditoría 2026-10-19)
+
+`index.js` importa todos los triggers, y `calendario-api.js:16` y
+`analitica-trigger.js:42` importan `googleapis` (114 MB en disco, +58 MB de heap
+medido en local). Lo pagan también las callables y `dispararRebuild`.
+**Arreglo:** `@googleapis/calendar`, `@googleapis/analyticsdata` y
+`@googleapis/searchconsole`; una sola `google-auth-library` (hoy conviven la 9 y
+la 10); `import()` perezoso de `sharp`.
+
+### B-2207 · `sedesRepetidas.ts` se perdió en un merge y la novedad todavía lo anuncia · P2 — decisión del dueño (auditoría 2026-10-19)
+
+`81203ed` lo enchufó en `EstadisticasPanel.tsx` y `49248b4` (B-621, el mismo día)
+lo dejó sin referencias; `novedades.ts:1021`, `LugarFormulario.tsx:61`,
+`lugares.ts:161` y los PRD 02 y 04 lo citan como si existiera. **Arreglo:**
+restaurarlo en `estadisticas/PanelCatalogo` o borrar módulo, test y novedad y
+corregir las citas.
+
+### B-2208 · Dependencias mayores atrasadas · P2 (auditoría 2026-10-19)
+
+Raíz: `firebase` 11→13, `vitest` 3→5, `@astrojs/react` 6→7, `zod` 3→4,
+`typescript` 5.9→7, `firebase-admin` 13→14; patches de `astro` (7.3.8) y `react`
+(19.3). `functions/`: `firebase-functions` 6→7, `googleapis` 144→186,
+`google-auth-library` 9→11. La raíz tiene `google-auth-library` en
+`dependencies` y solo la usa un script. Sin Dependabot. `npm audit fix` resuelve
+sin breaking `devalue`, `undici`, `http-cache-semantics`, `source-map-js` y
+`smol-toml`. La foto de `10-salud` §6.2 es del 2026-09-09. **Arreglo:** un ítem
+por salto, empezando por los patches y `firebase-functions` + `googleapis` contra
+el emulador.
 
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
 
@@ -367,6 +609,82 @@ de `tomadaEn` si alguna foto se sacó tarde en el mes, y tener en cuenta
 `version` si cambió la forma.
 
 ## P3 — cuando sobre tiempo
+
+### B-2209 · El panel interpreta los `datetime-local` en la zona del navegador · P3 (auditoría 2026-10-19)
+
+`aDatetimeLocal`/`deDatetimeLocal` (`src/lib/sesiones.ts:25`) usan los getters
+locales de `Date`: desde un navegador fuera de ART se guardan instantes corridos,
+y un día sin hora (B-2175) puede caer en el día anterior. Ninguna config de
+vitest fija `TZ`. Hoy no pasa (un solo operador en Argentina). **Arreglo:** offset
+fijo `-03:00`, y como mínimo `TZ` distinta de ART en `vitest.config.ts`.
+
+### B-2210 · El slug de una actividad solo es inmutable por el formulario · P3 (auditoría 2026-10-19)
+
+`firestore.rules` congela el slug de las cuatro fichas de la Guía, pero no el de
+`/actividades`: la consola, un script o una restauración pueden cambiarlo
+(trampa 10). **Arreglo:** `!publicadaAlgunaVez(previo) || d.slug == previo.slug`
+con un test de reglas.
+
+### B-2211 · El aviso «volvió a publicar» hace figurar como canceladas corridas que publicaron · P3 (auditoría 2026-10-19)
+
+`deploy.yml:340`: `avisar-recuperado` corre en otro runner bajo
+`cancel-in-progress`. El 2026-10-05, las corridas 37365196921 y 37368874735
+publicaron bien y figuran `cancelled`; la 37369391156 venció esperando runner y
+no mandó mail (`failure()` es falso para un job cancelado). **Arreglo:** pasar el
+chequeo a un paso final del job `deploy` o a un `workflow_run`.
+
+### B-2212 · Costos escritos que ya no valen: Scheduler y lecturas diarias · P3 (auditoría 2026-10-19)
+
+Son 7 jobs de Cloud Scheduler y 3 son gratis: ~USD 0,40/mes, el 8 % del
+presupuesto, y no está en `08-operacion.md` § Costos. `frescura-trigger.js:106`
+calcula sobre ~100 publicadas (hoy ~451: ~21.600 lecturas/día), y con
+`limpiarImagenesHuerfanas` y el panel ya se anda cerca de las 50.000 gratis. Una
+opción nueva relee todas las publicadas (`mismasEtiquetas`), aunque ese recorrido
+hoy repara de rebote el evento de la actividad que la creó. **Arreglo:** juntar
+los barridos diarios en una función de mantenimiento; corregir las cuentas; que
+la frescura compare primero `generadoEn` contra `despacho.cubreHasta`.
+
+### B-2213 · Índices sobrantes, sin exenciones, y `/reportes` sin retención · P3 (auditoría 2026-10-19)
+
+`firestore.indexes.json:7` (`estado` + `updatedAt desc`) es del listado anónimo
+que D-128 sacó. `fieldOverrides` vacío: cada versión indexa el documento entero,
+y en `actividades` se indexan `descripcion` y `searchText`. `/reportes` tiene
+`delete: if false` y guarda `reportadoPor.email` sin retención.
+
+### B-2214 · CSS del panel en el sitio público, una lib del panel en el bundle del Buscador, `indiceDelSitio()` sin memo · P3 (auditoría 2026-10-19)
+
+168 de 769 selectores de `Base.*.css` son solo del panel (~12 KB sin comprimir).
+`listadoPublico.ts:34` y `tarjetaPublica.ts:44` importan `ETIQUETA_MODALIDAD` de
+`filtrosActividades` (3 KB gzip de más). `indiceDelSitio()`
+(`contenidoDelSitio.ts:976`) no está memoizada aunque `agenda/[mes].astro:19`
+diga que sí. `events.json` va `no-cache` aunque la URL lleva `?v=`: se podría
+publicar `/indice/<version>.json` inmutable.
+
+### B-2215 · Sin linter, y exports muertos que tsc no ve · P3 (auditoría 2026-10-19)
+
+Sin `noUnusedLocals`/`noUnusedParameters`. Hay 16 exports sin ningún uso (entre
+ellos `tieneClaimAdmin`, `TOPE_INSTAGRAM_LUGAR`, `TOPE_INSTAGRAM_SUSCRIPCION`,
+`AA_GRANDE`, `DICHO_DEL_MOTIVO`). **Arreglo:** prender esos dos flags y evaluar
+`knip`.
+
+### B-2216 · Doc desactualizada que encontró la auditoría · P3 (auditoría 2026-10-19)
+
+`07-seguridad.md:1583,1792` dice «cuatro escrituras anónimas» y son cinco (falta
+`/bibliotecas`); la tabla de tests salteados de `10-salud` §6.1 es del
+2026-09-09 (hoy son 31 archivos con `skipIf`); el `<title>` del detalle
+(`detallePublico.ts:1703`) no sigue la forma de `12-sitio-publico.md:1301` y deja
+el barrido después del corte de ~60 caracteres.
+
+### B-2217 · Higiene menor de seguridad · P3 (auditoría 2026-10-19)
+
+Cinco `firebase-export-*` vacíos en la raíz y el patrón no está en `.gitignore`
+(un export con datos podría subirse con `git add -A`).
+`flyer-de-propuesta-trigger.js:67`: `consumeAppCheckToken: false` permite reusar
+un token una hora desde un script; consumirlo en esa callable no pesa.
+`cors.json` y `ORIGENES_PERMITIDOS` no listan los mismos dominios. El
+`events.update` del trigger (`calendario-trigger.js:262`) no manda
+`status: 'confirmed'`, que según `crearEvento` es lo que resucita un evento
+borrado: medir contra la API real.
 
 ### B-2176 · «Algunos etiquetados menos»: averiguar qué pidió la publicadora · P3
 
