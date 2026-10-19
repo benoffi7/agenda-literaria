@@ -142,7 +142,7 @@ export const rebuildPorOpciones = onDocumentWritten(
             campo,
             actividad: op.actividad,
             sesion: op.id,
-            error: e?.message,
+            error: /** @type {Error | undefined} */ (e)?.message,
           }),
       },
     );

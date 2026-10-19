@@ -175,8 +175,8 @@ describe.skipIf(!vivo)('aceptar una propuesta y su flyer original — B-863', ()
 
     expect(
       await borrarOriginalAlAceptar(adminDb(), adminBucket(), {
-        objeto: decision.objeto,
-        actividadId: decision.actividadId,
+        objeto: decision.objeto as string,
+        actividadId: decision.actividadId as string,
       }),
     ).toBe('borrado');
 

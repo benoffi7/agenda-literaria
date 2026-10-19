@@ -122,7 +122,7 @@ export const reporteAIssue = onDocumentWritten(OPCIONES, async (event) => {
       return null;
     }
     tx.update(ref, { estado: 'enviando', intentos: intento, actualizadoEn: FieldValue.serverTimestamp() });
-    return { ...datos, intentos: intento };
+    return /** @type {import('firebase-admin/firestore').DocumentData} */ ({ ...datos, intentos: intento });
   });
 
   if (!reporte) return;

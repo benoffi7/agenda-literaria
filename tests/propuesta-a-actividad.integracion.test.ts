@@ -137,8 +137,8 @@ describe.skipIf(!vivo)('convertir una propuesta con foto — B-1235', () => {
     });
     console.log('decisión del trigger:', JSON.stringify(decision));
     const resultado = await borrarOriginalAlAceptar(adminDb(), adminBucket(), {
-      objeto: decision.objeto,
-      actividadId: decision.actividadId,
+      objeto: decision.objeto as string,
+      actividadId: decision.actividadId as string,
     });
     console.log('resultado del borrado:', resultado);
     expect(resultado).toBe('borrado');

@@ -73,6 +73,7 @@ import {
  * **pregunta** a la decisión pura cuándo dejar de leer, y tiene que preguntarlo
  * con el mismo reloj con el que el llamador va a decidir después.
  *
+ * @param db
  * @param {{ ahora?: number, plazos?: Record<string, number | null> }} [opciones]
  * @returns {Promise<{ id: string, estado: string, creadoEn: unknown, revision: unknown, imagen: unknown, updateTime: unknown }[]>}
  */
@@ -222,6 +223,8 @@ export const FALLO_DE_PRECONDICION = 9;
  * objeto ya no está —porque la corrida anterior murió justo en el medio— borrarlo
  * de nuevo no es un error, es el estado que se quería.
  *
+ * @param db
+ * @param bucket
  * @param {{ id: string, objeto: string | null, visto: unknown }} caducada
  * @returns {Promise<'borrada' | 'la-tocaron' | 'ya-no-esta' | 'la-tocaron-tarde'>}
  */

@@ -78,10 +78,10 @@ export const sinLinksDeReunion = (texto, conocidos = []) => {
  * campo viejo `online`, para que `sinLinksDeReunion` reconozca también las
  * plataformas que la lista de hosts no conoce.
  *
- * @param {{ online?: { url?: unknown } | null, modalidades?: Array<{ online?: { url?: unknown } | null }> | null }} actividad
+ * @param {{ online?: { url?: unknown } | null, modalidades?: ReadonlyArray<{ online?: { url?: unknown } | null } | null> | null }} actividad
  * @returns {string[]}
  */
 export const linksDeReunionDe = (actividad) =>
   [actividad?.online?.url, ...(actividad?.modalidades ?? []).map((m) => m?.online?.url)].filter(
-    (u) => typeof u === 'string' && u.trim() !== '',
+    /** @type {(u: unknown) => u is string} */ (u) => typeof u === 'string' && u.trim() !== '',
   );

@@ -35,7 +35,9 @@ export const calendario = async () => {
   const auth = new GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/calendar.events'],
   });
-  _calendar = calendar({ version: 'v3', auth: await auth.getClient() });
+  // Cast de tipos nada más: `getClient()` se tipa `AnyAuthClient` (incluye el `AuthClient` base, que
+  // `@googleapis/calendar` no lista), pero en runtime de Cloud Functions es un cliente que la librería acepta.
+  _calendar = calendar({ version: 'v3', auth: /** @type {any} */ (await auth.getClient()) });
   return _calendar;
 };
 

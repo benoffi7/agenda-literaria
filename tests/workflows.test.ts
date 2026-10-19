@@ -818,4 +818,15 @@ describe('los .astro pasan por un chequeo de tipos — B-2198', () => {
     expect(tsc).toBeGreaterThanOrEqual(0);
     expect(astro).toBeGreaterThan(tsc);
   });
+
+  it('push-main chequea los tipos del JS de functions/ en el job de tests', () => {
+    // El `tsc --noEmit` de la raíz no chequea el JS de `functions/`: va con su propio
+    // tsconfig con checkJs. Mutación probada: sacar el paso pone esto rojo.
+    const wf = parsear('push-main.yml').toJS() as {
+      jobs: Record<string, { name?: string; steps?: { run?: string }[] }>;
+    };
+    const job = Object.values(wf.jobs).find((j) => j.name === 'Tests y typecheck')!;
+    const runs = (job.steps ?? []).map((s) => s.run ?? '');
+    expect(runs.some((r) => /\btsc -p functions\/tsconfig\.json\b/.test(r))).toBe(true);
+  });
 });

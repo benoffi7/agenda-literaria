@@ -131,6 +131,11 @@ jobs:
         # frontmatter que importa `firebase-admin`, quedaban sin revisar.
         run: npx astro check --minimumSeverity error
 
+      - name: Tipos del JS de functions/
+        # B-2198 — el `tsc --noEmit` de la raíz no chequea el JS de `functions/`:
+        # el JSDoc de las Functions va con su propio tsconfig (checkJs, sin strict).
+        run: npx tsc -p functions/tsconfig.json
+
       - name: Tests, con emuladores
         # `EXIGIR_EMULADOR=1` hace que los tests de integración FALLEN en vez de
         # saltearse si el emulador no responde. Sin eso, `npm test` en un runner

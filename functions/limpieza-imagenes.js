@@ -91,7 +91,7 @@ export const decidirLimpieza = ({ objetos = [], referenciados = new Set(), ahora
   );
 
   const aBorrar = [];
-  const motivos = {};
+  const motivos = /** @type {Record<string, string>} */ ({});
 
   for (const objeto of objetos) {
     const nombre = objeto.nombre ?? '';

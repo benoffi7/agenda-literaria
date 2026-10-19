@@ -90,7 +90,7 @@ export const decidirPurga = ({
   margenMs = MARGEN_DE_RESCATE_MS,
 } = {}) => {
   const aPurgar = [];
-  const motivos = {};
+  const motivos = /** @type {Record<string, string>} */ ({});
 
   for (const { actividadId, versiones = [] } of huerfanas) {
     if (versiones.length === 0) {

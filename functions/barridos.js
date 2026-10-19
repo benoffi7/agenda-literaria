@@ -22,11 +22,15 @@
  * Un latido que no se pudo anotar se loguea y no tira la corrida: el barrido ya
  * hizo su trabajo, y lo peor que pasa es un aviso de más dentro de dos días.
  *
+ * Devuelve lo mismo que `cuerpo` (`T`): los barridos devuelven `void`, y así el
+ * handler encaja con lo que pide `onSchedule`.
+ *
+ * @template T
  * @param {{ error: (mensaje: string, datos: object) => void, warn?: (mensaje: string, datos: object) => void }} logger
  * @param {string} barrido el nombre de la Function, para el log
- * @param {() => Promise<unknown>} cuerpo
+ * @param {() => Promise<T>} cuerpo
  * @param {() => Promise<unknown>} [latir]
- * @returns {() => Promise<unknown>}
+ * @returns {() => Promise<T>}
  */
 export const conAlertaDeBarrido = (logger, barrido, cuerpo, latir) => async () => {
   try {

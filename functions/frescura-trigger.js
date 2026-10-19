@@ -173,7 +173,7 @@ const leerPublicadas = async (db) => {
     .select('slug', 'updatedAt')
     .get();
   const slugs = [];
-  const fechas = {};
+  const fechas = /** @type {Record<string, number>} */ ({});
   for (const d of snap.docs) {
     const a = d.data();
     const slug = typeof a?.slug === 'string' ? a.slug : '';
@@ -223,7 +223,7 @@ const leerDespacho = async (db) => {
 };
 
 const fechasDeSobrantes = async (db, sobran, idPorSlug) => {
-  const fechas = {};
+  const fechas = /** @type {Record<string, number>} */ ({});
   for (const slug of sobran.slice(0, TOPE_DE_SOBRANTES_A_FECHAR)) {
     const id = idPorSlug?.[slug];
     if (!id) continue;

@@ -165,7 +165,9 @@ let _clientes = null;
 const clientes = async () => {
   if (_clientes) return _clientes;
   const auth = new GoogleAuth({ scopes: SCOPES });
-  const authClient = await auth.getClient();
+  // Cast de tipos nada más: `getClient()` se tipa `AnyAuthClient` (incluye el `AuthClient` base, que
+  // analyticsdata y searchconsole no listan), pero en runtime es un cliente que esas librerías aceptan.
+  const authClient = /** @type {any} */ (await auth.getClient());
   _clientes = {
     ga4: analyticsdata({ version: 'v1beta', auth: authClient }),
     searchConsole: searchconsole({ version: 'v1', auth: authClient }),

@@ -243,10 +243,12 @@ export const objetoDePropuesta = (imagen) => {
  * cerrado, como antes de B-844.
  *
  * @param {{ estado?: string, creadoEn?: unknown, revision?: unknown }} p
+ * @param {string} [estadoRechazado]
  * @returns {{ ms: number, campo: 'rechazo' | 'ultimo-toque' | 'llegada' } | null}
  */
 export const relojDeRetencion = (p, estadoRechazado = 'rechazada') => {
-  const revisada = milisDe(p?.revision?.en);
+  // `revision` llega sin tipo desde Firestore; el cast solo deja leer `en`, y `?.` cubre lo que no sea objeto.
+  const revisada = milisDe(/** @type {{ en?: unknown } | null | undefined} */ (p?.revision)?.en);
 
   if (p?.estado === estadoRechazado) {
     return revisada === null ? null : { ms: revisada, campo: 'rechazo' };
@@ -291,6 +293,8 @@ const VENCIDA_POR = {
  *   propuestas?: { id: string, estado?: string, creadoEn?: unknown, revision?: unknown, imagen?: unknown, updateTime?: unknown }[],
  *   ahora?: number,
  *   plazos?: Record<string, number | null>,
+ *   estadoRechazado?: string,
+ *   tope?: number,
  * }} _
  * @returns {{
  *   aBorrar: { id: string, objeto: string | null, visto: unknown }[],
@@ -305,7 +309,7 @@ export const decidirRetencion = ({
   tope = MAX_PROPUESTAS_POR_CORRIDA,
 } = {}) => {
   const aBorrar = [];
-  const motivos = {};
+  const motivos = /** @type {Record<string, string>} */ ({});
 
   for (const p of propuestas) {
     /*
@@ -365,7 +369,7 @@ export const decidirRetencion = ({
     }
 
     const objeto = objetoDePropuesta(p.imagen);
-    if (p?.imagen?.storagePath && !objeto) {
+    if (/** @type {{ storagePath?: unknown } | null | undefined} */ (p?.imagen)?.storagePath && !objeto) {
       /*
        * **Falla cerrado, y esta guarda la trajo el `auditor-privacidad`.**
        *

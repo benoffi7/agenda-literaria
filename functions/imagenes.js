@@ -213,7 +213,7 @@ export const rutaDeMiniatura = (nombre = '') => {
  *  4. nombre que no tiene forma de id de galería → las reglas no lo dejarían
  *     entrar, pero el Admin SDK sí, y sin id no hay dónde poner la miniatura.
  */
-/** @param {{ nombre?: string, contentType?: string, metadatos?: Record<string, string> }} objeto */
+/** @param {{ nombre?: string, contentType?: string, metadatos?: Record<string, unknown> }} objeto */
 export const decidirOptimizacion = (objeto = {}) => {
   const nombre = objeto.nombre ?? '';
   const metadatos = objeto.metadatos ?? {};

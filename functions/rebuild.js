@@ -174,6 +174,10 @@ export const decidirDisparo = (estado, ahora, opciones = {}) => {
  * (ver el bloque de arriba). Va en el mismo objeto que baja `pendiente`, así
  * que el flag no se puede bajar sin dejar dicho qué tendría que estar
  * publicado.
+ *
+ * @param {number} ahora en milis
+ * @param {{ marcaLeida?: unknown, marcaActual?: unknown, motivo?: unknown }} [marcas]
+ *   las marcas son lo que `milisDe` sabe leer (Timestamp, Date, número o nada)
  */
 export const registrarExito = (ahora, { marcaLeida, marcaActual, motivo } = {}) => ({
   pendiente: milis(marcaActual) !== milis(marcaLeida),

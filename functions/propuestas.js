@@ -81,6 +81,16 @@ import { PREFIJO_PROPUESTAS, objetoDePropuesta } from './retencion.js';
 export const ESTADOS_QUE_CIERRAN = ['rechazada', 'aceptada'];
 
 /**
+ * Lo que `decidirBorradoDeImagen` mira de un documento de `/propuestas`.
+ *
+ * @typedef {{
+ *   estado?: string,
+ *   imagen?: { storagePath?: unknown } | null,
+ *   revision?: { fotoDescartada?: unknown, actividadId?: unknown } | null,
+ *   [campo: string]: unknown,
+ * }} DocumentoDePropuesta
+ */
+/**
  * ¿Hay que borrar la imagen de esta propuesta?
  *
  * `dejaLaFoto` es la parte que agregó el `auditor-privacidad` sobre B-863, y no
@@ -93,10 +103,15 @@ export const ESTADOS_QUE_CIERRAN = ['rechazada', 'aceptada'];
  * esta bandera esos dos caminos salían por `debug` y sin `alerta`, o sea
  * invisibles — y el aserto que cuenta las alertas los habría congelado así.
  *
- * @param {{ before?: Record<string, unknown> | null, after?: Record<string, unknown> | null }} _
+ * @param {{ before?: DocumentoDePropuesta | null, after?: DocumentoDePropuesta | null }} _
  * @returns {{ accion: 'borrar' | 'ignorar', objeto: string | null, motivo: string, actividadId: string | null, dejaLaFoto: boolean }}
  */
 export const decidirBorradoDeImagen = ({ before = null, after = null } = {}) => {
+  /**
+   * @param {string} motivo
+   * @param {boolean} [dejaLaFoto]
+   * @returns {{ accion: 'ignorar', objeto: null, motivo: string, actividadId: null, dejaLaFoto: boolean }}
+   */
   const nada = (motivo, dejaLaFoto = false) => ({
     accion: 'ignorar',
     objeto: null,
@@ -216,7 +231,8 @@ export const decidirBorradoDeImagen = ({ before = null, after = null } = {}) => 
 export const copiasEnLaGaleria = (imagenes) => {
   const paths = [];
   for (const imagen of Array.isArray(imagenes) ? imagenes : []) {
-    const path = imagen && typeof imagen === 'object' ? imagen.storagePath : null;
+    const path =
+      imagen && typeof imagen === 'object' ? /** @type {{ storagePath?: unknown }} */ (imagen).storagePath : null;
     // Una imagen externa (DEC-7c) no tiene `storagePath`: no hay objeto nuestro
     // que le corresponda, así que no prueba nada sobre la promoción.
     if (typeof path !== 'string' || !path.startsWith(PREFIJO_ORIGINALES)) continue;
@@ -280,6 +296,8 @@ export const copiasEnLaGaleria = (imagenes) => {
  * lo que deja que el test los reemplace por dobles y mida el **orden** de las
  * llamadas, que es la propiedad que este código existe para tener.
  *
+ * @param db
+ * @param bucket
  * @param {{ objeto: string, actividadId: string }} _
  * @returns {Promise<'borrado' | 'objeto-ajeno' | 'sin-actividad' | 'sin-copia' | 'copia-sin-objeto'>}
  */
@@ -570,6 +588,8 @@ export const aceptadasConOriginalVivo = async (db, bucket) => {
  * es el de siempre en este orden —verificar y después borrar—: dos copias de la
  * misma foto hasta la corrida de mañana.
  *
+ * @param db
+ * @param bucket
  * @param {{ propuesta: string, original: string, actividadId: string }} fila
  */
 export const borrarOriginalSiSigueConCopia = async (db, bucket, { propuesta, original, actividadId }) => {
@@ -624,9 +644,9 @@ export const borrarOriginalesConCopia = async (
       .map((f) => [f.propuesta, f.caso]),
   );
 
-  const resultados = {};
-  const errores = {};
-  const objetos = {};
+  const resultados = /** @type {Record<string, string>} */ ({});
+  const errores = /** @type {Record<string, string>} */ ({});
+  const objetos = /** @type {Record<string, string>} */ ({});
   for (const fila of candidatas.slice(0, tope)) {
     objetos[fila.propuesta] = fila.original;
     try {

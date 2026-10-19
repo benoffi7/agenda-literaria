@@ -32,7 +32,7 @@ import { huellaCreador } from './huella.js';
  *   un `Firestore` del Admin SDK (se tipa por forma para no importar el paquete)
  * @param {{ campo: string, label: string, slug: string, uid: string, aprobada: boolean }} pedido
  *   ya validado por `validarPedidoDeOpcion`; `aprobada` la decide el rol
- * @returns {Promise<{ slug: string, creada: boolean, rechazo?: undefined } | { rechazo: import('./alta-de-opcion.js').Rechazo }>}
+ * @returns {Promise<{ slug: string, creada: boolean, rechazo?: undefined } | { slug?: undefined, creada?: undefined, rechazo: import('./alta-de-opcion.js').Rechazo }>}
  */
 export const aplicarAltaDeOpcion = async (db, { campo, label, slug, uid, aprobada }) => {
   const ref = db.doc(`opciones/${campo}`);

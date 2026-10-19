@@ -63,6 +63,7 @@ npx astro sync >/dev/null || fallo 'astro sync'
 npx tsc --noEmit || fallo 'el typecheck no pasa'
 # B-2198 — `tsc` no lee los `.astro`.
 npx astro check --minimumSeverity error >/dev/null || fallo 'astro check no pasa (corré npx astro check)'
+npx tsc -p functions/tsconfig.json >/dev/null || fallo 'los tipos de functions/ no pasan (corré npx tsc -p functions/tsconfig.json)'
 
 # ── 3 · Tests, con los emuladores arriba ──────────────────────────
 # `EXIGIR_EMULADOR=1` hace que los tests de integración FALLEN en vez de

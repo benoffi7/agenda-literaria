@@ -18514,6 +18514,34 @@ cuenta arranca desde la primera vez que la frescura ve el documento.
 segunda política de GCP sobre `severity>=ERROR` para los crashes de Cloud Run, que
 es configuración de consola.
 
+### B-2198 · Ni los `.astro` ni el JS de `functions/` pasan por un type checker · P2 — ✅ hecho (2026-10-19)
+
+`tsc --noEmit` no lee `.astro` (48 archivos, 8.369 LOC, incluido el frontmatter
+que importa `firebase-admin`), y `astro check` no anda: falta `@astrojs/check`.
+`functions/` (65 archivos, ~15.000 LOC, el sync a Calendar) y los 46 `.mjs` de
+`scripts/` no tienen `checkJs`. **Arreglo:** instalar `@astrojs/check` y sumarlo a
+CI; un `functions/jsconfig.json` con `checkJs`, adoptado de a poco con
+`// @ts-check` empezando por `calendario.js`, `sincronizacion.js` y
+`calendario-trigger.js`.
+
+**Primera mitad, hecha (2026-10-19):** `@astrojs/check` instalado y `npx astro
+check --minimumSeverity error` en el job «Tests y typecheck» de `push-main` y en
+`verificar-todo.sh` (lo fija `tests/workflows.test.ts`). Encontró 3 errores en
+742 archivos: el JSON-LD de los listados de librerías y bibliotecas pedía la
+proyección entera y recibía las fichas —andaba porque solo usa `slug` y
+`nombre`; ahora pide eso, como suscripciones—, y el `rel` del `<form>` del
+boletín, válido en HTML pero sin tipo en Astro. Quedan 76 *hints*, que no frenan.
+**Segunda mitad, hecha (2026-10-19):** `functions/tsconfig.json` con `checkJs`
+(`strict: false`), y `npx tsc -p functions/tsconfig.json` en el job «Tests y
+typecheck» y en `verificar-todo.sh` (lo fija `tests/workflows.test.ts`, mutación
+probada). Los 53 errores eran JSDoc desalineado, no bugs: tipos de retorno,
+`@param` de objetos desestructurados en la posición equivocada, `Record`
+inicializados con `{}`, uniones sin acotar. Dos casts `any` con su porqué
+(`calendario-api.js` y `analitica-trigger.js`: `getClient()` se tipa con el
+`AuthClient` base, que los clientes de `@googleapis/*` no aceptan en el tipo y sí
+en runtime). Sin cambio en runtime; dos tests de integración ganaron un `as
+string` porque el `@param` ahora rige.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
@@ -23057,6 +23085,28 @@ legítimos en este repo—. Sacar el `export` en masa no borra código, no achic
 bundle (Vite ya descarta lo que no se importa) y puede romper esos tests. Si un día
 se quiere, `knip` en CI con una lista de ignorados explícita, no una limpieza a
 mano.
+
+### B-2214 · CSS del panel en el sitio público, una lib del panel en el bundle del Buscador, `indiceDelSitio()` sin memo · P3 — ✅ cerrado (2026-10-19): dos hechos, dos decididos
+
+168 de 769 selectores de `Base.*.css` son solo del panel (~12 KB sin comprimir).
+`listadoPublico.ts:34` y `tarjetaPublica.ts:44` importan `ETIQUETA_MODALIDAD` de
+`filtrosActividades` (3 KB gzip de más). `indiceDelSitio()`
+(`contenidoDelSitio.ts:976`) no está memoizada aunque `agenda/[mes].astro:19`
+diga que sí. `events.json` va `no-cache` aunque la URL lleva `?v=`: se podría
+publicar `/indice/<version>.json` inmutable.
+
+**Hecho (2026-10-19):** `ETIQUETA_MODALIDAD` vive en `lib/etiquetaDeModalidad.ts`
+(hoja; `filtrosActividades` la reexporta) y el chunk del buscador público ya no
+importa `filtrosActividades` —verificado en el `dist/`: solo lo importan chunks del
+panel—. `indiceDelSitio()` está memoizado atado a la promesa del contenido, así que
+`olvidarContenido()` lo invalida; ningún consumidor muta el índice. **Falta:** el
+CSS del panel en la hoja pública (~12 KB) y el `/indice/<version>.json` inmutable.
+
+**Los otros dos, decididos en contra (2026-10-19):** partir la hoja ahorra ~12 KB
+sin comprimir (~2 KB gzip) y arriesga que el panel pierda estilos si una clase
+queda afuera de su hoja nueva; y el índice inmutable por versión ahorra un 304 por
+visita a cambio de un segundo archivo que mantener alineado con `/events.json`.
+Ninguno compensa hoy.
 
 ## Pendiente de acción manual del dueño
 

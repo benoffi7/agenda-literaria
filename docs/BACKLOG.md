@@ -161,25 +161,6 @@ El evento se arma con `event.data.after` de cada invocación, y Firestore no
 garantiza orden. **Arreglo:** releer el documento al ejecutar y comparar contra un
 hash del último evento enviado por sesión (el mismo campo de B-2186).
 
-### B-2198 · Ni los `.astro` ni el JS de `functions/` pasan por un type checker · P2 — 🟡 los `.astro` sí desde 2026-10-19, falta `functions/`
-
-`tsc --noEmit` no lee `.astro` (48 archivos, 8.369 LOC, incluido el frontmatter
-que importa `firebase-admin`), y `astro check` no anda: falta `@astrojs/check`.
-`functions/` (65 archivos, ~15.000 LOC, el sync a Calendar) y los 46 `.mjs` de
-`scripts/` no tienen `checkJs`. **Arreglo:** instalar `@astrojs/check` y sumarlo a
-CI; un `functions/jsconfig.json` con `checkJs`, adoptado de a poco con
-`// @ts-check` empezando por `calendario.js`, `sincronizacion.js` y
-`calendario-trigger.js`.
-
-**Primera mitad, hecha (2026-10-19):** `@astrojs/check` instalado y `npx astro
-check --minimumSeverity error` en el job «Tests y typecheck» de `push-main` y en
-`verificar-todo.sh` (lo fija `tests/workflows.test.ts`). Encontró 3 errores en
-742 archivos: el JSON-LD de los listados de librerías y bibliotecas pedía la
-proyección entera y recibía las fichas —andaba porque solo usa `slug` y
-`nombre`; ahora pide eso, como suscripciones—, y el `rel` del `<form>` del
-boletín, válido en HTML pero sin tipo en Astro. Quedan 76 *hints*, que no frenan.
-**Falta:** `checkJs` en `functions/`.
-
 ### B-2203 · El panel relee la colección entera de `/actividades` cada vez que se vuelve al listado · P2 — 🟡 entre vistas resuelto (2026-10-19), falta la vuelta del formulario
 
 `useActividades.ts` hace `getDocs` completo sin caché, y `ListaActividades` /
@@ -487,22 +468,6 @@ modalidades). A medias, el panel en otra zona pasa de consistente a mezclado. El
 arreglo es todo junto: esos módulos más las dos conversiones, con la suite en dos
 zonas como red (el gate ya corre la de Tokio). La red de `TZ` que pedía el ítem ya
 existe: `verificar-todo.sh` corre `unidad` y `render` con `TZ=Asia/Tokyo`.
-
-### B-2214 · CSS del panel en el sitio público, una lib del panel en el bundle del Buscador, `indiceDelSitio()` sin memo · P3 — 🟡 dos de cuatro (2026-10-19)
-
-168 de 769 selectores de `Base.*.css` son solo del panel (~12 KB sin comprimir).
-`listadoPublico.ts:34` y `tarjetaPublica.ts:44` importan `ETIQUETA_MODALIDAD` de
-`filtrosActividades` (3 KB gzip de más). `indiceDelSitio()`
-(`contenidoDelSitio.ts:976`) no está memoizada aunque `agenda/[mes].astro:19`
-diga que sí. `events.json` va `no-cache` aunque la URL lleva `?v=`: se podría
-publicar `/indice/<version>.json` inmutable.
-
-**Hecho (2026-10-19):** `ETIQUETA_MODALIDAD` vive en `lib/etiquetaDeModalidad.ts`
-(hoja; `filtrosActividades` la reexporta) y el chunk del buscador público ya no
-importa `filtrosActividades` —verificado en el `dist/`: solo lo importan chunks del
-panel—. `indiceDelSitio()` está memoizado atado a la promesa del contenido, así que
-`olvidarContenido()` lo invalida; ningún consumidor muta el índice. **Falta:** el
-CSS del panel en la hoja pública (~12 KB) y el `/indice/<version>.json` inmutable.
 
 ### B-2176 · «Algunos etiquetados menos»: averiguar qué pidió la publicadora · P3
 

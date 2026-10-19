@@ -219,7 +219,7 @@ export const decidirFlyeresSinPlazo = ({
 
   const aBorrar = [];
   const aRevisar = [];
-  const motivos = {};
+  const motivos = /** @type {Record<string, string>} */ ({});
   const revisar = (objeto, propuesta, motivo) => {
     motivos[objeto] = motivo;
     aRevisar.push({ objeto, propuesta, motivo });

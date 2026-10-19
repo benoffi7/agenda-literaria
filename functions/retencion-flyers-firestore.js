@@ -144,6 +144,8 @@ export const relevarFlyeresSinPlazo = async (db, bucket, { ahora = Date.now() } 
  * sigue nombrando un `storagePath` que ya no existe, igual que después del
  * borrado de la transición.
  *
+ * @param db
+ * @param bucket
  * @param {{ objeto: string, propuesta: string | null, visto: unknown }} flyer
  * @returns {Promise<'borrado' | 'la-tocaron' | 'lo-nombran'>}
  */

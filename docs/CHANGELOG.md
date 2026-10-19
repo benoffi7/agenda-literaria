@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **El código de las Functions también pasa por el chequeo de tipos** (B-2198). Los 53
+  avisos eran anotaciones que no coincidían con el código; ninguno cambiaba qué hace.
+
 - **Los reportes del panel resueltos se borran a los seis meses** (B-2213). Guardaban el
   mail de quien los mandó para siempre; el issue de GitHub queda.
 
