@@ -13,6 +13,7 @@ import {
   SLUG_CANCELADA_NUNCA,
   SLUG_PUBLICADA,
 } from '../semilla.mjs';
+import { centinelaEnElIndice, partirIndice } from '../barrido.mjs';
 
 export const nombre = "el índice de actividades (events.json)";
 
@@ -99,7 +100,12 @@ export const chequear = async (ctx) => {
   }
 
   // 3 · Ningún centinela de los campos recortados sobrevivió al archivo.
-  const filtrados = Object.entries(CENTINELA).filter(([, v]) => crudo.includes(v));
+  //
+  // B-2185 — salvo la descripción **dentro del `searchText`**: ver `partirIndice`.
+  const partido = partirIndice(crudo);
+  const filtrados = Object.entries(CENTINELA).filter(([campo, v]) =>
+    centinelaEnElIndice(partido, campo, v),
+  );
   if (filtrados.length > 0) {
     fallo(
       'el events.json publica campos que el índice recorta:\n' +

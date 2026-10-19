@@ -73,6 +73,42 @@ export const textoDelIcs = (ics) =>
   ics.replace(/\r\n[ \t]/g, '').replace(/\\([,;\\])/g, '$1').replace(/\\n/gi, '\n');
 
 /**
+ * **El `events.json` partido en dos para barrerlo** — B-2185.
+ *
+ * El `searchText` lleva la descripción **entera** por diseño (§6), y desde B-2185
+ * se deriva del documento, así que el centinela del final de la descripción del
+ * fixture aparece ahí. Lo que el centinela prueba es que el `resumen` recorta, y
+ * eso se mira **sin** los `searchText`; en los `searchText` se sigue prohibiendo
+ * todo centinela que no sea la descripción. Lo usan el paso del índice y este
+ * barrido, para que los dos crean lo mismo.
+ *
+ * @param {string} crudo el `events.json` tal como quedó en `dist/`
+ * @returns {{ sinSearchText: string, textosDeBusqueda: string }}
+ */
+export const partirIndice = (crudo) => {
+  let indice;
+  try {
+    indice = JSON.parse(crudo);
+  } catch {
+    // Un `events.json` que no parsea se barre entero: no hay `searchText` que
+    // separar, y tratarlo como limpio sería el falso verde.
+    return { sinSearchText: crudo, textosDeBusqueda: '' };
+  }
+  const actividades = Array.isArray(indice?.actividades) ? indice.actividades : [];
+  return {
+    sinSearchText: JSON.stringify({
+      ...indice,
+      actividades: actividades.map(({ searchText, ...resto }) => resto),
+    }),
+    textosDeBusqueda: actividades.map((a) => a.searchText ?? '').join('\n'),
+  };
+};
+
+/** ¿Este centinela está en el índice, contando la excepción de B-2185? */
+export const centinelaEnElIndice = ({ sinSearchText, textosDeBusqueda }, campo, valor) =>
+  sinSearchText.includes(valor) || (campo !== 'descripcion' && textosDeBusqueda.includes(valor));
+
+/**
  * @param {{ relativa: string, contenido: string }[]} archivos
  * @returns {string[]} los mensajes de falla, vacío si el artefacto está limpio
  */
@@ -99,8 +135,12 @@ export const barrerArtefacto = (archivos) => {
   for (const { relativa, contenido: crudo } of archivos) {
     const permitido = canastaDe(relativa);
     const contenido = relativa.endsWith('.ics') ? textoDelIcs(crudo) : crudo;
+    const indice = relativa === 'events.json' ? partirIndice(crudo) : null;
     for (const [campo, valor] of Object.entries(CENTINELA)) {
-      if (!permitido.includes(campo) && contenido.includes(valor)) {
+      const aparece = indice
+        ? centinelaEnElIndice(indice, campo, valor)
+        : contenido.includes(valor);
+      if (!permitido.includes(campo) && aparece) {
         hallazgos.push(`    ${relativa} → ${campo} (${valor})`);
       }
     }

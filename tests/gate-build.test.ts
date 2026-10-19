@@ -93,6 +93,35 @@ describe('la semilla del gate es datos puros', () => {
   });
 });
 
+describe('la descripción entra al searchText del índice y a nada más del índice — B-2185', () => {
+  const indiceCon = (actividad: Record<string, unknown>) =>
+    JSON.stringify({ actividades: [{ slug: 'x', ...actividad }] });
+
+  it('la descripción entera dentro del searchText no es una fuga: es el §6', () => {
+    const dist = [
+      ...distLimpio(),
+      { relativa: 'events.json', contenido: indiceCon({ searchText: `taller ${CENTINELA.descripcion}` }) },
+    ];
+    expect(barrerArtefacto(dist)).toEqual([]);
+  });
+
+  it('pero fuera del searchText sí —es el resumen que no recortó—', () => {
+    const dist = [
+      ...distLimpio(),
+      { relativa: 'events.json', contenido: indiceCon({ resumen: CENTINELA.descripcion }) },
+    ];
+    expect(barrerArtefacto(dist).join('\n')).toContain('events.json → descripcion');
+  });
+
+  it('y cualquier otro centinela dentro del searchText sigue siendo fuga', () => {
+    const dist = [
+      ...distLimpio(),
+      { relativa: 'events.json', contenido: indiceCon({ searchText: CENTINELA.indicaciones }) },
+    ];
+    expect(barrerArtefacto(dist).join('\n')).toContain('events.json → indicaciones');
+  });
+});
+
 describe('el barrido del paso 9, sin build', () => {
   it('un dist/ limpio no da ningún fallo (control)', () => {
     expect(barrerArtefacto(distLimpio())).toEqual([]);
