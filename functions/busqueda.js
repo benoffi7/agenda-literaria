@@ -17,6 +17,7 @@
  * Es JS plano y corre sobre documentos escritos a mano, así que cada lectura va con
  * `?.`: una fila `null` en `modalidades` no puede hacer tirar al sync.
  */
+import { AVISO_DE_REUNION, linksDeReunionDe, sinLinksDeReunion } from './links-de-reunion.js';
 
 /**
  * @param {string} s
@@ -63,11 +64,16 @@ export const CAMPOS_DE_SEARCH_TEXT = Object.freeze(
  *   molestan: esto es un índice de substrings, no una lista.
  * - `libro` (DEC-1) entra porque se busca «Pedro Páramo», no «presentación del
  *   jueves».
+ * - `descripcion` entra **sin los links de reunión** (B-2185, trampa 5): el
+ *   `searchText` sale entero al `events.json`, así que un link de Meet pegado en
+ *   la descripción se publicaba por acá aunque el detalle y Calendar lo sacaran.
+ *   El aviso que deja `sinLinksDeReunion` tampoco entra: no es algo que se busque.
  *
  * @param {{
  *   titulo?: string,
  *   descripcion?: string,
- *   modalidades?: readonly ({ sede?: { nombre?: string, barrio?: string } | null } | null)[],
+ *   online?: { url?: unknown } | null,
+ *   modalidades?: readonly ({ sede?: { nombre?: string, barrio?: string } | null, online?: { url?: unknown } | null } | null)[],
  *   sede?: { nombre?: string, barrio?: string } | null,
  *   organizador?: { nombre?: string } | null,
  *   tallerista?: { nombre?: string } | null,
@@ -79,7 +85,7 @@ export const buildSearchText = (a) =>
   normalize(
     [
       a.titulo ?? '',
-      a.descripcion ?? '',
+      sinLinksDeReunion(a.descripcion ?? '', linksDeReunionDe(a)).replaceAll(AVISO_DE_REUNION, ' '),
       // Las sedes de todas las formas de cursar, sin repetir: la derivada es una
       // de ellas y saldría dos veces.
       ...[

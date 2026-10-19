@@ -7,6 +7,8 @@ import { filaDeEncuentro } from '@/lib/modalidades';
 // B-98 — la regla de «hay motivo» es la del evento de Calendar, importada (D-20):
 // el sitio y el calendario no pueden estar en desacuerdo sobre si se publica.
 import { motivoDeCancelacion } from '@calendario';
+// B-2190 — el saneador vive en `functions/` (D-20), como en `descripcionEnlazada.ts`.
+import { linksDeReunionDe, sinLinksDeReunion } from '../../functions/links-de-reunion.js';
 /*
  * De `taxonomia` y no de `opciones`: las dos exportan `opcionesVisibles` —la
  * segunda la re-exporta— pero `opciones.ts` importa `firestore-client`, y esto
@@ -689,7 +691,13 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
   titulo: a.titulo,
   slug: a.slug,
   tipo: a.tipo,
-  descripcion: a.descripcion,
+  /*
+   * B-2190 — sin los links de reunión, **acá** y no solo en el detalle: esto es
+   * lo único que ve el `online.url` privado, y el detalle recibe la proyección
+   * con la `url` ya quitada. Saneando allá, la coincidencia exacta de D-1036
+   * llegaba vacía justo cuando el link es privado.
+   */
+  descripcion: sinLinksDeReunion(a.descripcion ?? '', linksDeReunionDe(a)),
   imagenes: imagenesDe(a).map(imagenPublica),
   modalidades: (a.modalidades ?? []).map(modalidadPublica),
   modalidad: a.modalidad,

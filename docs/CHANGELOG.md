@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **El link de la reunión pegado en la descripción ya no se publica por ningún lado**
+  (B-2185, B-2190). Salía entero en el índice de búsqueda (`/events.json`), y en la
+  página de detalle cuando era de una plataforma poco común y privado. Ahora se saca
+  en la proyección y en el `searchText`; lo ya guardado se corrige con
+  `scripts/recalcular-search-text.mjs`.
+
 - **Volvió el aviso de sedes repetidas en Estadísticas** (B-2207). «El catálogo» dice
   cuántas actividades con lugar están en una sede que usa otra, y nombra las tres más
   repetidas. Se había perdido en un merge del 2026-09-07 y la novedad lo seguía

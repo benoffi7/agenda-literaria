@@ -61,22 +61,6 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## P0 — rompe algo o pierde datos
 
-### B-2185 · Un link de reunión pegado en la descripción sale en `events.json` dentro de `searchText` · P0 (auditoría 2026-10-19)
-
-Trampa 5. `buildSearchText` (`functions/busqueda.js:82`) mete `descripcion` sin
-sanear, y `searchText` se publica en `/events.json` (`toPublic.ts:701`,
-`eventsJson.ts:511`). `sinLinksDeReunion` corre solo en el detalle y en Calendar.
-Un «Nos vemos en https://meet.google.com/abc-defg-hij» sale entero: `normalize`
-solo pasa a minúsculas. B-1690 descartó sanear en `toPublic` porque «events.json
-no lleva la descripción»; `searchText` **es** la descripción normalizada.
-Confirmado leyendo los tres escritores (`functions/derivados.js:132`,
-`src/lib/actividades.ts:400`, `src/lib/historial.ts:627`).
-
-**Arreglo:** aplicar `sinLinksDeReunion(a.descripcion, linksDeReunionDe(a))`
-adentro de `buildSearchText`, con un caso en
-`tests/barrido-de-salidas-publicas.test.ts`, y recalcular el `searchText` de las
-publicadas (script de una vez o el servidor al próximo guardado).
-
 ## P1 — bloquean el objetivo del proyecto
 
 ### B-2186 · Un fallo de Calendar que no es 404 se traga: sin reintento, sin alerta, y puede no repararse nunca · P1 (auditoría 2026-10-19)
@@ -136,18 +120,6 @@ En el mismo lock salen `proxy-addr` (crítica), `qs` y `@grpc/grpc-js` sin break
 
 **Arreglo:** subir a ≥0.35.5, `limitInputPixels: 40_000_000` y rechazo por
 `width*height` antes de optimizar, `npm ci` en `functions/`, y corregir 10-salud.
-
-### B-2190 · En el detalle, un link privado de una plataforma desconocida pegado en la descripción se publica · P1 (auditoría 2026-10-19)
-
-`detalleDeActividad` (`detallePublico.ts:1525`) recibe la `ActividadPublica`, a la
-que `onlinePublico` ya le sacó la `url` cuando `urlPublica` es false: la lista de
-«conocidos» de D-1036 llega vacía justo en el caso privado, y solo protege el
-regex de hosts. Un `https://bbb.miescuela.edu.ar/b/tal-ler` pegado en la
-descripción sale en el HTML, la meta description y el JSON-LD.
-`tests/descripcionEnlazada.test.ts:247` cubre solo `urlPublica: true`.
-
-**Arreglo:** sanear `descripcion` en `toPublic`, que tiene el documento entero
-(lo mismo que B-2185 para el índice), con el caso que falta en el test.
 
 ### B-1235 · La imagen de una propuesta no queda en la actividad al promoverla · P1 — 🟡 arreglado y verificado por partes, falta una conversión real (2026-09-24)
 

@@ -22,7 +22,12 @@ export interface FuenteSearchText {
    * buscarse, y buscar por barrio es una de las formas en que alguien llega a una
    * actividad.
    */
-  modalidades?: readonly { sede?: { nombre?: string; barrio?: string } | null }[];
+  modalidades?: readonly {
+    sede?: { nombre?: string; barrio?: string } | null;
+    /** B-2185 — su `url` es lo que la descripción no puede llevar al índice. */
+    online?: { url?: unknown } | null;
+  }[];
+  online?: { url?: unknown } | null;
   /**
    * La sede **derivada** (la de la primera fila que tenga una). Se sigue leyendo
    * además de `modalidades` para los llamadores que solo tienen ese escalar —

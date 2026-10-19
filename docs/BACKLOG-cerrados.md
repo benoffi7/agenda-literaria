@@ -9176,6 +9176,28 @@ commits de `origin/main`) y la rama devuelta a su commit.
 Sin ítems abiertos desde el 2026-09-23. Los ya arreglados, con su prosa, están
 en [`BACKLOG-cerrados.md`](BACKLOG-cerrados.md) § «P0 — rompe algo o pierde datos».
 
+### B-2185 · Un link de reunión pegado en la descripción sale en `events.json` dentro de `searchText` · P0 — ✅ hecho (2026-10-19)
+
+Trampa 5. `buildSearchText` (`functions/busqueda.js:82`) mete `descripcion` sin
+sanear, y `searchText` se publica en `/events.json` (`toPublic.ts:701`,
+`eventsJson.ts:511`). `sinLinksDeReunion` corre solo en el detalle y en Calendar.
+Un «Nos vemos en https://meet.google.com/abc-defg-hij» sale entero: `normalize`
+solo pasa a minúsculas. B-1690 descartó sanear en `toPublic` porque «events.json
+no lleva la descripción»; `searchText` **es** la descripción normalizada.
+Confirmado leyendo los tres escritores (`functions/derivados.js:132`,
+`src/lib/actividades.ts:400`, `src/lib/historial.ts:627`).
+
+**Arreglo:** aplicar `sinLinksDeReunion(a.descripcion, linksDeReunionDe(a))`
+adentro de `buildSearchText`, con un caso en
+`tests/barrido-de-salidas-publicas.test.ts`, y recalcular el `searchText` de las
+publicadas (script de una vez o el servidor al próximo guardado).
+
+**Hecho:** `buildSearchText` sanea la descripción (sin el aviso, que no se
+busca); `tests/salidas/01-search-text.test.ts` lo fija con la mutación probada.
+Las ya guardadas se recalculan con `scripts/recalcular-search-text.mjs`, que
+escribe solo `searchText` (ni versión ni Calendar), ensayado contra el emulador
+—segunda corrida: 0—. Va **después** del deploy de functions.
+
 ## P1 — bloquean el objetivo del proyecto
 
 ### DEC-14 · ¿El correo registra quién lo abrió y qué clickeó? — ✅ resuelta (2026-09-23, D-802) · P1
@@ -15640,6 +15662,21 @@ destrabó el dueño con `npm run opciones:sembrar:prod` (creó el documento con 
 valores, sin tocar ningún otro) y otra sesión relanzó `push-main.yml` con
 `forzar_todo=true`: verde entero, y todo lo de B-2172 hasta `21183e1` en producción.
 Lo reportó esa sesión; se anota acá porque el BACKLOG estaba tomado.
+
+### B-2190 · En el detalle, un link privado de una plataforma desconocida pegado en la descripción se publica · P1 — ✅ hecho (2026-10-19)
+
+`detalleDeActividad` (`detallePublico.ts:1525`) recibe la `ActividadPublica`, a la
+que `onlinePublico` ya le sacó la `url` cuando `urlPublica` es false: la lista de
+«conocidos» de D-1036 llega vacía justo en el caso privado, y solo protege el
+regex de hosts. Un `https://bbb.miescuela.edu.ar/b/tal-ler` pegado en la
+descripción sale en el HTML, la meta description y el JSON-LD.
+`tests/descripcionEnlazada.test.ts:247` cubre solo `urlPublica: true`.
+
+**Arreglo:** sanear `descripcion` en `toPublic`, que tiene el documento entero
+(lo mismo que B-2185 para el índice), con el caso que falta en el test.
+
+**Hecho:** `toPublic` sanea `descripcion` con los `online.url` del documento;
+el caso con `urlPublica: false` está en `tests/descripcionEnlazada.test.ts`.
 
 ## P2 — mejoras reales
 

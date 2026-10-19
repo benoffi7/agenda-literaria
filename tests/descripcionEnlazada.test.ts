@@ -255,6 +255,22 @@ describe('el cableado en la página de detalle', () => {
       'bbb.miescuela',
     );
   });
+
+  it('el `online.url` **privado** de una plataforma desconocida tampoco sale (B-2190)', () => {
+    // El caso que importaba: con `urlPublica: false` la proyección ya le quitó la
+    // `url`, así que sanear solo en el detalle no tenía con qué comparar.
+    // Mutación probada: volver a `descripcion: a.descripcion` en `toPublic` lo pone rojo.
+    const base = actividadDePrueba({ modalidades: ['virtual'] });
+    const link = 'https://bbb.miescuela.edu.ar/b/tal-ler';
+    const modalidades = base.modalidades.map((m) =>
+      m.online ? { ...m, online: { ...m.online, url: link, urlPublica: false } } : m,
+    );
+    const d = detalleCon({ modalidades, descripcion: `Entrá a ${link} el martes` });
+    expect(
+      JSON.stringify([d.descripcion, d.descripcionEnlazada, d.resumen, d.meta, datosEstructurados(d)]),
+    ).not.toContain('bbb.miescuela');
+    expect(d.descripcion).toContain(AVISO_DE_REUNION);
+  });
 });
 
 /*

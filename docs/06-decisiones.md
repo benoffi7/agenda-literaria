@@ -13303,6 +13303,13 @@ aplica una vez en `detalleDeActividad`, antes de `resumenDe`, así que cubre el
 cuerpo, la `meta` y el JSON-LD. La lista de hosts está copiada porque `schema.ts`
 no la exporta, y un test compara las dos.
 
+> **Corregido por B-2185 y B-2190 (2026-10-19).** Aplicarlo solo en el detalle
+> dejaba dos huecos. El detalle recibe la proyección, a la que `onlinePublico` ya
+> le sacó la `url` privada, así que la coincidencia exacta llegaba vacía justo con
+> `urlPublica: false`: ahora sanea `toPublic`, que tiene el documento entero. Y el
+> `searchText` —que es la descripción normalizada y sale entero a `/events.json`—
+> no pasaba por acá: ahora lo sanea `buildSearchText`, sin el aviso.
+
 ## D-1040 · Lo que se pierde en Google se avisa en una fila propia de la barra, y no frena
 
 **B-813, 2026-09-24.** Cuando la barra ya no tiene nada que frene, aparece una fila

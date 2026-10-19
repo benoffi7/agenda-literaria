@@ -92,6 +92,11 @@ describe('las guardas de los scripts que escriben — B-630', () => {
        * sesiones (`modalidades` y `sede` están en la guarda del §7.1). La guarda
        * de los dos flags le corresponde entera y con margen.
        */
+      /*
+       * B-2185 — el `searchText` sin los links de reunión, para lo guardado
+       * antes del arreglo. Escribe solo ese campo: ni versión ni Calendar.
+       */
+      'scripts/recalcular-search-text.mjs',
       'scripts/reubicar-barrios.mjs',
       /*
        * B-919 / D-690 — el backfill de `ciudades`. Entró por esta puerta como
