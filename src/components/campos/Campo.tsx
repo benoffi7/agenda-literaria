@@ -100,11 +100,16 @@ export function Campo({
  * `text-base` a `text-sm` en sm evita el zoom automático de iOS al enfocar
  * (ver el comentario en global.css). `w-full` + `min-w-0` en el contenedor son
  * lo que impide que un campo largo desborde la grilla en pantalla angosta.
+ *
+ * **El foco es un anillo de `acento` pleno** (B-2199, WCAG 1.4.11 y 2.4.7). Antes
+ * era un anillo al 15 % —1,27:1 contra el blanco— más el cambio de borde de
+ * `borde` a `acento`, que da 1,49:1: quien navega con teclado no veía en qué campo
+ * estaba. `acento` sobre blanco da 6,33:1.
  */
 export const claseInput =
   'w-full min-w-0 min-h-touch rounded-md border border-borde bg-white px-3 py-2 ' +
   'text-base sm:text-sm placeholder:text-tinta/65 focus:border-acento ' +
-  'focus:outline-none focus:ring-2 focus:ring-acento/15 disabled:bg-black/[0.03]';
+  'focus:outline-none focus:ring-2 focus:ring-acento disabled:bg-black/[0.03]';
 
 /** Botón principal de una acción. */
 export const claseBoton =

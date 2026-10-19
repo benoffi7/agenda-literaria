@@ -18383,6 +18383,18 @@ analítica usan los mismos filtros diferidos que la lista.
 `tests/buscador-por-tecla.test.ts` fija la forma (mutación probada). **No se midió
 en un teléfono**: falta perfilarlo en uno de gama media para saber cuánto bajó.
 
+### B-2199 · El foco de los campos de formulario no llega a 3:1 · P2 — ✅ hecho (2026-10-19)
+
+`claseInput` (`src/components/campos/Campo.tsx:105`) hace `focus:outline-none` y
+deja solo el cambio de borde (1,49:1) y un anillo al 15 % (1,27:1). Lo usan
+`/proponer`, los cuatro `/sumar` y todo el panel. **Arreglo:**
+`focus-visible:outline-2 outline-acento outline-offset-1`, y sumarlo al chequeo de
+`lib/contraste.ts`.
+
+**Hecho:** `claseInput` usa `focus:ring-acento` pleno (6,33:1 sobre blanco).
+`tests/foco-de-los-campos.test.ts` lo mide con `lib/contraste.ts`, con el anillo
+viejo al 15 % como control que no llega (mutación probada).
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

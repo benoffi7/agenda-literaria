@@ -196,14 +196,6 @@ CI; un `functions/jsconfig.json` con `checkJs`, adoptado de a poco con
 `// @ts-check` empezando por `calendario.js`, `sincronizacion.js` y
 `calendario-trigger.js`.
 
-### B-2199 · El foco de los campos de formulario no llega a 3:1 · P2 (auditoría 2026-10-19)
-
-`claseInput` (`src/components/campos/Campo.tsx:105`) hace `focus:outline-none` y
-deja solo el cambio de borde (1,49:1) y un anillo al 15 % (1,27:1). Lo usan
-`/proponer`, los cuatro `/sumar` y todo el panel. **Arreglo:**
-`focus-visible:outline-2 outline-acento outline-offset-1`, y sumarlo al chequeo de
-`lib/contraste.ts`.
-
 ### B-2200 · `/proponer` repite ids y no tiene encabezado, pie ni GA · P2 (auditoría 2026-10-19)
 
 `FormularioPublico.tsx` (370, 441, 471, 504, 587) repite en el `<div>` el `id` que

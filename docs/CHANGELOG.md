@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Con teclado se ve en qué campo estás** (B-2199). El anillo de foco de los
+  formularios —el de proponer, los de sumar y todo el panel— pasó a terracota pleno;
+  antes era casi invisible.
+
 - **Pasar de la lista al calendario del panel ya no relee todo** (B-2203). Las vistas
   comparten la última lectura por dos minutos: son unas 550 lecturas de Firestore menos
   por cambio de vista. Guardar o salir del formulario siguen trayendo lo último.
