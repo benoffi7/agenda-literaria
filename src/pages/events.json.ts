@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { indiceDelSitio } from '@/lib/contenidoDelSitio';
+import { separarIndice } from '@/lib/eventsJson';
 
 /**
  * `/events.json` — el índice que el listado filtra en memoria — B-106.
@@ -27,6 +28,11 @@ import { indiceDelSitio } from '@/lib/contenidoDelSitio';
  * Firestore**, porque «seguir con lista vacía» es una respuesta que solo puede
  * dar él — es su valor de retorno.
  *
+ * ── Lleva lo vigente, no todo — B-2191, D-1276 ────────────────────────────
+ * Lo que terminó antes del mes pasado va a `/pasadas.json` (`separarIndice`).
+ * La home sigue haciendo un solo pedido; `/pasadas`, los favoritos y la frescura
+ * leen los dos. Las páginas que arma el build siguen usando el índice entero.
+ *
  * ── La cabecera de cache vive en `firebase.json` ──────────────────────────
  * En un sitio estático las cabeceras de esta `Response` solo valen en el dev
  * server. La de producción es la de `firebase.json` (`no-cache`), y con eso
@@ -36,7 +42,7 @@ import { indiceDelSitio } from '@/lib/contenidoDelSitio';
 export const prerender = true;
 
 export const GET: APIRoute = async () => {
-  const indice = await indiceDelSitio();
+  const { vigente: indice } = separarIndice(await indiceDelSitio());
 
   // B-2191 — sin sangría: la home baja y parsea este archivo en cada visita, y la
   // sangría eran 278 KB de espacios (un 35 % del archivo sin comprimir).

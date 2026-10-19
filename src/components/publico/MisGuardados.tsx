@@ -18,6 +18,7 @@ import {
 } from '@/lib/guardadosDelSitio';
 import { mapaDeEtiquetas, tonosDeTipo } from '@/lib/listadoPublico';
 import { RUTA_AGENDA } from '@/lib/rutasPublicas';
+import { pedirIndiceEntero } from '@/lib/indiceEntero';
 
 /**
  * La sección propia de lo guardado — B-848, D-630.
@@ -91,11 +92,8 @@ export function MisGuardados({ version }: Props) {
 
   useEffect(() => {
     let vigente = true;
-    fetch(`/events.json?v=${encodeURIComponent(version)}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<Indice>;
-      })
+    // B-2191 — `/events.json` lleva solo lo vigente; acá hace falta también lo pasado.
+    pedirIndiceEntero(version)
       .then((indice) => {
         if (vigente) setCarga({ estado: 'listo', indice });
       })

@@ -60,31 +60,27 @@ describe('origenesDeCors — los orígenes salen de cors.json', () => {
   });
 });
 
-describe('imagenDelBucket — qué imagen de events.json se le pide al bucket', () => {
-  it('toma la primera portada servida por el bucket de producción', () => {
-    const eventos = {
-      actividades: [
-        { imagenUrl: null },
-        { imagenUrl: 'https://otro-sitio.com/flyer.jpg' },
-        { imagenUrl: url(BUCKET, 'imagenes%2Fprimera.png') },
-        { imagenUrl: url(BUCKET, 'imagenes%2Fsegunda.png') },
-      ],
-    };
-    expect(imagenDelBucket(eventos, BUCKET)).toBe(url(BUCKET, 'imagenes%2Fprimera.png'));
+describe('imagenDelBucket — qué imagen de la cartelera se le pide al bucket (B-2191)', () => {
+  it('toma la primera imagen servida por el bucket de producción', () => {
+    const html =
+      '<img src="https://otro-sitio.com/flyer.jpg">' +
+      `<img src="${url(BUCKET, 'imagenes%2Fprimera.png').replaceAll('&', '&amp;')}">` +
+      `<img src="${url(BUCKET, 'imagenes%2Fsegunda.png')}">`;
+    // Mutación probada: no devolver las `&amp;` a `&` pone esto rojo.
+    expect(imagenDelBucket(html, BUCKET)).toBe(url(BUCKET, 'imagenes%2Fprimera.png'));
+  });
+
+  it('también la encuentra en un srcset', () => {
+    const html = `<img srcset="https://x.com/a.png 480w, ${url(BUCKET)} 1080w">`;
+    expect(imagenDelBucket(html, BUCKET)).toBe(url(BUCKET));
   });
 
   it('una imagen de OTRO bucket no sirve: su CORS no es el que se está verificando', () => {
-    expect(imagenDelBucket({ actividades: [{ imagenUrl: url('otro-bucket.appspot.com') }] }, BUCKET)).toBeNull();
+    expect(imagenDelBucket(`<img src="${url('otro-bucket.appspot.com')}">`, BUCKET)).toBeNull();
   });
 
-  it('si la proyección vuelve a llevar la galería, también la mira', () => {
-    const eventos = { actividades: [{ imagenUrl: null, imagenes: [{ url: 'https://x.com/a.png' }, { url: url(BUCKET) }] }] };
-    expect(imagenDelBucket(eventos, BUCKET)).toBe(url(BUCKET));
-  });
-
-  it('sin actividades, o con un JSON que no tiene la forma, devuelve null en vez de romper', () => {
-    expect(imagenDelBucket({ actividades: [] }, BUCKET)).toBeNull();
-    expect(imagenDelBucket({}, BUCKET)).toBeNull();
+  it('sin imágenes, o con algo que no es texto, devuelve null en vez de romper', () => {
+    expect(imagenDelBucket('<main></main>', BUCKET)).toBeNull();
     expect(imagenDelBucket(null, BUCKET)).toBeNull();
   });
 

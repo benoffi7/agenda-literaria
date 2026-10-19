@@ -1,5 +1,6 @@
 import { nombreDeOrganizador } from '@/lib/organizador.mjs';
 import { modalidadesQueOfrece } from '@/lib/modalidades';
+import { claveDeMes, mesDesplazado } from '@/lib/fechasPublicas';
 import { opcionesPublicas, type ActividadPublica, type OpcionPublica } from '@/lib/toPublic';
 import type { CampoTaxonomia, ValorOpcion } from '@/types/actividad';
 
@@ -493,3 +494,72 @@ export const construirIndice = ({
   ),
   encuentros: encuentrosDelIndice(actividades, generadoEn),
 });
+
+// ─────────────────────────────────────────────────────────────────
+// El índice partido: lo vigente y lo pasado — B-2191, D-1276
+// ─────────────────────────────────────────────────────────────────
+
+/** El archivo con lo que terminó antes del mes pasado. Lo leen `/pasadas` y los favoritos. */
+export const RUTA_INDICE_PASADO = '/pasadas.json';
+
+/**
+ * El mes desde el que una actividad sigue en `/events.json`: **el mes pasado**,
+ * en hora argentina, contado desde el `generadoEn` del build. Decisión del dueño
+ * del 2026-10-19: el filtro «Cuándo» de la home ofrece desde el mes pasado; lo
+ * anterior se busca en «Lo que ya pasó».
+ */
+export const mesDeCorte = (generadoEn: string): string => {
+  const d = new Date(generadoEn);
+  // Sin fecha legible (el build local sin credenciales) no se parte nada: `''` es
+  // menor que cualquier clave de mes, así que todo queda vigente, como antes.
+  if (Number.isNaN(d.getTime())) return '';
+  return mesDesplazado(claveDeMes(d), -1);
+};
+
+/**
+ * ¿La entrada sigue en el índice de la home? Sí si **alguna** fecha de alguna
+ * sesión —inicio o fin, cancelada o no— cae en el mes de corte o después, o si no
+ * tiene fechas. Mirar todas y no solo la última hace que un ciclo con un encuentro
+ * en el mes de corte quede entero en la home, que es donde el filtro lo busca.
+ */
+export const esVigente = (e: EntradaDeIndice, corte: string): boolean => {
+  const fechas = e.sesiones.flatMap((s) => [s.inicio, s.fin]).filter(Boolean);
+  if (fechas.length === 0) return true;
+  return fechas.some((iso) => {
+    const d = new Date(iso);
+    return !Number.isNaN(d.getTime()) && claveDeMes(d) >= corte;
+  });
+};
+
+/**
+ * **El índice en dos archivos** — B-2191, D-1276.
+ *
+ * `/events.json` llevaba todo el histórico: con 519 actividades, 382 ya
+ * terminadas, y la home lo baja en cada visita. Ahora `vigente` va a
+ * `/events.json` —la home sigue haciendo **un solo pedido**, §2.5— y `pasado` a
+ * `/pasadas.json`. Los dos tienen la misma forma y las mismas opciones, para que
+ * quien necesite todo (`/pasadas`, los favoritos, la frescura) los una con
+ * `unirIndices` sin saber cómo se partió.
+ *
+ * El eje de encuentros (B-99) va solo en el vigente: es lo que alimenta «¿Qué hay
+ * ahora?», y lo pasado no tiene nada que decirle.
+ */
+export const separarIndice = (indice: Indice): { vigente: Indice; pasado: Indice } => {
+  const corte = mesDeCorte(indice.generadoEn);
+  const vigentes = indice.actividades.filter((e) => esVigente(e, corte));
+  const pasadas = indice.actividades.filter((e) => !esVigente(e, corte));
+  return {
+    vigente: { ...indice, actividades: vigentes },
+    pasado: { ...indice, actividades: pasadas, encuentros: [] },
+  };
+};
+
+/**
+ * Los dos archivos, juntos otra vez. Si uno no llegó (`null`), se usa el otro: un
+ * `/pasadas.json` caído no puede dejar sin nada a quien solo buscaba algo de ahora.
+ */
+export const unirIndices = (vigente: Indice | null, pasado: Indice | null): Indice | null => {
+  if (!vigente) return pasado;
+  if (!pasado) return vigente;
+  return { ...vigente, actividades: [...vigente.actividades, ...pasado.actividades] };
+};

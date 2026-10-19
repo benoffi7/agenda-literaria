@@ -99,23 +99,25 @@ export const bucketDeUrl = (url) => {
 };
 
 /**
- * La primera imagen de `events.json` que sirve el bucket `bucket`.
+ * La primera imagen de la **cartelera** que sirve el bucket `bucket`.
  *
- * Lee `imagenUrl` —la portada, que es lo que el JSON público lleva hoy— y, por
- * si la proyección vuelve a tener la galería entera, también `imagenes[].url`.
- * Una imagen externa (un link de otro sitio, D-125) no sirve: su CORS no es el
- * nuestro.
+ * Hasta B-2191 la tomaba de `imagenUrl` del `events.json`, que ya no lleva imagen:
+ * la cartelera es la página que muestra todos los afiches, así que es la que
+ * siempre tiene una. Lee los `src` y los `srcset` del HTML; las `&amp;` del
+ * atributo se devuelven a `&`, que es la URL que el navegador pide. Una imagen
+ * externa (un link de otro sitio, D-125) no sirve: su CORS no es el nuestro.
  *
- * @param {unknown} eventos `events.json` ya parseado
+ * @param {unknown} html la cartelera, como texto
  * @param {string} bucket el bucket esperado
  * @returns {string|null}
  */
-export const imagenDelBucket = (eventos, bucket) => {
-  const actividades = eventos && Array.isArray(eventos.actividades) ? eventos.actividades : [];
-  for (const a of actividades) {
-    const candidatas = [a?.imagenUrl, ...(Array.isArray(a?.imagenes) ? a.imagenes.map((i) => i?.url) : [])];
-    const buena = candidatas.find((u) => bucketDeUrl(u) === bucket);
-    if (buena) return buena;
+export const imagenDelBucket = (html, bucket) => {
+  if (typeof html !== 'string') return null;
+  for (const m of html.matchAll(/\s(?:src|srcset)="([^"]+)"/g)) {
+    for (const parte of m[1].split(',')) {
+      const candidata = parte.trim().split(/\s+/)[0]?.replaceAll('&amp;', '&');
+      if (bucketDeUrl(candidata) === bucket) return candidata;
+    }
   }
   return null;
 };
@@ -173,26 +175,26 @@ const main = async () => {
 
   const bucket = bucketDeProduccion();
   const origenes = origenesDeCors(JSON.parse(leer('cors.json')));
-  console.log(`CORS del bucket ${bucket ?? '(sin bucket)'} · imagen tomada de ${SITIO}/events.json\n`);
+  console.log(`CORS del bucket ${bucket ?? '(sin bucket)'} · imagen tomada de ${SITIO}/cartelera/\n`);
 
   let imagen = null;
   if (!bucket) {
     anotar('el bucket', { estado: 'saltado', detalle: 'no se pudo leer PUBLIC_FIREBASE_STORAGE_BUCKET de .env.production' });
   } else {
     try {
-      const r = await fetch(`${SITIO}/events.json`);
+      const r = await fetch(`${SITIO}/cartelera/`);
       if (r.status !== 200) throw new Error(`HTTP ${r.status}`);
-      imagen = imagenDelBucket(await r.json(), bucket);
+      imagen = imagenDelBucket(await r.text(), bucket);
       if (!imagen) {
         anotar('una imagen del bucket', {
           estado: 'saltado',
-          detalle: `events.json no tiene ninguna imagen servida por ${bucket}: no hay qué pedirle`,
+          detalle: `la cartelera no tiene ninguna imagen servida por ${bucket}: no hay qué pedirle`,
         });
       } else {
         console.log(`Imagen: ${sinQuery(imagen)}\n`);
       }
     } catch (e) {
-      anotar('events.json', { estado: 'saltado', detalle: `no se pudo bajar: ${e instanceof Error ? e.message : String(e)}` });
+      anotar('la cartelera', { estado: 'saltado', detalle: `no se pudo bajar: ${e instanceof Error ? e.message : String(e)}` });
     }
   }
 

@@ -92,6 +92,13 @@ export const SLUG_BORRADOR = `${PREFIJO}borrador`;
 export const SLUG_CANCELADA = `${PREFIJO}cancelada`;
 export const SLUG_CANCELADA_NUNCA = `${PREFIJO}cancelada-nunca`;
 export const SLUG_GALERIA = `${PREFIJO}galeria`;
+/**
+ * B-2191 — la publicada que terminó hace cuatro meses: tiene que salir en
+ * `/pasadas.json` y **no** en `/events.json` (D-1276). Sin ella, el gate solo
+ * vería actividades de mañana y la separación pasaría sin haber separado nada.
+ */
+export const ID_ANTIGUA = `${PREFIJO}antigua`;
+export const SLUG_ANTIGUA = `${PREFIJO}antigua`;
 
 /**
  * **Las dos librerías del gate** — B-901.
@@ -1280,8 +1287,19 @@ export const documentosDeLaSemilla = ({
   // B-1572 — y el único encuentro cancelado del gate, con su motivo.
   galeria.sesiones = [...galeria.sesiones, encuentroCanceladoDelGate()];
 
+  const antigua = actividadDePrueba(SLUG_ANTIGUA, 'publicado');
+  antigua.titulo = 'Gate mecanico — terminada hace meses';
+  antigua.sesiones = antigua.sesiones.map((s) => ({
+    ...s,
+    id: 'ses_gate.antigua',
+    inicio: enUnaHora(-24 * 120),
+    fin: enUnaHora(-24 * 120 + 2),
+    calendarEventId: null,
+  }));
+
   return [
     [`actividades/${ID_PUBLICADA}`, publicada],
+    [`actividades/${ID_ANTIGUA}`, antigua],
     [`actividades/${ID_BORRADOR}`, actividadDePrueba(SLUG_BORRADOR, 'borrador')],
     [`actividades/${ID_CANCELADA}`, cancelada],
     // Y la que nunca lo estuvo: sin id de evento y sin historial.

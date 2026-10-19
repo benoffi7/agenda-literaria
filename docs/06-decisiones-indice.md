@@ -338,6 +338,7 @@ cambio.
 - [D-1273](06-decisiones.md#d-1273--el-re-sync-por-renombre-de-etiqueta-corta-por-tiempo-no-por-cantidad) · El re-sync por renombre de etiqueta corta por tiempo, no por cantidad
 - [D-1274](06-decisiones.md#d-1274--la-guía-se-llama-espacios-y-agrupa-por-para-qué-vas-la-url-sigue-en-guia) · La Guía se llama «Espacios» y agrupa por para qué vas; la URL sigue en `/guia`
 - [D-1275](06-decisiones.md#d-1275--el-rebuild-por-contenido-publica-datos-nunca-código) · El rebuild por contenido publica datos, nunca código
+- [D-1276](06-decisiones.md#d-1276--el-índice-público-va-en-dos-archivos-lo-vigente-y-lo-pasado) · El índice público va en dos archivos: lo vigente y lo pasado
 
 ## Otras secciones del registro
 

@@ -18427,6 +18427,38 @@ versión al lado (`checkout` v4.4.0, `setup-node` v4.4.0, `setup-java` v4.9.1,
 `tests/workflows.test.ts` exige el SHA en todo `uses:` (mutación probada).
 Actualizarlas es a mano: no se sumó Dependabot.
 
+### B-2191 · `events.json` lleva todo el histórico y crece sin tope · P2 — ✅ hecho (2026-10-19)
+
+Producción, 2026-10-18: 1.080.883 B (168 KB gzip), 519 actividades, 382 ya
+terminadas (534 KB del array). `imagenUrl` ocupa 94 KB y no tiene lector
+(`eventsJson.ts:385`); el `JSON.stringify(…, null, 2)` suma 278 KB sin comprimir.
+La home lo baja en cada visita y `/pasadas` lo baja entero aunque ya trae las 382
+filas en el HTML. **Arreglo:** partir en vigentes + `pasadas.json`, sacar
+`imagenUrl`, emitir minificado, y que `/pasadas` haga el fetch al usar el
+buscador. Actualizar el barrido de salidas y el gate post-build.
+
+**Primera mitad, hecha (2026-10-19):** el índice ya no lleva `imagenUrl` (sin
+lector desde D-146) y sale sin sangría. Medido sobre el `events.json` de
+producción de ese día: 1.077.648 → 704.955 B sin comprimir (−35 %), 168 → 133 KB
+gzip (−21 %). El barrido detectó solo la excepción que sobraba; el gate pasa.
+
+**Falta:** partirlo en vigentes y `pasadas.json`. Lo leen la home (`Buscador`,
+`PanelesDeAhora`), `/pasadas`, `MisGuardados`, el panel (`useIndicePublicado`,
+el boletín, Estadísticas), el correo semanal y `verificarFrescuraDelSitio`, que
+compara el índice contra las publicadas: cada uno tiene que decir cuál de los dos
+lee, y la frescura, contra la unión.
+
+**Segunda mitad, hecha (D-1276):** el dueño eligió que la home ofrezca desde el
+mes pasado. `separarIndice` parte el índice en `/events.json` (vigente) y
+`/pasadas.json`; `/pasadas` y los favoritos los piden juntos, la frescura compara
+contra la unión, el panel se queda con el vigente. El gate siembra una actividad
+de hace cuatro meses y exige que esté en `pasadas.json` y no en `events.json`;
+los dos archivos se barren con la misma canasta. `tests/indice-partido.test.ts`
+(corte por mes en hora argentina, cruce de año, ciclo que cruza el corte; mutación
+probada). De rebote se arregló `scripts/cors-del-bucket.mjs`, que sacaba la
+imagen del índice y desde la primera mitad quedaba siempre «saltado»: ahora la
+toma de la cartelera, probado contra producción (5 verificados).
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

@@ -271,6 +271,29 @@ export const leerIndice = (texto) => {
   };
 };
 
+/**
+ * **Las dos mitades del índice, como una sola lectura** — B-2191, D-1276.
+ *
+ * Desde que `/events.json` lleva solo lo vigente, lo publicado se compara contra
+ * la unión con `/pasadas.json`. Si cualquiera de las dos no se pudo leer, la
+ * lectura entera cuenta como fallida: comparar contra una mitad haría que cada
+ * actividad terminada saliera como «falta en el sitio» y el chequeo gritaría
+ * un atraso que no existe. El `generadoEn` y la `version` son los del vigente,
+ * que es el que se arma con lo último.
+ *
+ * @param {ReturnType<typeof leerIndice>} vigente
+ * @param {ReturnType<typeof leerIndice>} pasado
+ */
+export const unirLecturas = (vigente, pasado) => {
+  if (!vigente.ok) return vigente;
+  if (!pasado.ok) return pasado;
+  return {
+    ...vigente,
+    slugs: [...vigente.slugs, ...pasado.slugs],
+    idPorSlug: { ...pasado.idPorSlug, ...vigente.idPorSlug },
+  };
+};
+
 /* ──────────────────────────────────────────────────────────────────────────
  * Comparar
  * ────────────────────────────────────────────────────────────────────────── */

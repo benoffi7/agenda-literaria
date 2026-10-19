@@ -25,6 +25,7 @@ import {
   issueDeAtraso,
   issueDeSinLectura,
   leerIndice,
+  unirLecturas,
   MOTIVOS,
   registrarFalloDeLectura,
   TOPE_DE_VISTAS,
@@ -665,7 +666,7 @@ describe('el trigger mide el efecto, y lo mide bien', () => {
    * `sobrante` fantasma que el propio chequeo fabricó.
    */
   it('lee el índice ANTES que Firestore, para que la foto de Firestore nunca sea la vieja', () => {
-    const indiceEn = trigger.indexOf('await leerElIndice(');
+    const indiceEn = trigger.indexOf('leerElIndice(`${sitio}/events.json`)');
     const firestoreEn = trigger.indexOf('await leerPublicadas(');
     expect(indiceEn).toBeGreaterThan(0);
     expect(firestoreEn).toBeGreaterThan(indiceEn);
@@ -679,6 +680,9 @@ describe('el trigger mide el efecto, y lo mide bien', () => {
    */
   it('pide la misma URL que el público, sin esquivar la cache del CDN', () => {
     expect(trigger).toContain('/events.json`');
+    // B-2191 — y la otra mitad del índice, igual.
+    expect(trigger).toContain('/pasadas.json`');
+    expect(trigger).not.toMatch(/pasadas\.json\?[^`'"]/);
     expect(trigger).not.toMatch(/events\.json\?[^`'"]/);
     expect(trigger).not.toContain('Cache-Control');
   });
@@ -982,7 +986,7 @@ describe('B-886 — el índice contra el último despacho ve la edición', () =>
     const trigger = codigo('functions/frescura-trigger.js');
 
     it('lee el despacho después del índice, como el resto de Firestore', () => {
-      const indiceEn = trigger.indexOf('await leerElIndice(');
+      const indiceEn = trigger.indexOf('leerElIndice(`${sitio}/events.json`)');
       const despachoEn = trigger.indexOf('await leerDespacho(');
       expect(despachoEn).toBeGreaterThan(indiceEn);
       expect(indiceEn).toBeGreaterThan(0);
@@ -996,5 +1000,22 @@ describe('B-886 — el índice contra el último despacho ve la edición', () =>
       expect(trigger).toMatch(/compararMarcas\(\{ generadoEn: indice\.generadoEn/);
       expect(trigger).toMatch(/compararFrescura\(\{[\s\S]*?\bmarcas,/);
     });
+  });
+});
+
+describe('las dos mitades del índice — B-2191', () => {
+  const ok = (slugs: string[]) => ({ ok: true as const, slugs, idPorSlug: {}, generadoEn: 'g', version: 'v' });
+  const roto = { ok: false as const, motivo: 'http', detalle: 'HTTP 404' };
+
+  it('une los slugs de las dos', () => {
+    const r = unirLecturas(ok(['a']), ok(['b'])) as { ok: true; slugs: string[] };
+    expect(r.ok).toBe(true);
+    expect(r.slugs).toEqual(['a', 'b']);
+  });
+
+  it('si falta la de pasadas, la lectura falla: comparar contra media daría «faltan» falsos', () => {
+    // Mutación probada: devolver el vigente cuando falla el pasado pone esto rojo.
+    expect(unirLecturas(ok(['a']), roto as never)).toEqual(roto);
+    expect(unirLecturas(roto as never, ok(['b']))).toEqual(roto);
   });
 });

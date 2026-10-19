@@ -94,10 +94,16 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+// B-2191 — `/pasadas.json` devuelve la otra mitad, vacía acá: el fixture entero
+// ya viaja en `/events.json`, y repetirlo duplicaría las filas.
 const conFetch = (respuesta: () => Promise<unknown>) => {
   vi.stubGlobal(
     'fetch',
-    vi.fn(() => respuesta()),
+    vi.fn((url: string) =>
+      String(url).startsWith('/pasadas.json')
+        ? Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ ...indice(), actividades: [], encuentros: [] }) })
+        : respuesta(),
+    ),
   );
 };
 
@@ -167,16 +173,16 @@ describe('BuscadorDePasadas — el cableado, B-292', () => {
     expect(document.getElementById(ID_LISTADO)).toBe(delBuild);
   });
 
-  it('pide el `events.json` una sola vez y con la versión del build', async () => {
-    // El §2.5 y el §9: **un solo fetch**, cacheado, con el `?v=` que blinda contra
-    // un intermediario que sirva el JSON del build anterior.
+  it('pide las dos mitades del índice una vez cada una y con la versión del build', async () => {
+    // El §9: cacheado, con el `?v=` que blinda contra un intermediario que sirva el
+    // JSON del build anterior. Desde B-2191 son dos —`/pasadas` necesita lo que
+    // terminó antes del mes pasado—, en paralelo; la home sigue con uno solo.
     conFetch(ok);
     montarListaDelBuild();
     render(<BuscadorDePasadas version="9.9.9" idListadoEstatico={ID_LISTADO} />);
     await waitFor(() => expect(screen.getByText('Taller de crónica')).toBeDefined());
 
     const llamadas = (globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls;
-    expect(llamadas).toHaveLength(1);
-    expect(llamadas[0]![0]).toBe('/events.json?v=9.9.9');
+    expect(llamadas.map((c) => c[0]).sort()).toEqual(['/events.json?v=9.9.9', '/pasadas.json?v=9.9.9']);
   });
 });

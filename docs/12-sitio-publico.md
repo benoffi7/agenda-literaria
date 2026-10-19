@@ -165,7 +165,7 @@ de los datos.
 | `/online` | Hub de lo que se hace a distancia (`virtual` + `hibrido`) | Build |
 | `/gratis` | Hub de lo que no se paga (`gratis` + `a-la-gorra`) | Build |
 | `/agenda/{aaaa-mm}` | Qué hay en un mes | Build. Solo meses vigentes con **3 o más** actividades |
-| `/pasadas` | Archivo: lo que ya pasó, por mes, de lo más reciente a lo más viejo. **Con buscador desde B-292** (D-381) | Build. La island: `events.json` |
+| `/pasadas` | Archivo: lo que ya pasó, por mes, de lo más reciente a lo más viejo. **Con buscador desde B-292** (D-381) | Build. La island: `events.json` + `pasadas.json` (D-1276) |
 | `/cartelera` | La pared de afiches: solo las actividades con flyer, la imagen entera | Build. **No estaba en este diseño** — D-148 |
 | `/suscribirse` | Cómo suscribirse al Google Calendar público. **Era `/calendario`** — D-134 | Estático, escrito a mano (`src/lib/enlaces.ts` pone las direcciones) |
 | `/ayuda` | Qué es esto, qué tipos de actividad hay, cómo se lee una ficha | Estático (`src/lib/ayudaDelSitio.ts`) |
@@ -192,7 +192,8 @@ de los datos.
 | `/efemerides` | **Las efemérides**, agrupadas por mes y ordenadas por día, cada una con su ancla (`#dia-09-25`). **No estaba en este diseño** — B-959, decisión del dueño del 2026-09-25. Sin island: no hay nada que filtrar. **Vacía va con `noindex` y fuera del sitemap** (el criterio de los hubs vacíos) | Build (`efemeridesDelSitio`) |
 | `/efemerides/{slug}` | La página de una efeméride: el título, «26 de agosto de 1914», el dato, la fuente con su link si tiene, y las otras del mismo mes. **Cero JavaScript**, con `BreadcrumbList` — B-959 | Build (`caminosDeEfemeride`) |
 | `/efemerides.json` | **Todas** las efemérides publicadas, con lo mínimo para el renglón de la home (slug, título, día, mes, año). El navegador elige la de hoy: el build no sabe qué día va a ser (B-959, D-1173) | Build |
-| `/events.json` | El índice que la island filtra en memoria (§2.5) | Build (ver [§3](#3-los-datos)) |
+| `/events.json` | El índice que la island filtra en memoria (§2.5). **Desde D-1276, solo lo que termina desde el mes pasado** | Build (ver [§3](#3-los-datos)) |
+| `/pasadas.json` | La otra mitad del índice: lo que terminó antes del mes pasado, con la misma forma. Lo leen `/pasadas`, los favoritos y la frescura; la home no (D-1276) | Build |
 | `/sitemap.xml` · `/robots.txt` | Para el buscador | Build (B-109) |
 | `/404.html` | La dirección que no existe: buscador, la tira de hubs y el enlace al archivo. **Cero JavaScript.** Firebase la sirve como cuerpo de cualquier ruta que no encuentre (B-310). Desde B-900 la tira termina con las secciones de la Guía **que tienen fichas publicadas** | Build. La tira sale de `exploracionDeLaHome` más `grupoDeLaGuia` (con los conteos de `fichasPorDirectorio`, en `src/lib/contenidoDeLaGuia.ts`); las frases, de `src/lib/noEncontrado.ts` |
 
@@ -2218,7 +2219,7 @@ link de Instagram, dentro de un navegador embebido.
 |---|---|---|
 | `/_astro/**` | `max-age=31536000, immutable` | ya está: llevan hash |
 | HTML | `no-cache` | ya está: revalida en cada visita, así un rebuild se ve |
-| `/events.json` | `no-cache` | **cierra B-37.** No lleva hash en el nombre y cambia en cada rebuild. Un `max-age` corto haría que la lista del JSON contradiga al HTML |
+| `/events.json` y `/pasadas.json` | `no-cache` | **cierra B-37.** No lleva hash en el nombre y cambia en cada rebuild. Un `max-age` corto haría que la lista del JSON contradiga al HTML |
 | `**/*.ics` | `no-cache` | **roadmap 1.1.** El `.ics` de un encuentro tiene URL fija (el id de sesión no cambia) y su contenido cambia si se edita la fecha o la sede: sin esto, alguien podía agendarse el horario viejo desde la caché. Lo señaló el `auditor-trampas` |
 | `/og/*.png` | `max-age=31536000, immutable` | archivos fijos del repo |
 

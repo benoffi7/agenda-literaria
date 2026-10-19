@@ -51,6 +51,7 @@ import { ListaDeActividades } from '@/components/publico/ListaDeActividades';
 import { claseCampo, claseEtiquetaDeCampo } from '@/components/sitio/estilos';
 import type { Indice } from '@/lib/eventsJson';
 import { mapaDeEtiquetas, tonosDeTipo } from '@/lib/listadoPublico';
+import { pedirIndiceEntero } from '@/lib/indiceEntero';
 import {
   buscarEnPasadas,
   cuentaDePasadas,
@@ -91,11 +92,8 @@ export function BuscadorDePasadas({ version, idListadoEstatico }: Props) {
   // ── El fetch, una sola vez ──────────────────────────────────────────────
   useEffect(() => {
     let vigente = true;
-    fetch(`/events.json?v=${encodeURIComponent(version)}`)
-      .then((r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json() as Promise<Indice>;
-      })
+    // B-2191 — `/events.json` lleva solo lo vigente; acá hace falta también lo pasado.
+    pedirIndiceEntero(version)
       .then((indice) => {
         if (!vigente) return;
         setCarga({ estado: 'listo', indice });

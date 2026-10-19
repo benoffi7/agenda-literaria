@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **La home baja solo lo que viene y el mes pasado** (B-2191, D-1276). Lo anterior se
+  busca en «Lo que ya pasó», que junto con los favoritos baja también el archivo de lo
+  viejo. El filtro «Cuándo» de la home ofrece desde el mes pasado en adelante.
+
 - **Las Actions de GitHub que publican el sitio van fijadas a una versión exacta**
   (B-2197). Antes apuntaban a un tag que su dueño puede mover, y una de ellas recibe
   la credencial de deploy.

@@ -51,7 +51,8 @@ export const canastaDe = (relativa) => {
   // Antes que la página: el `.ics` vive bajo `actividad/` y lleva mucho menos.
   if (relativa.startsWith('actividad/') && relativa.endsWith('.ics')) return CENTINELA_DEL_ICS;
   if (relativa.startsWith('actividad/')) return CENTINELA_DEL_DETALLE;
-  if (relativa === 'events.json') return CENTINELA_DEL_INDICE;
+  // B-2191 — `/pasadas.json` es la otra mitad del índice: misma canasta.
+  if (relativa === 'events.json' || relativa === 'pasadas.json') return CENTINELA_DEL_INDICE;
   if (relativa.startsWith('cartelera/')) return CENTINELA_DE_LA_CARTELERA;
   if (deLaGuia('librerias')) return CENTINELA_DEL_DIRECTORIO;
   if (deLaGuia('suscripciones')) return CENTINELA_DE_SUSCRIPCIONES;
@@ -135,7 +136,8 @@ export const barrerArtefacto = (archivos) => {
   for (const { relativa, contenido: crudo } of archivos) {
     const permitido = canastaDe(relativa);
     const contenido = relativa.endsWith('.ics') ? textoDelIcs(crudo) : crudo;
-    const indice = relativa === 'events.json' ? partirIndice(crudo) : null;
+    const indice =
+      relativa === 'events.json' || relativa === 'pasadas.json' ? partirIndice(crudo) : null;
     for (const [campo, valor] of Object.entries(CENTINELA)) {
       const aparece = indice
         ? centinelaEnElIndice(indice, campo, valor)

@@ -14176,3 +14176,29 @@ publicado, así que un paso nuevo que llame a un script nuevo falla hasta que
 Queda la carrera en la que el hosting de `push-main` termina después de un rebuild
 más nuevo y publica datos de unos minutos antes; la detecta
 `verificarFrescuraDelSitio`.
+
+---
+
+## D-1276 · El índice público va en dos archivos: lo vigente y lo pasado
+
+**B-2191, 2026-10-19, con la decisión del dueño del mismo día.** `/events.json`
+llevaba todo el histórico: con 519 actividades, 382 terminadas, y la home lo
+baja en cada visita. El filtro «Cuándo» de la home ofrecía todos los meses que
+tuvieron actividad, también los viejos, y por eso necesitaba todo.
+
+**Qué decidió el dueño:** la home ofrece desde **el mes pasado** en adelante; lo
+anterior se busca en «Lo que ya pasó».
+
+**Qué cambia:** `separarIndice` (`src/lib/eventsJson.ts`) parte el índice del
+build: `/events.json` lleva toda actividad con alguna fecha en el mes pasado
+(hora argentina, contado desde el `generadoEn`) o después, o sin fechas;
+`/pasadas.json`, el resto, con la misma forma y las mismas opciones. La home
+sigue haciendo **un solo pedido** (§2.5). `/pasadas` y los favoritos piden los
+dos en paralelo (`pedirIndiceEntero`); `verificarFrescuraDelSitio` compara contra
+la unión (`unirLecturas`), y si falta una mitad cuenta como lectura fallida, no
+como atraso. El panel (aviso de duplicados, boletín) mira solo lo que viene y se
+queda con `/events.json`. Las páginas que arma el build siguen usando el índice
+entero.
+
+**Qué no cambia:** las páginas de detalle, de mes y `/pasadas` existen igual; lo
+que se mueve es qué JSON baja cada island.

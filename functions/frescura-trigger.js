@@ -67,6 +67,7 @@ import {
   issueDeAtraso,
   issueDeSinLectura,
   leerIndice,
+  unirLecturas,
   MOTIVOS,
   registrarFalloDeLectura,
 } from './frescura.js';
@@ -282,13 +283,20 @@ export const verificarFrescuraDelSitio = onSchedule(OPCIONES, async () => {
     logger.info('chequeo de frescura sin SITIO_PUBLICO configurado (B-882)');
     return;
   }
-  const url = `${SITIO_PUBLICO.replace(/\/$/, '')}/events.json`;
+  const sitio = SITIO_PUBLICO.replace(/\/$/, '');
 
   const snapPrevio = await ref.get();
   const previo = snapPrevio.exists ? snapPrevio.data() : null;
 
   // ── 1. El efecto: lo que el público ve ──────────────────────────────────
-  const indice = await leerElIndice(url);
+  // B-2191 — el índice viene en dos archivos; se compara contra los dos juntos.
+  const [vigente, pasado] = await Promise.all([
+    leerElIndice(`${sitio}/events.json`),
+    leerElIndice(`${sitio}/pasadas.json`),
+  ]);
+  const indice = unirLecturas(vigente, pasado);
+  // La que se nombra en el log y en el aviso: la que falló, si falló alguna.
+  const url = `${sitio}/${vigente.ok && !pasado.ok ? 'pasadas' : 'events'}.json`;
   if (!indice.ok) {
     /*
      * §4 — el chequeo **no grita cuando el roto es él**. El veredicto anterior no

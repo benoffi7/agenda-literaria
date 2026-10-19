@@ -8,6 +8,7 @@ import {
   ID_DE_SESION_QUE_SALE,
   PROVINCIA_DEL_GATE,
   SLUG_AFUERA,
+  SLUG_ANTIGUA,
   SLUG_BORRADOR,
   SLUG_CANCELADA,
   SLUG_CANCELADA_NUNCA,
@@ -97,6 +98,24 @@ export const chequear = async (ctx) => {
       'el events.json NO trae el eje de encuentros de B-99: falta el id de sesión.\n' +
         '  Es lo que alimenta el tríptico «¿Qué hay ahora?» de la home (B-600).',
     );
+  }
+
+  // 3c · B-2191 — la separación: la que terminó hace meses está en
+  // `/pasadas.json` y no en `/events.json`, y la de mañana al revés (D-1276).
+  const crudoPasado = await leerDist('pasadas.json');
+  if (crudoPasado === null) {
+    fallo('no se generó dist/pasadas.json: /pasadas y los favoritos se quedan sin lo viejo.');
+  } else {
+    const slugsPasados = (JSON.parse(crudoPasado).actividades ?? []).map((a) => a.slug);
+    if (slugs.includes(SLUG_ANTIGUA) || !slugsPasados.includes(SLUG_ANTIGUA)) {
+      fallo(
+        `la actividad terminada hace meses (${SLUG_ANTIGUA}) tenía que estar en pasadas.json ` +
+          'y no en events.json (B-2191, D-1276).',
+      );
+    }
+    if (slugsPasados.includes(SLUG_PUBLICADA)) {
+      fallo(`la actividad de mañana (${SLUG_PUBLICADA}) salió en pasadas.json (B-2191).`);
+    }
   }
 
   // 3 · Ningún centinela de los campos recortados sobrevivió al archivo.
