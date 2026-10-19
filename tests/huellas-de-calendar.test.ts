@@ -5,7 +5,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { construirEvento, huellaDeEvento, planificar } from '../functions/calendario.js';
-import { huellasDespues, llegoTarde } from '../functions/sincronizacion.js';
+import { llegoTarde } from '../functions/sincronizacion.js';
 import { cicloDeOcho } from './fixtures/ciclo';
 
 type Op = { tipo: string; id: string; huella?: string };
@@ -44,23 +44,23 @@ describe('planificar contra lo que Calendar tiene — B-2218', () => {
     expect(planificar(viejo, actual, {}, huellasDe(actual))).toEqual([]);
   });
 
-  it('sin huellas compara como siempre, contra el documento de antes', () => {
+  it('sin `huellas` (la vista previa) compara como siempre, contra el documento de antes', () => {
     const a = cicloDeOcho();
-    expect(planificar(a, a, {}, {})).toEqual([]);
     expect(planificar(a, a, {})).toEqual([]);
     const b = cicloDeOcho({ titulo: 'Club de lectura: Saer' });
-    expect((planificar(a, b, {}, {}) as Op[]).filter((o) => o.tipo === 'actualizar')).toHaveLength(8);
+    expect((planificar(a, b, {}) as Op[]).filter((o) => o.tipo === 'actualizar')).toHaveLength(8);
   });
-});
 
-describe('las huellas que quedan — B-2218', () => {
-  it('lo aceptado se pone, lo borrado se saca, lo que falló queda como estaba', () => {
-    const previas = { s1: 'vieja1', s2: 'vieja2', s3: 'vieja3' };
-    const aceptadas = new Map<string, string | null>([
-      ['s1', 'nueva1'],
-      ['s2', null],
-    ]);
-    expect(huellasDespues(previas, aceptadas)).toEqual({ s1: 'nueva1', s3: 'vieja3' });
+  it('con huellas leídas pero sin la de una sesión, se actualiza una vez y queda sembrada (H1)', () => {
+    // El caso del `auditor-trampas`: un documento de antes de B-2218 cuya
+    // invocación de la edición se cortó por llegar tarde. La que sigue ve antes y
+    // después iguales; comparando contra eso, la edición no llegaba nunca.
+    // Mutación probada: sacar la rama de siembra deja cero operaciones.
+    const a = cicloDeOcho();
+    const ops = planificar(a, a, {}, {}) as Op[];
+    expect(ops.filter((o) => o.tipo === 'actualizar')).toHaveLength(8);
+    // Y con la huella ya sembrada, la pasada siguiente no manda nada.
+    expect(planificar(a, a, {}, huellasDe(a))).toEqual([]);
   });
 });
 
@@ -106,8 +106,21 @@ describe('el cableado en syncCalendar — B-2218, B-2194', () => {
   it('las huellas viven en una subcolección, se pasan a planificar y se escriben antes del write-back', () => {
     expect(cuerpo).toContain('db.doc(`actividades/${id}/sincronizacion/calendar`)');
     expect(cuerpo).toContain('labels, huellasPrevias)');
-    expect(cuerpo.indexOf('huellasDespues(huellasPrevias, aceptadas)')).toBeLessThan(cuerpo.indexOf('reponerIds('));
-    // Borrada la actividad, se va el documento de huellas.
-    expect(cuerpo).toContain('if (!despues) await refHuellas.delete();');
+    // Se escriben con `merge`, campo por campo, antes del write-back de ids (H2).
+    const escribe = cuerpo.indexOf('await refHuellas.set(');
+    expect(escribe).toBeGreaterThan(-1);
+    expect(cuerpo.slice(escribe, escribe + 400)).toContain('{ merge: true }');
+    expect(cuerpo.slice(escribe, escribe + 400)).toContain('FieldValue.delete()');
+    expect(escribe).toBeLessThan(cuerpo.indexOf('reponerIds('));
+    // Borrada la actividad, se va el documento de huellas **antes** del corte por
+    // cero operaciones (H4).
+    expect(cuerpo.indexOf('await refHuellas.delete()')).toBeLessThan(cuerpo.indexOf('if (ops.length === 0)'));
+  });
+
+  it('el re-sync por renombre de etiqueta guarda la huella de lo que actualizó (H3)', () => {
+    // Sin esto, la próxima edición de cada actividad reenviaría todas sus sesiones.
+    const otro = readFileSync('functions/opciones-trigger.js', 'utf8');
+    expect(otro).toContain('huellaDeEvento(op.evento)');
+    expect(otro).toMatch(/sincronizacion\/calendar`\)[\s\S]{0,120}\{ merge: true \}/);
   });
 });

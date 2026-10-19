@@ -148,25 +148,6 @@ export const llegoTarde = (fotoDelEvento, actual) => {
 };
 
 /**
- * B-2218 — las huellas que quedan después de aplicar las operaciones: las de lo que
- * Calendar aceptó se ponen, las de lo que se borró se sacan, y las de lo que falló
- * **quedan como estaban**, que es lo que hace que la escritura siguiente lo
- * reenvíe.
- *
- * @param {Record<string, string>} previas
- * @param {Map<string, string | null>} aceptadas `sesionId → huella`, o `null` si se borró
- * @returns {Record<string, string>}
- */
-export const huellasDespues = (previas, aceptadas) => {
-  const nuevas = { ...previas };
-  for (const [id, huella] of aceptadas) {
-    if (huella) nuevas[id] = huella;
-    else delete nuevas[id];
-  }
-  return nuevas;
-};
-
-/**
  * Los códigos con que Calendar dice "ese evento no está": 404 si nunca existió
  * o si el id se liberó, 410 si está borrado y todavía retenido.
  */

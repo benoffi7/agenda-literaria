@@ -1109,9 +1109,10 @@ export const huellaDeEvento = (evento) => {
  * B-2218 — `huellas` es `{ [sesionId]: huella }` del último evento que Calendar
  * aceptó. Con huella, una sesión se actualiza si su evento de ahora no coincide
  * con lo que Calendar tiene, aunque antes y después de la edición sean iguales:
- * así un `update` que falló se reenvía en la escritura siguiente. Sin huella (los
- * documentos de antes de B-2218, o una sesión que nunca sincronizó con ella) se
- * compara como siempre, contra el evento de antes de la edición.
+ * así un `update` que falló se reenvía en la escritura siguiente. Con `huellas`
+ * pero sin la de una sesión, esa sesión se actualiza una vez y queda sembrada.
+ * Sin `huellas` (`null`: quien llama no las leyó, como la vista previa del panel)
+ * se compara como siempre, contra el evento de antes de la edición.
  *
  * @param {any} antes
  * @param {any} despues
@@ -1162,6 +1163,18 @@ export const planificar = (antes, despues, labels = {}, huellas = null) => {
     if (typeof guardada === 'string') {
       // B-2218 — contra lo que Calendar tiene, no contra el documento de antes.
       if (guardada !== huella) ops.push({ tipo: 'actualizar', id, eventId, evento, huella });
+      continue;
+    }
+    if (huellas) {
+      /*
+       * Con huellas leídas pero sin la de esta sesión —un documento de antes de
+       * B-2218, o una sesión cuya huella no se pudo guardar—, se actualiza **una
+       * vez** y queda sembrada. Comparar contra el documento de antes no alcanza:
+       * si la invocación de la edición se cortó por llegar tarde (B-2194), la que
+       * sigue ve antes y después iguales y la edición no llegaría nunca. Lo marcó el
+       * `auditor-trampas`. Cuesta un `update` por sesión, una sola vez.
+       */
+      ops.push({ tipo: 'actualizar', id, eventId, evento, huella });
       continue;
     }
 

@@ -36,7 +36,6 @@ import {
   conReintentos,
   decidirAnteFallo,
   esperasParaCrear,
-  huellasDespues,
   llegoTarde,
   reponerIds,
 } from './sincronizacion.js';
@@ -296,6 +295,15 @@ export const syncCalendar = onDocumentWritten(
       return;
     }
 
+    // Borrada la actividad, se va su documento de huellas, haya o no eventos que
+    // borrar: una subcolección no se borra con el documento padre (H4 del
+    // `auditor-trampas`).
+    if (!despues) {
+      await refHuellas.delete().catch((e) =>
+        logger.warn('no se pudieron borrar las huellas del calendario', { id, error: e?.message }),
+      );
+    }
+
     if (ops.length === 0) {
       // §7.1 — la guarda anti-loop vive acá: la escritura de `calendarEventId`
       // vuelve a disparar esta Function, pero no produce ninguna operación, así
@@ -422,14 +430,23 @@ export const syncCalendar = onDocumentWritten(
      * sin huella nueva, la próxima escritura compara como antes de B-2218—.
      * Borrada la actividad, se va el documento entero.
      */
-    if (aceptadas.size > 0 || !despues) {
+    if (aceptadas.size > 0 && despues) {
       try {
-        if (!despues) await refHuellas.delete();
-        else
-          await refHuellas.set({
-            huellas: huellasDespues(huellasPrevias, aceptadas),
+        /*
+         * **Campo por campo, con `merge`**, y no el mapa entero leído al principio:
+         * dos invocaciones solapadas leerían el mismo mapa y la última pisaría lo
+         * que aceptó la otra (lo marcó el `auditor-trampas`). Lo que falló no se
+         * nombra, así que su huella vieja queda.
+         */
+        await refHuellas.set(
+          {
+            huellas: Object.fromEntries(
+              [...aceptadas].map(([sesion, huella]) => [sesion, huella ?? FieldValue.delete()]),
+            ),
             actualizado: FieldValue.serverTimestamp(),
-          });
+          },
+          { merge: true },
+        );
       } catch (e) {
         logger.warn('no se pudieron guardar las huellas del calendario', { id, error: e?.message });
       }

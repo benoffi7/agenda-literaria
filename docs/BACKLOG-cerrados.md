@@ -18570,6 +18570,10 @@ escritura siguiente, que puede ser abrir y guardar sin cambios.
 `tests/huellas-reglas.integracion.test.ts` contra el emulador. Lo de la sesión con
 fecha ilegible que frena a las demás no se hizo: sigue avisando con `calendar-fallo`.
 
+**Corregido antes del push** por el `auditor-trampas`: la siembra de la huella
+en sesiones sin ella, la escritura con `merge`, las huellas del re-sync por
+etiquetas y el borrado del documento al borrar la actividad (ver D-1277).
+
 ### B-2194 · Dos guardados seguidos procesados fuera de orden dejan Calendar con el contenido anterior · P2 — ✅ hecho (2026-10-19)
 
 El evento se arma con `event.data.after` de cada invocación, y Firestore no

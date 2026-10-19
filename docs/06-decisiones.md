@@ -14240,3 +14240,17 @@ guardados procesados fuera de orden podían dejar en Calendar el contenido viejo
 
 **El costo:** dos lecturas más por invocación (el documento y las huellas) y una
 escritura de huellas cuando hubo operaciones.
+
+**Lo que corrigió el `auditor-trampas` antes del push (2026-10-19):**
+
+- **Una sesión sin huella se actualiza una vez y queda sembrada**, en vez de
+  compararse contra el documento de antes. Con la comparación vieja, una actividad
+  de antes de B-2218 cuya invocación se cortaba por llegar tarde perdía la edición:
+  la que seguía veía antes y después iguales. El costo, dicho: la primera edición
+  de cada actividad después del deploy manda un `update` por sesión, una vez.
+- **Las huellas se escriben campo por campo, con `merge`**, no el mapa entero: dos
+  invocaciones solapadas no se pisan lo aceptado.
+- **El re-sync por renombre de etiqueta guarda sus huellas**, o cada actividad
+  reenviaría todo en su próxima edición.
+- **Borrar la actividad borra su documento de huellas** aunque no haya eventos que
+  borrar: una subcolección no se va con el documento padre.

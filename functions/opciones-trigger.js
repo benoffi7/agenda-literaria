@@ -11,7 +11,8 @@
  */
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions/v2';
-import { getFirestore } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
+import { huellaDeEvento } from './calendario.js';
 import { CALENDAR_ID, calendario } from './calendario-api.js';
 import { OPCIONES_BASE } from './despliegue.js';
 import { TAXONOMIAS_FUERA_DEL_EVENTO, cargarLabels, invalidarLabels } from './etiquetas.js';
@@ -122,16 +123,24 @@ export const rebuildPorOpciones = onDocumentWritten(
       })),
     );
 
+    // B-2218 — la huella de lo que Calendar aceptó, por actividad: sin esto la
+    // huella guardada seguiría diciendo la etiqueta vieja y la próxima edición de
+    // cada actividad reenviaría todas sus sesiones (H3 del `auditor-trampas`).
+    const aceptadasPorActividad = new Map();
     const { aplicadas: reescritos, pendientes } = await aplicarConPresupuesto(
       ops,
-      (op) =>
-        conReintentos(() =>
+      async (op) => {
+        await conReintentos(() =>
           cal.events.update({
             calendarId: CALENDAR_ID,
             eventId: op.eventId,
             requestBody: op.evento,
           }),
-        ),
+        );
+        const deLaActividad = aceptadasPorActividad.get(op.actividad) ?? {};
+        deLaActividad[op.id] = huellaDeEvento(op.evento);
+        aceptadasPorActividad.set(op.actividad, deLaActividad);
+      },
       {
         presupuestoMs: PRESUPUESTO_RESYNC_MS,
         // Un evento que falla no puede dejar los otros sin actualizar, igual
@@ -146,6 +155,17 @@ export const rebuildPorOpciones = onDocumentWritten(
           }),
       },
     );
+
+    // Con `merge`, igual que `syncCalendar`. Un fallo acá no corta nada: sin la
+    // huella nueva, la próxima edición reenvía de más, no de menos.
+    for (const [actividad, huellas] of aceptadasPorActividad) {
+      await db
+        .doc(`actividades/${actividad}/sincronizacion/calendar`)
+        .set({ huellas, actualizado: FieldValue.serverTimestamp() }, { merge: true })
+        .catch((e) =>
+          logger.warn('no se pudieron guardar las huellas del re-sync', { actividad, error: e?.message }),
+        );
+    }
 
     if (pendientes > 0) {
       logger.error('la re-sincronización por etiquetas se cortó por el tiempo', {
