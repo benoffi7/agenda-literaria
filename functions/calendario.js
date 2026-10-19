@@ -541,6 +541,10 @@ const posicionEnCiclo = (actividad, sesion) => {
  */
 export const construirDescripcion = (actividad, sesion, labels = {}) => {
   const bloques = [];
+  // B-2219 — todo texto libre que sale al calendario público pasa por acá, no
+  // solo la descripción: las indicaciones de una fila híbrida («si venís por
+  // compu, entrá a meet…») son el caso más probable.
+  const sinReunion = (texto) => sinLinksDeReunion(texto, linksDeReunionDe(actividad));
 
   // ── Encabezado: qué es y, si es ciclo, qué encuentro ──────────
   const tipo = etiqueta(labels, 'tipo', actividad.tipo);
@@ -658,7 +662,7 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
         .filter((p, i) => piezas.findIndex((q) => q.toLowerCase() === p.toLowerCase()) === i)
         .join(', ');
       if (calle) donde.push(calle);
-      if (s.indicaciones) donde.push(`Cómo llegar: ${s.indicaciones}`);
+      if (s.indicaciones) donde.push(`Cómo llegar: ${sinReunion(s.indicaciones)}`);
       const mapa = linkMapaDeSede(s, labels, fila.modalidad);
       if (mapa) donde.push(`Mapa: ${mapa}`);
     }
@@ -698,7 +702,7 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
         : `Arancel: ${tipo}`,
     );
   }
-  if (actividad.arancel?.notas) arancel.push(actividad.arancel.notas);
+  if (actividad.arancel?.notas) arancel.push(sinReunion(actividad.arancel.notas));
   if (arancel.length) bloques.push(arancel.join('\n'));
 
   // ── Inscripción ───────────────────────────────────────────────
@@ -876,7 +880,7 @@ export const construirDescripcion = (actividad, sesion, labels = {}) => {
     quien.push(
       `${rol}: ${[persona.nombre, arrobaPublicable(persona.instagram)].filter(Boolean).join(' · ')}`,
     );
-    if (persona.bio) quien.push(persona.bio);
+    if (persona.bio) quien.push(sinReunion(persona.bio));
   }
   if (quien.length) bloques.push(quien.join('\n'));
 

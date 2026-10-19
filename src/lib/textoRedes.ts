@@ -83,6 +83,8 @@ import { agregarChips } from '@/lib/formulario/chips';
 // (B-1141), no un regex de acá: ver `handlesDe`.
 import { arrobaInstagram } from '@/lib/enlaceSeguro';
 import { instanteDeTimestamp } from '@/lib/sesiones';
+// B-2219 — el posteo es público: el link de la reunión no viaja ni en las notas.
+import { linksDeReunionDe, sinLinksDeReunion } from '../../functions/links-de-reunion.js';
 // B-312 — la URL absoluta del detalle, de la misma función que la canónica y el
 // sitemap. `rutasPublicas` es puro y sin dependencias: entra al bundle del panel
 // sin arrastrar nada (§5.4).
@@ -410,7 +412,7 @@ const bloqueArancel = (actividad: ActividadParaRedes, labels: LabelsTaxonomia): 
     );
   }
   const notas = actividad.arancel?.notas?.trim();
-  if (notas) lineas.push(notas);
+  if (notas) lineas.push(sinLinksDeReunion(notas, linksDeReunionDe(actividad)));
   return lineas.join('\n');
 };
 

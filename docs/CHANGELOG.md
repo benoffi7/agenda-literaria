@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **El link de la reunión tampoco se cuela por las indicaciones, las notas del arancel
+  ni la bio** (B-2219). Si alguien lo pega ahí («si venís por compu, entrá a meet…»),
+  en el sitio, en el calendario y en el texto para redes sale el aviso de que lo manda
+  quien organiza.
+
 - **Un error pasajero de Google Calendar ya no deja el calendario desactualizado**
   (B-2186). Si Calendar contesta «demasiados pedidos» o falla un momento, la operación
   se reintenta hasta tres veces; si igual falla, llega un mail (`calendar-fallo`) con

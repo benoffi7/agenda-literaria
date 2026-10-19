@@ -15736,6 +15736,22 @@ con `alerta: 'calendar-fallo'` (runbook en `08-operacion.md`), `syncCalendar`
 pasa a 540 s y una fecha ilegible avisa en vez de tirar la Function. **Lo que no
 se hizo** —que un fallo persistente se reemita solo— quedó en B-2218.
 
+### B-2219 · El link de la reunión se puede colar por las indicaciones, las notas del arancel o la bio · P1 — ✅ hecho (2026-10-19)
+
+Lo marcó el `auditor-privacidad` revisando B-2185: D-1036 sacaba el link de la
+**descripción**, pero `sede.indicaciones`, `arancel.notas` y `tallerista.bio` son
+texto libre que sale a la proyección (`toPublic.ts`), al evento del calendario
+público (`construirDescripcion`) y, las notas, al texto para redes. El caso más
+probable: «si venís por compu, entrá a meet…» en las indicaciones de una fila
+híbrida.
+
+**Hecho:** los tres campos pasan por `sinLinksDeReunion` con los `online.url` del
+documento en las tres salidas. `tests/links-de-reunion-en-texto-libre.test.ts`
+prueba Meet y un link privado de una plataforma desconocida, con un control de
+que el fixture los siembra y la mutación probada en cada salida. Quedan fuera,
+por ser menos probables: `libro.titulo/autor`, `material.items[].titulo` y el
+epígrafe de las imágenes.
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)

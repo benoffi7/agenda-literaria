@@ -574,7 +574,19 @@ export const urlDeMaterialQueSale = (i: ItemMaterial, tiene: boolean): string | 
  * Es una sola función para la sede de la fila y para la derivada: dos copias son
  * dos maneras de que una se quede sin enumerar.
  */
-const sedePublica = (s: Sede | null | undefined): Sede | null => {
+/**
+ * B-2219 — un texto libre sin links de reunión, conservando el vacío tal cual
+ * (`null`, `undefined` o `''` siguen siendo lo que eran). Lo usan los campos que
+ * alguien escribe a mano y salen al sitio: la descripción, las indicaciones de la
+ * sede, las notas del arancel y la bio.
+ */
+const sinReunion = <T extends string | null | undefined>(texto: T, conocidos: readonly string[]): T =>
+  (texto ? sinLinksDeReunion(texto, conocidos) : texto) as T;
+
+const sedePublica = (
+  s: Sede | null | undefined,
+  conocidos: readonly string[] = [],
+): Sede | null => {
   if (!s) return null;
   /*
    * B-950 — los tres de la geografía **se derivan, no se copian**, y es el mismo
@@ -592,16 +604,16 @@ const sedePublica = (s: Sede | null | undefined): Sede | null => {
     provincia: geo.provincia,
     barrio: geo.barrio,
     ciudad: geo.ciudad,
-    indicaciones: s.indicaciones,
+    indicaciones: sinReunion(s.indicaciones, conocidos),
     geo: s.geo ? { lat: s.geo.lat, lng: s.geo.lng } : null,
   };
 };
 
 /** Ver `ModalidadPublica`: whitelist, sin spread, y sin las fechas. */
-const modalidadPublica = (m: ModalidadFila): ModalidadPublica => ({
+const modalidadPublica = (m: ModalidadFila, conocidos: readonly string[]): ModalidadPublica => ({
   id: m.id,
   modalidad: m.modalidad,
-  sede: sedePublica(m.sede),
+  sede: sedePublica(m.sede, conocidos),
   online: onlinePublico(m.online),
 });
 
@@ -698,11 +710,11 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
    * con la `url` ya quitada. Saneando allá, la coincidencia exacta de D-1036
    * llegaba vacía justo cuando el link es privado.
    */
-  descripcion: sinLinksDeReunion(a.descripcion ?? '', linksDeReunionDe(a)),
+  descripcion: sinReunion(a.descripcion ?? '', linksDeReunionDe(a)),
   imagenes: imagenesDe(a).map(imagenPublica),
-  modalidades: (a.modalidades ?? []).map(modalidadPublica),
+  modalidades: (a.modalidades ?? []).map((m) => modalidadPublica(m, linksDeReunionDe(a))),
   modalidad: a.modalidad,
-  sede: sedePublica(a.sede),
+  sede: sedePublica(a.sede, linksDeReunionDe(a)),
   tags: a.tags ?? [],
   // D-26 — `[]` para el documento anterior al campo.
   incluye: a.incluye ?? [],
@@ -725,7 +737,7 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
   creadoEn: aIsoSeguro(a.createdAt).slice(0, 10),
   arancel: {
     tipo: a.arancel.tipo,
-    notas: a.arancel.notas,
+    notas: sinReunion(a.arancel.notas, linksDeReunionDe(a)),
     /*
      * B-114 — decisión del dueño: el monto **es público**. Es para lo que se
      * agregó: el `offers.price` del JSON-LD y los cuatro lugares que ya dicen el
@@ -796,7 +808,7 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
   tallerista: a.tallerista?.nombre?.trim()
     ? {
         nombre: a.tallerista.nombre,
-        bio: a.tallerista.bio,
+        bio: sinReunion(a.tallerista.bio, linksDeReunionDe(a)),
         instagram: a.tallerista.instagram,
       }
     : null,
