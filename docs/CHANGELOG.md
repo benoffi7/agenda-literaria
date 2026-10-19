@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **Las páginas del sitio pasan por un chequeo de tipos antes de publicarse** (B-2198).
+  Encontró y corrigió tres errores que nadie veía.
+
 - **La home baja solo lo que viene y el mes pasado** (B-2191, D-1276). Lo anterior se
   busca en «Lo que ya pasó», que junto con los favoritos baja también el archivo de lo
   viejo. El filtro «Cuándo» de la home ofrece desde el mes pasado en adelante.

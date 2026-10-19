@@ -803,3 +803,19 @@ describe('las Actions de terceros van fijadas por SHA — B-2197', () => {
     expect(sinFijar).toEqual([]);
   });
 });
+
+describe('los .astro pasan por un chequeo de tipos — B-2198', () => {
+  it('push-main corre `astro check` en el job de tests, después de `tsc`', () => {
+    // `tsc --noEmit` no lee `.astro`; sin esto 48 archivos quedaban sin revisar.
+    // Mutación probada: sacar el paso pone esto rojo.
+    const wf = parsear('push-main.yml').toJS() as {
+      jobs: Record<string, { name?: string; steps?: { run?: string }[] }>;
+    };
+    const job = Object.values(wf.jobs).find((j) => j.name === 'Tests y typecheck')!;
+    const runs = (job.steps ?? []).map((s) => s.run ?? '');
+    const tsc = runs.findIndex((r) => r.includes('tsc --noEmit'));
+    const astro = runs.findIndex((r) => r.includes('astro check'));
+    expect(tsc).toBeGreaterThanOrEqual(0);
+    expect(astro).toBeGreaterThan(tsc);
+  });
+});

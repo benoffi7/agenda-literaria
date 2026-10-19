@@ -143,6 +143,14 @@ contra `before` (resuelve también el desorden de B-2194); o un barrido diario c
 sesión con fecha ilegible se saltee y no frene a las demás (hoy avisa y no manda
 ninguna).
 
+**Cómo encararlo (2026-10-19):** la huella por sesión es un campo nuevo en
+`sesiones[]` y toca 22 archivos —panel, schema, reglas, historial, duplicar,
+autoguardado, proyección, Functions—. Va en una pasada propia con el skill
+`campo-nuevo` y los dos auditores: es la parte más frágil del sistema y Calendar
+no tiene emulador. Ojo con dos cosas: el panel tiene que **conservar** la huella al
+guardar, como el `calendarEventId`, y `construirEvento` tiene que ser
+determinista, o el write-back de la huella dispara el trigger sin fin.
+
 ### B-2220 · Un schedule que deja de correr no avisa · P3 (sale de B-2195, 2026-10-19)
 
 `barrido-fallo` avisa si un barrido falla **corriendo**; si el job de Cloud
@@ -158,7 +166,7 @@ El evento se arma con `event.data.after` de cada invocación, y Firestore no
 garantiza orden. **Arreglo:** releer el documento al ejecutar y comparar contra un
 hash del último evento enviado por sesión (el mismo campo de B-2186).
 
-### B-2198 · Ni los `.astro` ni el JS de `functions/` pasan por un type checker · P2 (auditoría 2026-10-19)
+### B-2198 · Ni los `.astro` ni el JS de `functions/` pasan por un type checker · P2 — 🟡 los `.astro` sí desde 2026-10-19, falta `functions/`
 
 `tsc --noEmit` no lee `.astro` (48 archivos, 8.369 LOC, incluido el frontmatter
 que importa `firebase-admin`), y `astro check` no anda: falta `@astrojs/check`.
@@ -167,6 +175,15 @@ que importa `firebase-admin`), y `astro check` no anda: falta `@astrojs/check`.
 CI; un `functions/jsconfig.json` con `checkJs`, adoptado de a poco con
 `// @ts-check` empezando por `calendario.js`, `sincronizacion.js` y
 `calendario-trigger.js`.
+
+**Primera mitad, hecha (2026-10-19):** `@astrojs/check` instalado y `npx astro
+check --minimumSeverity error` en el job «Tests y typecheck» de `push-main` y en
+`verificar-todo.sh` (lo fija `tests/workflows.test.ts`). Encontró 3 errores en
+742 archivos: el JSON-LD de los listados de librerías y bibliotecas pedía la
+proyección entera y recibía las fichas —andaba porque solo usa `slug` y
+`nombre`; ahora pide eso, como suscripciones—, y el `rel` del `<form>` del
+boletín, válido en HTML pero sin tipo en Astro. Quedan 76 *hints*, que no frenan.
+**Falta:** `checkJs` en `functions/`.
 
 ### B-2203 · El panel relee la colección entera de `/actividades` cada vez que se vuelve al listado · P2 — 🟡 entre vistas resuelto (2026-10-19), falta la vuelta del formulario
 
@@ -191,6 +208,11 @@ solo la actividad tocada (`getDoc`) y parcharla. Al volver se ve un instante la
 lista anterior hasta que llega la nueva, porque el estado inicial de la vista se
 arma antes de la limpieza del formulario. Y el badge de propuestas sigue leyendo
 hasta 50 documentos en vivo (`getCountFromServer`).
+
+**Bajada de prioridad (2026-10-19):** guardar sube la versión y eso ya obliga a
+releer; ahorrar ahí pide rediseñar cómo el panel decide qué está viejo, sobre la
+pantalla que más se usa, y a los precios de Firestore son centavos por mes. No
+vale el riesgo hasta que el costo o la espera molesten.
 
 ### B-2206 · Cada arranque en frío de las 25 Functions carga `googleapis` entero · P2 (auditoría 2026-10-19)
 

@@ -61,6 +61,8 @@ npx vitest run tests/sin-marcadores-de-conflicto.test.ts \
 paso 'Typecheck (astro sync + tsc --noEmit)'
 npx astro sync >/dev/null || fallo 'astro sync'
 npx tsc --noEmit || fallo 'el typecheck no pasa'
+# B-2198 — `tsc` no lee los `.astro`.
+npx astro check --minimumSeverity error >/dev/null || fallo 'astro check no pasa (corré npx astro check)'
 
 # ── 3 · Tests, con los emuladores arriba ──────────────────────────
 # `EXIGIR_EMULADOR=1` hace que los tests de integración FALLEN en vez de

@@ -476,8 +476,11 @@ describe('la sección se puede usar sin ver la pantalla y sin mouse', () => {
   it('la pestaña nueva va con `noopener`', () => {
     const src = sinComentarios(fuente(COMPONENTE));
     expect(src).toMatch(/target="_blank"/);
+    // B-2198 — va como spread (`{...{ rel: 'noopener' }}`): `rel` es válido en un
+    // <form>, pero los tipos de Astro no lo traen y `astro check` lo frenaba. El
+    // HTML construido sigue diciendo `rel="noopener"`.
     expect(src, 'sin `noopener` la pestaña que se abre puede manipular a ésta').toMatch(
-      /rel="noopener"/,
+      /rel(="|: ')noopener/,
     );
   });
 

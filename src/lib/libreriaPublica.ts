@@ -615,7 +615,9 @@ export const migasDeLibreria = (f: FichaDeLibreria): Record<string, unknown> => 
  * ayuda a entender la página.
  */
 export const coleccionDeLibrerias = (
-  librerias: readonly LibreriaPublica[],
+  // Solo lo que el `ItemList` publica, como `coleccionDeSuscripciones`: el
+  // listado le pasa sus fichas, que no son la proyección entera (B-2198).
+  librerias: readonly Pick<LibreriaPublica, 'slug' | 'nombre'>[],
 ): Record<string, unknown> | null => {
   if (librerias.length === 0) return null;
   return {

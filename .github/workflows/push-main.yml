@@ -126,6 +126,11 @@ jobs:
 
       - run: npx tsc --noEmit
 
+      - name: Tipos de los .astro
+        # B-2198 — `tsc` no lee los `.astro`: 48 archivos, entre ellos el
+        # frontmatter que importa `firebase-admin`, quedaban sin revisar.
+        run: npx astro check --minimumSeverity error
+
       - name: Tests, con emuladores
         # `EXIGIR_EMULADOR=1` hace que los tests de integración FALLEN en vez de
         # saltearse si el emulador no responde. Sin eso, `npm test` en un runner

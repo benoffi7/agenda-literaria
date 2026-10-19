@@ -72,7 +72,7 @@ const trato = tratoEnOrden();
         action={formulario.accion}
         method="post"
         target="_blank"
-        rel="noopener"
+        {...{ rel: 'noopener' } /* B-2198 — `rel` es válido en un <form> (HTML), pero los tipos de Astro no lo traen */}
         class={`mt-6 p-5 sm:p-6 ${claseBloque}`}
       >
         <label class={claseEtiquetaDeCampo} for="boletin-mail">
