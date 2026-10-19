@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **Un error pasajero de Google Calendar ya no deja el calendario desactualizado**
+  (B-2186). Si Calendar contesta «demasiados pedidos» o falla un momento, la operación
+  se reintenta hasta tres veces; si igual falla, llega un mail (`calendar-fallo`) con
+  qué hacer, en vez de quedar solo en el log. El sync tiene ahora 9 minutos y no 1.
+
 - **Un cambio se ve enseguida en todas las páginas, no solo en la home** (B-2188). La
   cartelera, las pasadas, cada actividad y las demás páginas se guardaban una hora en
   el navegador: una cancelación podía tardar hasta una hora más en verse. Ahora todas

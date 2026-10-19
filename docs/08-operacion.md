@@ -787,7 +787,8 @@ trae nombres de personas y `online` el link de la reunión—.
 2. Leer `campos`:
    - **`["searchText"]` solo**, en una actividad que nadie tocó a mano: casi seguro
      es un documento guardado **antes del último cambio de la fórmula** del índice
-     (el libro de DEC-1, las sedes de todas las filas de B-224) que acaba de recibir
+     (el libro de DEC-1, las sedes de todas las filas de B-224, la descripción sin
+     links de reunión de B-2185) que acaba de recibir
      una escritura que no pasa por el formulario —el `calendarEventId`, el cupo
      completo, una imagen—. Llega una vez por documento y no vuelve. Nada que hacer.
    - **`sede`, `modalidad` u `online`**: alguien escribió los derivados a mano. Si
@@ -800,6 +801,38 @@ trae nombres de personas y `online` el link de la reunión—.
    reescribe los cinco bien.
 
 **Lo que no corrige:** `estado` (D-1231), y nada que no sea un derivado de las filas.
+
+### Cuando suena `calendar-fallo` (B-2186)
+
+**Qué dice el mail:** una operación contra Google Calendar falló **después de
+reintentarla**. `syncCalendar` y `rebuildPorOpciones` repiten hasta tres veces, con
+espera creciente (~6 s en total), los fallos pasajeros —429, 5xx, cuota excedida,
+red caída—; lo que llega acá es lo que no se arregló así, o un fallo que repetir no
+arregla (un 400, un 403 de permiso). El log trae `id` de la actividad, `sesion`,
+`tipo` (`crear`, `actualizar`, `borrar`) y `codigo`.
+
+**Por qué importa:** el calendario **no se repara solo**. `planificar` solo vuelve
+a emitir una operación cuando el evento calculado cambia, así que si falló el
+`update` de un cambio de sede, guardar la actividad sin tocar nada no lo reenvía.
+
+**Qué hacer:**
+
+1. Mirar `codigo`. **403 sin cuota** o **404 al crear** es permiso: el calendario no
+   está compartido con `calendar-sync@` o el `GOOGLE_CALENDAR_ID` es otro (D-06).
+   **400** es un evento mal armado: mirar el documento.
+2. Si fue pasajero (429/5xx persistentes, un corte de Google), cuando se normalice
+   hay que **forzar** el reenvío: en el panel, cambiar algo que salga al evento (un
+   espacio en el título y sacarlo, guardando las dos veces). Si lo que falló fue un
+   `crear`, `scripts/verificar-calendario.mjs --reparar` también lo repone; un
+   `actualizar` fallido no lo ve, porque el script compara existencia y no
+   contenido (B-2218).
+3. Si el mensaje es **`no se pudo planificar el sync de Calendar`**: no se mandó
+   **ninguna** operación para esa actividad. Casi siempre una sesión con `inicio` o
+   `fin` ilegible escrita fuera del panel; corregirla en la consola o abrir y
+   guardar desde el panel, que la valida.
+4. Si es **`la re-sincronización por etiquetas se cortó por el tiempo`**: un
+   renombre de etiqueta no llegó a reescribir todos los eventos (D-1273). Los que
+   faltan se ponen al día con su próxima edición.
 
 ### Cuando suena `sede-sin-ciudad` (B-2052)
 

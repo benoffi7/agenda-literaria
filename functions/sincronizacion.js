@@ -172,6 +172,78 @@ export const decidirAnteFallo = (op, code) => {
   return { accion: 'registrar-error' };
 };
 
+/**
+ * Las razones con que Calendar dice «pasaste la cuota»: llegan como **403**, no
+ * como 429, así que el código solo no alcanza para distinguirlas de un permiso.
+ */
+const RAZONES_DE_CUOTA = ['rateLimitExceeded', 'userRateLimitExceeded', 'quotaExceeded'];
+
+/** Errores de red de Node: la respuesta no llegó, no hay código HTTP. */
+const ERRORES_DE_RED = ['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EAI_AGAIN', 'ENOTFOUND', 'ESOCKETTIMEDOUT'];
+
+/**
+ * B-2186 — ¿este fallo puede salir bien si se repite en un momento?
+ *
+ * Sí: 429, cualquier 5xx, un 403 de cuota y un error de red. No: un 404/410 (eso
+ * lo resuelve `decidirAnteFallo`), un 400 (el evento está mal armado) y un 403 de
+ * permiso (la service account no tiene acceso: D-06). Repetir esos solo gasta
+ * cuota y demora el resto de las operaciones.
+ *
+ * @param {any} e
+ * @returns {boolean}
+ */
+export const esFalloPasajero = (e) => {
+  const code = Number(e?.code ?? e?.response?.status);
+  if (code === 429 || (code >= 500 && code < 600)) return true;
+  if (code === 403) {
+    const errores = e?.errors ?? e?.response?.data?.error?.errors ?? [];
+    return errores.some((x) => RAZONES_DE_CUOTA.includes(x?.reason));
+  }
+  return ERRORES_DE_RED.includes(e?.code);
+};
+
+/**
+ * Cuánto se espera antes de cada reintento. Tres reintentos suman ~6 s, que entran
+ * de sobra en el timeout de `syncCalendar` aun con varias sesiones que fallen.
+ */
+export const ESPERAS_DE_REINTENTO_MS = Object.freeze([500, 1500, 4000]);
+
+/**
+ * B-2186 — una operación de Calendar, reintentada si el fallo es pasajero.
+ *
+ * Hasta acá un 429 o un 500 se logueaba y nada más, y como `planificar` solo
+ * vuelve a emitir cuando el evento calculado cambia, un `update` de sede que
+ * fallaba dejaba la sede vieja en el calendario **para siempre**.
+ *
+ * Reintentar es seguro en las tres operaciones: `crearEvento` usa el id derivado
+ * y resuelve el 409 de un insert que en realidad había llegado (B-82); `update`
+ * es idempotente; y un `delete` repetido contesta 404, que `decidirAnteFallo`
+ * convierte en «ya no estaba».
+ *
+ * @param {() => Promise<T>} intento
+ * @param {{ esperas?: readonly number[], dormir?: (ms: number) => Promise<void>, alReintentar?: (e: unknown, n: number) => void }} [opciones]
+ * @returns {Promise<T>}
+ * @template T
+ */
+export const conReintentos = async (
+  intento,
+  {
+    esperas = ESPERAS_DE_REINTENTO_MS,
+    dormir = (ms) => new Promise((r) => setTimeout(r, ms)),
+    alReintentar = () => {},
+  } = {},
+) => {
+  for (let n = 0; ; n++) {
+    try {
+      return await intento();
+    } catch (e) {
+      if (n >= esperas.length || !esFalloPasajero(e)) throw e;
+      alReintentar(e, n + 1);
+      await dormir(esperas[n]);
+    }
+  }
+};
+
 /** `/opciones/{campo}.valores` → `{ slug: label }`, como lo espera `construirEvento`. */
 export const mapaDeEtiquetas = (valores = []) =>
   Object.fromEntries((valores ?? []).map((v) => [v.slug, v.label]));

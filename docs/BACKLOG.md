@@ -63,25 +63,6 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## P1 — bloquean el objetivo del proyecto
 
-### B-2186 · Un fallo de Calendar que no es 404 se traga: sin reintento, sin alerta, y puede no repararse nunca · P1 (auditoría 2026-10-19)
-
-`decidirAnteFallo` (`functions/sincronizacion.js:159`) devuelve `registrar-error`
-ante un 429, un 403 de cuota, un 5xx o un timeout; el `logger.error` de
-`calendario-trigger.js:304,313` no lleva `alerta`, y ningún trigger tiene
-`retry`. Como `planificar` solo emite `actualizar` si el evento calculado cambió,
-un `update` de sede que falla deja la sede vieja **para siempre**; un `delete`
-fallido al despublicar deja el evento en el calendario público. Igual en
-`opciones-trigger.js:135,145` (y su comentario «una que vence se reintenta» es
-falso). Agravantes: `syncCalendar` usa el timeout por defecto de 60 s sin tope de
-sesiones (un ciclo de ~200 encuentros no entra), y una sesión con fecha ilegible
-hace tirar `aIso` (`calendario.js:983`) antes de sincronizar las demás.
-
-**Arreglo:** reintento con backoff para 429/403-cuota/5xx; `alerta:
-'calendar-fallo'` en esos logs; una marca `calendarPendiente` (o hash del último
-evento enviado) que haga reemitir; `timeoutSeconds: 540` con
-`aplicarConPresupuesto`; `aIso` que devuelva `null` y saltee la sesión con log.
-Opcional: correr `reconciliacion.js` en un schedule diario.
-
 ### B-2187 · El rebuild por contenido publica `main` HEAD aunque `push-main` lo haya rechazado · P1 (auditoría 2026-10-19)
 
 `deploy.yml:81` hace checkout de HEAD y, si la suite de ese SHA no está en verde,
@@ -176,6 +157,17 @@ sale, lo que queda es una actividad sin flyer y un original huérfano que nadie
 barre (`propuestas/` no lo recorre `limpiarImagenesHuerfanas`).
 
 ## P2 — mejoras reales
+
+### B-2218 · Un fallo persistente de Calendar no se reemite solo · P2 (sale de B-2186, 2026-10-19)
+
+Desde B-2186 lo pasajero se reintenta y lo que igual falla manda un mail, pero
+reparar sigue siendo a mano: `planificar` solo emite si el evento calculado cambió,
+así que guardar la actividad no reenvía un `update` que falló. **Arreglo:** guardar
+por sesión un hash del último evento que Calendar aceptó y planificar contra eso, no
+contra `before` (resuelve también el desorden de B-2194); o un barrido diario con
+`reconciliacion.js` que compare contenido y no solo existencia. También: que una
+sesión con fecha ilegible se saltee y no frene a las demás (hoy avisa y no manda
+ninguna).
 
 ### B-2191 · `events.json` lleva todo el histórico y crece sin tope · P2 (auditoría 2026-10-19)
 

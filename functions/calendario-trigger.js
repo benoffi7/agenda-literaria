@@ -32,7 +32,7 @@ import { cargarLabels } from './etiquetas.js';
 import { faltaMarcarPublicada } from './historial.js';
 import { marcarPublicada } from './marca-de-publicada.js';
 import { marcarRebuild } from './marca-de-rebuild.js';
-import { decidirAnteFallo, reponerIds } from './sincronizacion.js';
+import { conReintentos, decidirAnteFallo, reponerIds } from './sincronizacion.js';
 
 /**
  * Las opciones van **explícitas** y no heredadas del `setGlobalOptions` de
@@ -42,7 +42,13 @@ import { decidirAnteFallo, reponerIds } from './sincronizacion.js';
  * defecto de Compute, a la que Calendar le contesta 404 en todo.
  */
 export const syncCalendar = onDocumentWritten(
-  { ...OPCIONES_BASE, document: 'actividades/{id}' },
+  {
+    ...OPCIONES_BASE,
+    document: 'actividades/{id}',
+    // B-2186 — el default es 60 s y las operaciones van en serie, con
+    // reintentos: un ciclo largo o con varias opciones para sumarse no entraba.
+    timeoutSeconds: 540,
+  },
   async (event) => {
     const db = getFirestore();
     const antes = event.data?.before?.data() ?? null;
@@ -231,7 +237,20 @@ export const syncCalendar = onDocumentWritten(
     // B-2050 — el diff se planifica sobre los derivados **recalculados**: una `sede`
     // escrita a mano que no es la de las filas no llega al `location` del evento,
     // y su corrección —que vuelve a disparar esto— no manda un `update` en falso.
-    const ops = planificar(conDerivados(antes), conDerivados(despues), labels);
+    let ops;
+    try {
+      ops = planificar(conDerivados(antes), conDerivados(despues), labels);
+    } catch (e) {
+      // B-2186 — una sesión con fecha ilegible (escrita fuera del panel: el schema
+      // la rechaza) hace tirar `aIso`. Sin esto la Function fallaba entera, sin
+      // reintento y sin más rastro que el stack.
+      logger.error('no se pudo planificar el sync de Calendar', {
+        alerta: 'calendar-fallo',
+        id,
+        error: e?.message,
+      });
+      return;
+    }
 
     if (ops.length === 0) {
       // §7.1 — la guarda anti-loop vive acá: la escritura de `calendarEventId`
@@ -252,18 +271,29 @@ export const syncCalendar = onDocumentWritten(
     // disparos más de esta misma Function.
     const ids = new Map();
 
+    const alReintentar = (e, n) =>
+      logger.warn('Calendar falló de forma pasajera: se reintenta', {
+        id,
+        intento: n,
+        codigo: e?.code ?? e?.response?.status ?? null,
+      });
+
     for (const op of ops) {
       try {
         if (op.tipo === 'crear') {
-          const eventId = await crearEvento(cal, op);
+          const eventId = await conReintentos(() => crearEvento(cal, op), { alReintentar });
           ids.set(op.id, eventId);
           logger.info('evento creado', { id, sesion: op.id, eventId });
         } else if (op.tipo === 'actualizar') {
-          await cal.events.update({
-            calendarId: CALENDAR_ID,
-            eventId: op.eventId,
-            requestBody: op.evento,
-          });
+          await conReintentos(
+            () =>
+              cal.events.update({
+                calendarId: CALENDAR_ID,
+                eventId: op.eventId,
+                requestBody: op.evento,
+              }),
+            { alReintentar },
+          );
           // B-80 — el id se repone también acá, no solo al crear y al borrar: si
           // el panel guardó desde un snapshot previo al write-back, el documento
           // quedó con `calendarEventId: null` y la edición siguiente crearía un
@@ -273,7 +303,10 @@ export const syncCalendar = onDocumentWritten(
           ids.set(op.id, op.eventId);
           logger.info('evento actualizado', { id, sesion: op.id });
         } else if (op.tipo === 'borrar') {
-          await cal.events.delete({ calendarId: CALENDAR_ID, eventId: op.eventId });
+          await conReintentos(
+            () => cal.events.delete({ calendarId: CALENDAR_ID, eventId: op.eventId }),
+            { alReintentar },
+          );
           ids.set(op.id, null);
           logger.info('evento borrado', { id, sesion: op.id });
         }
@@ -292,7 +325,7 @@ export const syncCalendar = onDocumentWritten(
           // volviera a emitir `actualizar` contra un evento inexistente, así que
           // el encuentro se perdía del calendario público para siempre.
           try {
-            const eventId = await crearEvento(cal, op);
+            const eventId = await conReintentos(() => crearEvento(cal, op), { alReintentar });
             ids.set(op.id, eventId);
             logger.warn('el evento no estaba en Calendar: se recreó', {
               id,
@@ -302,6 +335,7 @@ export const syncCalendar = onDocumentWritten(
             });
           } catch (e2) {
             logger.error('falló recrear un evento borrado a mano', {
+              alerta: 'calendar-fallo',
               id,
               sesion: op.id,
               error: e2?.message,
@@ -310,10 +344,14 @@ export const syncCalendar = onDocumentWritten(
         } else {
           // No se corta el loop: un encuentro que falla no debe dejar los otros
           // siete sin sincronizar.
+          // B-2186 — con `alerta`: ya se reintentó, así que esto no se arregla solo
+          // y `planificar` no lo va a reemitir si el evento calculado no cambia.
           logger.error('falló una operación de Calendar', {
+            alerta: 'calendar-fallo',
             id,
             sesion: op.id,
             tipo: op.tipo,
+            codigo: code ?? null,
             error: e?.message,
           });
         }

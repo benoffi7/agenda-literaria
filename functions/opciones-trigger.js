@@ -18,6 +18,7 @@ import { TAXONOMIAS_FUERA_DEL_EVENTO, cargarLabels, invalidarLabels } from './et
 import { marcarRebuild } from './marca-de-rebuild.js';
 import {
   aplicarConPresupuesto,
+  conReintentos,
   mapaDeEtiquetas,
   mismasEtiquetas,
   replanificarPorEtiquetas,
@@ -33,7 +34,8 @@ export const TIMEOUT_RESYNC_S = 540;
  * más de la mitad quedaba con la etiqueta vieja en el calendario público.
  *
  * Deja 90 s de margen antes del timeout: lo que el tope protegía es que la
- * corrida no venza, porque una que vence se reintenta y reescribe de nuevo. A
+ * corrida no venza, porque una que vence deja eventos a medio reescribir y no se
+ * reintenta (ningún trigger lleva `retry`). A
  * ~200 ms por evento, entran unos 2.000. Si igual se alcanza, se loguea `error`
  * con lo que faltó: cada actividad se pone al día con su próxima edición, y el
  * sitio (que sí muestra la etiqueta nueva) ya se rebuildeó.
@@ -122,17 +124,20 @@ export const rebuildPorOpciones = onDocumentWritten(
     const { aplicadas: reescritos, pendientes } = await aplicarConPresupuesto(
       ops,
       (op) =>
-        cal.events.update({
-          calendarId: CALENDAR_ID,
-          eventId: op.eventId,
-          requestBody: op.evento,
-        }),
+        conReintentos(() =>
+          cal.events.update({
+            calendarId: CALENDAR_ID,
+            eventId: op.eventId,
+            requestBody: op.evento,
+          }),
+        ),
       {
         presupuestoMs: PRESUPUESTO_RESYNC_MS,
         // Un evento que falla no puede dejar los otros sin actualizar, igual
         // que en el diff.
         alFallar: (op, e) =>
           logger.error('falló la re-sincronización de un evento', {
+            alerta: 'calendar-fallo',
             campo,
             actividad: op.actividad,
             sesion: op.id,
@@ -143,6 +148,7 @@ export const rebuildPorOpciones = onDocumentWritten(
 
     if (pendientes > 0) {
       logger.error('la re-sincronización por etiquetas se cortó por el tiempo', {
+        alerta: 'calendar-fallo',
         campo,
         reescritos,
         pendientes,

@@ -15698,6 +15698,34 @@ Hosting sobre el `dist/`: todas las páginas dan `no-cache` y `/_astro/*` sigue
 la mutación probada. Falta confirmarlo en producción con
 `node scripts/verificar-produccion.mjs` después del deploy.
 
+### B-2186 · Un fallo de Calendar que no es 404 se traga: sin reintento, sin alerta, y puede no repararse nunca · P1 — ✅ hecho (2026-10-19), la reparación automática sigue en B-2218
+
+`decidirAnteFallo` (`functions/sincronizacion.js:159`) devuelve `registrar-error`
+ante un 429, un 403 de cuota, un 5xx o un timeout; el `logger.error` de
+`calendario-trigger.js:304,313` no lleva `alerta`, y ningún trigger tiene
+`retry`. Como `planificar` solo emite `actualizar` si el evento calculado cambió,
+un `update` de sede que falla deja la sede vieja **para siempre**; un `delete`
+fallido al despublicar deja el evento en el calendario público. Igual en
+`opciones-trigger.js:135,145` (y su comentario «una que vence se reintenta» es
+falso). Agravantes: `syncCalendar` usa el timeout por defecto de 60 s sin tope de
+sesiones (un ciclo de ~200 encuentros no entra), y una sesión con fecha ilegible
+hace tirar `aIso` (`calendario.js:983`) antes de sincronizar las demás.
+
+**Arreglo:** reintento con backoff para 429/403-cuota/5xx; `alerta:
+'calendar-fallo'` en esos logs; una marca `calendarPendiente` (o hash del último
+evento enviado) que haga reemitir; `timeoutSeconds: 540` con
+`aplicarConPresupuesto`; `aIso` que devuelva `null` y saltee la sesión con log.
+Opcional: correr `reconciliacion.js` en un schedule diario.
+
+**Hecho:** `conReintentos` (`functions/sincronizacion.js`) reintenta 429, 5xx,
+403 de cuota y errores de red, con 0,5 / 1,5 / 4 s de espera, en las cuatro
+llamadas del trigger y en el re-sync por etiquetas; `esFalloPasajero` tiene su
+tabla en `tests/sincronizacion.test.ts`, y un caso lee el fuente para que ninguna
+llamada a Calendar quede sin envolver (mutación probada). Lo que igual falla avisa
+con `alerta: 'calendar-fallo'` (runbook en `08-operacion.md`), `syncCalendar`
+pasa a 540 s y una fecha ilegible avisa en vez de tirar la Function. **Lo que no
+se hizo** —que un fallo persistente se reemita solo— quedó en B-2218.
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)

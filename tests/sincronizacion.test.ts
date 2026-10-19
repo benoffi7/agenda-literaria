@@ -18,6 +18,8 @@ import {
   mismasEtiquetas,
   replanificarPorEtiquetas,
   reponerIds,
+  conReintentos,
+  esFalloPasajero,
 } from '../functions/sincronizacion.js';
 import { planificar } from '../functions/calendario.js';
 import { nuevaSesionId } from '@/lib/sesiones';
@@ -583,7 +585,8 @@ describe('B-125 · el encuentro vuelve al calendario en la próxima edición', (
     expect(src).toContain("if (accion === 'limpiar-id')");
     expect(src).toContain("} else if (accion === 'recrear') {");
     // Recrear pasa por `crearEvento`, o sea por el id derivado y por el 409.
-    expect(src).toMatch(/accion === 'recrear'[\s\S]{0,400}await crearEvento\(cal, op\)/);
+    // Desde B-2186, envuelto en `conReintentos`.
+    expect(src).toMatch(/accion === 'recrear'[\s\S]{0,400}await conReintentos\(\(\) => crearEvento\(cal, op\)/);
     // Y la tabla vieja no quedó al lado de la nueva.
     expect(src).not.toMatch(/op\.tipo === 'borrar' && \(code === 404/);
   });
@@ -707,5 +710,90 @@ describe('aplicarConPresupuesto — D-1273', () => {
     expect(src).toContain('presupuestoMs: PRESUPUESTO_RESYNC_MS');
     const modulo = readFileSync(new URL('../functions/opciones-trigger.js', import.meta.url), 'utf8');
     expect(modulo).toMatch(/PRESUPUESTO_RESYNC_MS = \(TIMEOUT_RESYNC_S - \d+\) \* 1000/);
+  });
+});
+
+describe('los fallos pasajeros de Calendar se reintentan — B-2186', () => {
+  const http = (code: number, reason?: string) =>
+    Object.assign(new Error(`HTTP ${code}`), { code, errors: reason ? [{ reason }] : [] });
+
+  it('429, 5xx, cuota y red son pasajeros; permiso, 400 y 404 no', () => {
+    expect(esFalloPasajero(http(429))).toBe(true);
+    expect(esFalloPasajero(http(500))).toBe(true);
+    expect(esFalloPasajero(http(503))).toBe(true);
+    expect(esFalloPasajero(http(403, 'rateLimitExceeded'))).toBe(true);
+    expect(esFalloPasajero(http(403, 'userRateLimitExceeded'))).toBe(true);
+    expect(esFalloPasajero(Object.assign(new Error('reset'), { code: 'ECONNRESET' }))).toBe(true);
+    // Lo que repetir no arregla.
+    expect(esFalloPasajero(http(403, 'forbidden'))).toBe(false);
+    expect(esFalloPasajero(http(400))).toBe(false);
+    expect(esFalloPasajero(http(404))).toBe(false);
+    expect(esFalloPasajero(http(410))).toBe(false);
+    expect(esFalloPasajero(new Error('sin código'))).toBe(false);
+  });
+
+  it('lee el código de la respuesta cuando el error no lo trae arriba (gaxios)', () => {
+    const e = Object.assign(new Error('x'), {
+      response: { status: 403, data: { error: { errors: [{ reason: 'quotaExceeded' }] } } },
+    });
+    expect(esFalloPasajero(e)).toBe(true);
+  });
+
+  it('reintenta lo pasajero hasta que sale, esperando lo que dice la tabla', async () => {
+    const esperas: number[] = [];
+    let intentos = 0;
+    const r = await conReintentos(
+      async () => {
+        intentos += 1;
+        if (intentos < 3) throw http(429);
+        return 'ok';
+      },
+      { esperas: [10, 20, 30], dormir: async (ms) => void esperas.push(ms) },
+    );
+    expect(r).toBe('ok');
+    expect(intentos).toBe(3);
+    expect(esperas).toEqual([10, 20]);
+  });
+
+  it('un fallo que no es pasajero sale a la primera, sin esperar', async () => {
+    const esperas: number[] = [];
+    let intentos = 0;
+    await expect(
+      conReintentos(
+        async () => {
+          intentos += 1;
+          throw http(404);
+        },
+        { esperas: [10, 20], dormir: async (ms) => void esperas.push(ms) },
+      ),
+    ).rejects.toMatchObject({ code: 404 });
+    // El 404 lo tiene que ver `decidirAnteFallo`, no un reintento.
+    expect(intentos).toBe(1);
+    expect(esperas).toEqual([]);
+  });
+
+  it('agotados los reintentos, tira el último error', async () => {
+    let intentos = 0;
+    await expect(
+      conReintentos(
+        async () => {
+          intentos += 1;
+          throw http(503);
+        },
+        { esperas: [1, 1], dormir: async () => {} },
+      ),
+    ).rejects.toMatchObject({ code: 503 });
+    expect(intentos).toBe(3);
+  });
+
+  it('el trigger y el re-sync por etiquetas pasan cada llamada a Calendar por `conReintentos`', () => {
+    // Mutación probada: sacar el envoltorio de `cal.events.update` del trigger lo pone rojo.
+    for (const archivo of ['functions/calendario-trigger.js', 'functions/opciones-trigger.js']) {
+      const src = readFileSync(archivo, 'utf8');
+      const llamadas = src.match(/(?:cal\.events\.(?:update|delete|insert)|crearEvento)\(/g) ?? [];
+      const envueltas = src.match(/conReintentos\(\s*\(\)\s*=>\s*(?:cal\.events\.(?:update|delete|insert)|crearEvento)\(/g) ?? [];
+      expect(llamadas.length).toBeGreaterThan(0);
+      expect(envueltas.length).toBe(llamadas.length);
+    }
   });
 });
