@@ -78,7 +78,7 @@ jobs:
         run: |
           echo "Motivo: $MOTIVO"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           # Todo el historial y los tags: el paso de abajo vuelve a un commit
           # anterior a la punta de `main`.
@@ -113,7 +113,7 @@ jobs:
           echo "::notice::se construye el commit publicado ${SHA:0:7} (main está en ${GITHUB_SHA:0:7})"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           # Igual que las Functions y el entorno local.
           node-version: '22'
@@ -226,7 +226,7 @@ jobs:
         run: ./scripts/verificar-bundle.sh dist
 
       - name: Deploy a Firebase Hosting
-        uses: FirebaseExtended/action-hosting-deploy@v0
+        uses: FirebaseExtended/action-hosting-deploy@500ac625ca2dd40cbd15f7659af953801858032a # v0.11.0
         with:
           # Mismo secret que el build: la service account necesita leer
           # Firestore y desplegar Hosting, nada más.
@@ -292,7 +292,7 @@ jobs:
     steps:
       # El checkout es por `scripts/mail-de-aviso.sh`. Hace falta un archivo, no
       # la historia.
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Mandar el mail
         continue-on-error: true
         env:
@@ -384,7 +384,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Mandar el mail, si venía roto
         continue-on-error: true
         env:
@@ -444,7 +444,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Mandar un mail de prueba
         env:
           MAIL_AVISOS_DESTINO: ${{ secrets.MAIL_AVISOS_DESTINO }}

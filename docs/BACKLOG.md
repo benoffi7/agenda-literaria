@@ -179,13 +179,6 @@ El evento se arma con `event.data.after` de cada invocación, y Firestore no
 garantiza orden. **Arreglo:** releer el documento al ejecutar y comparar contra un
 hash del último evento enviado por sesión (el mismo campo de B-2186).
 
-### B-2197 · Una Action de terceros en un tag móvil recibe la key de deploy · P2 (auditoría 2026-10-19)
-
-`FirebaseExtended/action-hosting-deploy@v0` en `push-main.yml:264` y
-`deploy.yml`, con `secrets.FIREBASE_SERVICE_ACCOUNT` (lee todo Firestore, D-132).
-**Arreglo:** fijar por SHA esa y `checkout`/`setup-node`/`setup-java`, o
-reemplazarla por `npx firebase deploy --only hosting`.
-
 ### B-2198 · Ni los `.astro` ni el JS de `functions/` pasan por un type checker · P2 (auditoría 2026-10-19)
 
 `tsc --noEmit` no lee `.astro` (48 archivos, 8.369 LOC, incluido el frontmatter

@@ -657,7 +657,8 @@ describe('un workflow que nadie está mirando avisa cuando falla — B-883', () 
     expect(envio, 'el script de envío no manda por SMTP').toMatch(/curl[\s\S]*smtps:\/\//);
     expect(envio, 'la casilla no puede estar escrita en el repo').not.toMatch(/@gmail\.com/);
 
-    const ACTIONS_PERMITIDAS = ['actions/checkout@v4'];
+    // B-2197 — fijada por SHA (v4.4.0).
+    const ACTIONS_PERMITIDAS = ['actions/checkout@11d5960a326750d5838078e36cf38b85af677262'];
     for (const [nombre, job] of avisos('deploy.yml')) {
       for (const paso of job.steps ?? []) {
         const donde = `deploy.yml · ${nombre}`;
@@ -778,5 +779,27 @@ describe('el rebuild por contenido publica el código que ya está publicado —
   it('la suite se saltea mirando el commit que se construye, no la punta de main', () => {
     const suite = pasos().find((p) => p.id === 'suite')!;
     expect(suite.env?.SHA).toBe('${{ steps.commit.outputs.sha }}');
+  });
+});
+
+describe('las Actions de terceros van fijadas por SHA — B-2197', () => {
+  it('todo `uses:` apunta a un commit de 40 hex, no a un tag que se puede mover', () => {
+    /*
+     * Un tag (`@v0`, `@v4`) lo puede mover quien controla el repo de la Action,
+     * y `action-hosting-deploy` recibe `FIREBASE_SERVICE_ACCOUNT`, que lee todo
+     * Firestore y despliega (D-132). Fijado por SHA, el código que corre es el que
+     * se revisó. El comentario de al lado dice qué versión es, para actualizarla.
+     * Mutación probada: volver a `@v4` en un `uses:` pone esto rojo.
+     */
+    const sinFijar = readdirSync('.github/workflows')
+      .filter((f) => f.endsWith('.yml'))
+      .flatMap((f) =>
+        readFileSync(join('.github/workflows', f), 'utf8')
+          .split('\n')
+          .filter((l) => /^\s*(-\s+)?uses:\s/.test(l))
+          .filter((l) => !/uses:\s+[\w.-]+\/[\w.-]+@[0-9a-f]{40}\s+#\s+v\d/.test(l))
+          .map((l) => `${f}: ${l.trim()}`),
+      );
+    expect(sinFijar).toEqual([]);
   });
 });

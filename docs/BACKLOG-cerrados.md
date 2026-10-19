@@ -18414,6 +18414,19 @@ sin chocar. El gate de build barre todas las páginas con `idsRepetidos`
 «saltar al contenido» y aviso de cookies. El formulario no mide nada propio; con
 Analytics solo suma la vista de la página.
 
+### B-2197 · Una Action de terceros en un tag móvil recibe la key de deploy · P2 — ✅ hecho (2026-10-19)
+
+`FirebaseExtended/action-hosting-deploy@v0` en `push-main.yml:264` y
+`deploy.yml`, con `secrets.FIREBASE_SERVICE_ACCOUNT` (lee todo Firestore, D-132).
+**Arreglo:** fijar por SHA esa y `checkout`/`setup-node`/`setup-java`, o
+reemplazarla por `npx firebase deploy --only hosting`.
+
+**Hecho:** los 21 `uses:` de los cinco workflows apuntan a un SHA de 40 hex con la
+versión al lado (`checkout` v4.4.0, `setup-node` v4.4.0, `setup-java` v4.9.1,
+`action-hosting-deploy` v0.11.0, resueltos el 2026-10-19 desde el tag que usaban).
+`tests/workflows.test.ts` exige el SHA en todo `uses:` (mutación probada).
+Actualizarlas es a mano: no se sumó Dependabot.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

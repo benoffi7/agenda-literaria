@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Las Actions de GitHub que publican el sitio van fijadas a una versión exacta**
+  (B-2197). Antes apuntaban a un tag que su dueño puede mover, y una de ellas recibe
+  la credencial de deploy.
+
 - **«Proponer una actividad» tiene barra y pie como el resto del sitio** (B-2200).
   Quien llegaba desde Google no tenía cómo seguir navegando, y la página no se medía.
   De paso, sus grupos de botones dejaron de repetir ids, y el build ahora revisa que
