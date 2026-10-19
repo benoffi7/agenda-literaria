@@ -23,8 +23,23 @@ import { TIMEZONE } from '@calendario';
 /** La zona del proyecto (§14). Se re-exporta para que nadie escriba la cadena. */
 export const ZONA = TIMEZONE;
 
-const fmt = (opciones: Intl.DateTimeFormatOptions): Intl.DateTimeFormat =>
-  new Intl.DateTimeFormat('es-AR', { timeZone: ZONA, ...opciones });
+/*
+ * B-2202 — un formateador por juego de opciones, y no uno por llamada. Construir
+ * un `Intl.DateTimeFormat` es caro y cada fila del listado formatea 5 a 8 fechas:
+ * eran ~1000 construcciones por render de la home. El resultado no cambia: las
+ * opciones son las mismas y el formateador no guarda estado.
+ */
+const FORMATEADORES = new Map<string, Intl.DateTimeFormat>();
+
+const fmt = (opciones: Intl.DateTimeFormatOptions): Intl.DateTimeFormat => {
+  const clave = JSON.stringify(opciones);
+  let f = FORMATEADORES.get(clave);
+  if (!f) {
+    f = new Intl.DateTimeFormat('es-AR', { timeZone: ZONA, ...opciones });
+    FORMATEADORES.set(clave, f);
+  }
+  return f;
+};
 
 /**
  * `jueves 24 de septiembre` — la fecha de la ficha del detalle.

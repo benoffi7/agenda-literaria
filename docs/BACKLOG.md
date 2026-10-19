@@ -215,16 +215,6 @@ la página de conversión no se mide. Quedó así de cuando no estaba anunciada;
 hay D. **Arreglo:** ids `${htmlFor}-rotulo` y una red que barra ids repetidos en
 `dist/`; darle a `/proponer` el chrome como a `/anunciar`.
 
-### B-2202 · El buscador de la home recalcula todo en cada tecla · P2 (auditoría 2026-10-19)
-
-`Buscador.tsx:617` va directo a `setFiltros`; `chipsDe` (`:760`) corre
-`filtrarPublico` entero por eje sin memo; `estadoDe` corre dentro del comparador
-del `sort` (`listadoPublico.ts:573`) y parsea cada ISO 3-4 veces;
-`fechasPublicas.ts:26` crea un `Intl.DateTimeFormat` por llamada (~1000 por
-render). Se traba en un Android de gama media. **Arreglo:** `estadoDe`
-precalculado por `(indice, ahora)`, chips memoizados, `useDeferredValue` para `q`,
-formatters cacheados.
-
 ### B-2203 · El panel relee la colección entera de `/actividades` cada vez que se vuelve al listado · P2 (auditoría 2026-10-19)
 
 `useActividades.ts` hace `getDocs` completo sin caché, y `ListaActividades` /

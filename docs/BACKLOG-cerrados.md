@@ -18365,6 +18365,24 @@ reintentar. A `error` y no a `pendiente`: si el issue se creó y falló la escri
 de vuelta, reenviarlo lo duplicaría en el repo público. Sin schedule propio: sería
 un job más de Scheduler que se cobra. `tests/reportes-atascados.test.ts`.
 
+### B-2202 · El buscador de la home recalcula todo en cada tecla · P2 — ✅ hecho (2026-10-19)
+
+`Buscador.tsx:617` va directo a `setFiltros`; `chipsDe` (`:760`) corre
+`filtrarPublico` entero por eje sin memo; `estadoDe` corre dentro del comparador
+del `sort` (`listadoPublico.ts:573`) y parsea cada ISO 3-4 veces;
+`fechasPublicas.ts:26` crea un `Intl.DateTimeFormat` por llamada (~1000 por
+render). Se traba en un Android de gama media. **Arreglo:** `estadoDe`
+precalculado por `(indice, ahora)`, chips memoizados, `useDeferredValue` para `q`,
+formatters cacheados.
+
+**Hecho:** los filtros llegan a la lista por `useDeferredValue` (durante la tecla
+los memos no corren), los chips de cada eje salen de un `useMemo`, el orden
+calcula `estadoDe` una vez por entrada fuera del comparador, y `fechasPublicas`
+reusa un `Intl.DateTimeFormat` por juego de opciones. El aviso del cero y la
+analítica usan los mismos filtros diferidos que la lista.
+`tests/buscador-por-tecla.test.ts` fija la forma (mutación probada). **No se midió
+en un teléfono**: falta perfilarlo en uno de gama media para saber cuánto bajó.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

@@ -69,7 +69,7 @@ import {
   claseEtiquetaDeCampo,
   foco,
 } from '@/components/sitio/estilos';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { BannerDeCiudad } from '@/components/publico/BannerDeCiudad';
 import { EjeDeFiltro } from '@/components/publico/EjeDeFiltro';
 import { GuardarBusqueda } from '@/components/publico/GuardarBusqueda';
@@ -402,9 +402,20 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
      etiquetas: el color de la categoría es taxonomía, como su nombre. */
   const tonos = useMemo(() => tonosDeTipo(indice?.opciones ?? {}), [indice]);
 
+  /*
+   * B-2202 — los filtros se aplican a la lista **diferidos**: los controles se
+   * actualizan en cada tecla, y el filtrado de cientos de entradas y el cálculo
+   * de los chips corren cuando React tiene un hueco. En un teléfono de gama media
+   * escribir se trababa. Mientras se tipea, `useDeferredValue` devuelve la misma
+   * referencia de antes, así que los `useMemo` de abajo no corren de nuevo. Todo
+   * lo que se calcula sobre la lista —el aviso del cero, la analítica— usa
+   * **estos** filtros, para que hablen siempre de lo mismo que la lista.
+   */
+  const filtrosDeLaLista = useDeferredValue(filtros);
+
   const visibles = useMemo(
-    () => (indice ? listaPublica(entradas, filtros, orden, ahora) : []),
-    [indice, entradas, filtros, orden, ahora],
+    () => (indice ? listaPublica(entradas, filtrosDeLaLista, orden, ahora) : []),
+    [indice, entradas, filtrosDeLaLista, orden, ahora],
   );
 
   /**
@@ -439,16 +450,35 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
    */
   const banner = useMemo(() => bannerParaCiudades(filtros.valores.ciudad), [filtros.valores.ciudad]);
   const sobra = useMemo(
-    () => (visibles.length === 0 ? ejeQueSobra(entradas, filtros, ahora) : null),
-    [visibles.length, entradas, filtros, ahora],
+    () => (visibles.length === 0 ? ejeQueSobra(entradas, filtrosDeLaLista, ahora) : null),
+    [visibles.length, entradas, filtrosDeLaLista, ahora],
   );
   /* B-798 — el mismo cero, contestado sobre los diez filtros y no sobre seis.
      `sobra` queda intacto: es el que pinta la pantalla, y mezclarlos haría que
      el aviso ofreciera sacar algo que no es un chip. */
   const ejeDelCero = useMemo(
     () =>
-      visibles.length === 0 ? ejeQueExplicaElCero(entradas, filtros, ahora, sobra) : null,
-    [visibles.length, entradas, filtros, ahora, sobra],
+      visibles.length === 0 ? ejeQueExplicaElCero(entradas, filtrosDeLaLista, ahora, sobra) : null,
+    [visibles.length, entradas, filtrosDeLaLista, ahora, sobra],
+  );
+
+  /*
+   * B-2202 — los chips de cada eje, **una vez por cambio** y no en cada render:
+   * cada `chipsDe` corre un `filtrarPublico` entero sobre el índice, y se llamaba
+   * una vez por eje visible en cada tecla. Sobre los filtros de la lista, por lo
+   * mismo que `visibles`.
+   */
+  const chipsPorEje = useMemo(
+    () =>
+      new Map(
+        // Los ejes visibles dependen de la provincia elegida y no del texto, así
+        // que salen iguales con `filtros` o con `filtrosDeLaLista`.
+        ejesVisibles(filtrosDeLaLista).map((eje) => [
+          eje,
+          chipsDe(eje, entradas, filtrosDeLaLista, etiquetas, ahora),
+        ]),
+      ),
+    [entradas, filtrosDeLaLista, etiquetas, ahora],
   );
 
   /**
@@ -480,19 +510,24 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
   const firmaDeFiltro = useMemo(
     () =>
       JSON.stringify({
-        v: filtros.valores,
-        cuando: filtros.cuando,
-        soloAbierta: filtros.soloAbierta,
-        cursada: filtros.cursada,
+        v: filtrosDeLaLista.valores,
+        cuando: filtrosDeLaLista.cuando,
+        soloAbierta: filtrosDeLaLista.soloAbierta,
+        cursada: filtrosDeLaLista.cursada,
       }),
-    [filtros.valores, filtros.cuando, filtros.soloAbierta, filtros.cursada],
+    [
+      filtrosDeLaLista.valores,
+      filtrosDeLaLista.cuando,
+      filtrosDeLaLista.soloAbierta,
+      filtrosDeLaLista.cursada,
+    ],
   );
   const ultimaFirmaMedida = useRef<string | null>(null);
 
   useEffect(() => {
     if (!indice) return; // «sobra» solo es real una vez que hay datos.
     const esUnCeroMedible =
-      visibles.length === 0 && entradas.length > 0 && hayFiltrosPublicos(filtros);
+      visibles.length === 0 && entradas.length > 0 && hayFiltrosPublicos(filtrosDeLaLista);
     if (!esUnCeroMedible) {
       // Al salir del cero se resetea: si más tarde se vuelve a caer en la
       // misma combinación, es un intento nuevo y merece medirse de nuevo.
@@ -501,7 +536,7 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
     }
     if (ultimaFirmaMedida.current === firmaDeFiltro) return;
     ultimaFirmaMedida.current = firmaDeFiltro;
-    medirSitio('filtro_sin_resultados', crudosDeFiltroSinResultados(ejeDelCero, filtros.valores));
+    medirSitio('filtro_sin_resultados', crudosDeFiltroSinResultados(ejeDelCero, filtrosDeLaLista.valores));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [indice, visibles.length, entradas.length, firmaDeFiltro, ejeDelCero]);
 
@@ -757,7 +792,7 @@ export function Buscador({ version, idListadoEstatico, idPanelesEstaticos }: Pro
               <EjeDeFiltro
                 key={eje}
                 leyenda={ETIQUETA_EJE[eje]}
-                chips={chipsDe(eje, entradas, filtros, etiquetas, ahora)}
+                chips={chipsPorEje.get(eje) ?? []}
                 onAlternar={(valor) => setFiltros(alternarValor(filtros, eje, valor))}
               />
             ))}

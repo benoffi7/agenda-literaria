@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Escribir en el buscador de la home no traba el teléfono** (B-2202). La lista y los
+  filtros se recalculan cuando hay un hueco y no en cada tecla, y las fechas se
+  formatean sin rearmar el formateador cada vez.
+
 - **La home baja un 35 % menos de datos** (B-2191). El índice de actividades dejó de
   llevar la imagen, que el listado no muestra, y sale sin sangría: de 1,08 MB a 705 KB
   (133 KB comprimido).

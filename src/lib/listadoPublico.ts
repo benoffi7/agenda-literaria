@@ -570,9 +570,12 @@ export const ordenarPublico = (
         porTitulo(a, b),
     );
   }
+  // B-2202 — el estado de cada una se calcula **una vez**, no dentro del
+  // comparador: ahí corría ~2·n·log n veces, parseando cada fecha de nuevo.
+  const estados = new Map(copia.map((e) => [e, estadoDe(e, ahora)]));
   return copia.sort((a, b) => {
-    const pa = estadoDe(a, ahora);
-    const pb = estadoDe(b, ahora);
+    const pa = estados.get(a)!;
+    const pb = estados.get(b)!;
     if (pa.proxima && pb.proxima) return pa.proxima.getTime() - pb.proxima.getTime() || porTitulo(a, b);
     if (pa.proxima) return -1;
     if (pb.proxima) return 1;
