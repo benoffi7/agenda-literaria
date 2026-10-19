@@ -131,6 +131,13 @@ jobs:
         # frontmatter que importa `firebase-admin`, quedaban sin revisar.
         run: npx astro check --minimumSeverity error
 
+      - name: Dependencias de functions/
+        # Sin esto el chequeo de abajo no encuentra `firebase-functions` ni los
+        # `@googleapis/*`: este job solo instalaba la raíz. En local pasaba porque
+        # `functions/node_modules` ya estaba (dos deploys rojos el 2026-10-19).
+        run: npm ci
+        working-directory: functions
+
       - name: Tipos del JS de functions/
         # B-2198 — el `tsc --noEmit` de la raíz no chequea el JS de `functions/`:
         # el JSDoc de las Functions va con su propio tsconfig (checkJs, sin strict).

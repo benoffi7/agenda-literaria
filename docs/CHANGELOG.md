@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **CI instala las dependencias de las Functions antes de chequear sus tipos** (B-2198).
+  Sin eso, los dos deploys anteriores salieron rojos y no publicaron.
+
 - **El calendario público se repara solo** (B-2218, B-2194, D-1277). Si un cambio no
   llegó a Google Calendar, abrir la actividad y guardar lo reenvía, aunque no se haya
   cambiado nada; y dos guardados seguidos ya no pueden dejar el evento con lo

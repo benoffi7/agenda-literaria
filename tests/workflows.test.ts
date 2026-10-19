@@ -830,3 +830,19 @@ describe('los .astro pasan por un chequeo de tipos — B-2198', () => {
     expect(runs.some((r) => /\btsc -p functions\/tsconfig\.json\b/.test(r))).toBe(true);
   });
 });
+
+describe('el chequeo de tipos de functions/ tiene sus dependencias — B-2198', () => {
+  it('el job instala functions/ antes de correr su tsc', () => {
+    // Sin el `npm ci` en functions/, el tsc no encuentra ningún módulo: dos
+    // deploys salieron rojos el 2026-10-19 y en local no se veía. Mutación
+    // probada: sacar el paso pone esto rojo.
+    const wf = parsear('push-main.yml').toJS() as {
+      jobs: Record<string, { name?: string; steps?: { run?: string; 'working-directory'?: string }[] }>;
+    };
+    const pasos = Object.values(wf.jobs).find((j) => j.name === 'Tests y typecheck')!.steps ?? [];
+    const instala = pasos.findIndex((p) => p.run === 'npm ci' && p['working-directory'] === 'functions');
+    const chequea = pasos.findIndex((p) => (p.run ?? '').includes('tsc -p functions/tsconfig.json'));
+    expect(instala).toBeGreaterThanOrEqual(0);
+    expect(chequea).toBeGreaterThan(instala);
+  });
+});
