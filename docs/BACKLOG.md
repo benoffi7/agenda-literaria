@@ -487,6 +487,16 @@ y un día sin hora (B-2175) puede caer en el día anterior. Ninguna config de
 vitest fija `TZ`. Hoy no pasa (un solo operador en Argentina). **Arreglo:** offset
 fijo `-03:00`, y como mínimo `TZ` distinta de ART en `vitest.config.ts`.
 
+**Probado y vuelto atrás (2026-10-19):** pasar solo `aDatetimeLocal` y
+`deDatetimeLocal` a hora argentina (offset fijo `-03:00`, sin horario de verano
+desde 2009) deja en rojo 7 casos con `TZ=Asia/Tokyo` —antes ninguno—: el resto del
+panel también calcula en hora local (`resumirSesion` en `correr-fecha`,
+`formatoDeHora`, el día entero del horario a confirmar, las fechas de las
+modalidades). A medias, el panel en otra zona pasa de consistente a mezclado. El
+arreglo es todo junto: esos módulos más las dos conversiones, con la suite en dos
+zonas como red (el gate ya corre la de Tokio). La red de `TZ` que pedía el ítem ya
+existe: `verificar-todo.sh` corre `unidad` y `render` con `TZ=Asia/Tokyo`.
+
 ### B-2210 · El slug de una actividad solo es inmutable por el formulario · P3 (auditoría 2026-10-19)
 
 `firestore.rules` congela el slug de las cuatro fichas de la Guía, pero no el de
