@@ -200,7 +200,7 @@ export function DirectorioPanel({
         arriba, y por el mismo motivo — acá se decide qué sale al sitio.
       */}
       <p className="text-xs text-tinta/65">
-        Hasta que no la publiques, esta {singular} no está en el sitio: no aparece en la Guía,
+        Hasta que no la publiques, esta {singular} no está en el sitio: no aparece en Espacios,
         ni en el buscador, ni en el mapa del sitio. Publicar la deja visible para cualquiera en
         el próximo rebuild.
       </p>

@@ -40,7 +40,7 @@
  * por un parámetro nuevo y el barrido no vería nada: seguiría llamando a
  * constantes.
  */
-import { directoriosDisponibles, type IdDirectorio } from '@/lib/directorios';
+import { NOMBRE_DE_LA_GUIA, directoriosDisponibles, type IdDirectorio } from '@/lib/directorios';
 import type { GrupoDeExploracion } from '@/lib/hubsPublicos';
 
 /**
@@ -145,7 +145,7 @@ export const frasesDeNoEncontrado = (
  * Leído en la columna del rótulo —«Explorá por · En la Guía · Librerías»— dice
  * de dónde salen los enlaces sin tener que explicarlo.
  */
-export const ROTULO_GUIA_NO_ENCONTRADO = 'En la Guía';
+export const ROTULO_GUIA_NO_ENCONTRADO = `En ${NOMBRE_DE_LA_GUIA}`;
 
 /**
  * **Las secciones de la Guía que el 404 sugiere** — B-900, § 2.1 del inventario

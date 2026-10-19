@@ -925,19 +925,19 @@ export const CAPITULOS: CapituloAyuda[] = [
   },
   {
     id: 'librerias',
-    titulo: 'Las librerías de la Guía',
+    titulo: 'Las librerías de Espacios',
     paraQue:
       'Cargar y revisar el directorio de librerías, y entender cuándo una ficha entra al sitio y cuándo no.',
     puntos: [
       {
         texto:
-          'La Guía es la parte del sitio que no habla de actividades: el circuito que las rodea. ' +
+          'Espacios es la parte del sitio que no habla de actividades: el circuito que las rodea. ' +
           'Librerías es la primera sección, y se carga desde el botón «Librerías» del listado.',
       },
       {
         texto:
           'Guardar una librería no la publica. Queda esperando decisión, y recién cuando tocás ' +
-          '«Publicar» entra al sitio: aparece en la Guía, en el buscador de la sección y en el ' +
+          '«Publicar» entra al sitio: aparece en Espacios, en el buscador de la sección y en el ' +
           'mapa del sitio. Antes de eso no la ve nadie más que ustedes.',
       },
       {
@@ -975,7 +975,7 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'Una librería también puede llegar sola, desde el formulario público de «Sumar una ' +
-          'librería» que está en la Guía. Entra a la bandeja igual que si la hubieras cargado ' +
+          'librería» que está en Espacios. Entra a la bandeja igual que si la hubieras cargado ' +
           'vos, esperando decisión — pero **sin ninguna foto**: quien la carga desde afuera no ' +
           'tiene el editor de galería, así que si la vas a publicar conviene agregarle una antes.',
         cuidado: true,
@@ -1021,14 +1021,14 @@ export const CAPITULOS: CapituloAyuda[] = [
   },
   {
     id: 'suscripciones',
-    titulo: 'Las suscripciones literarias de la Guía',
+    titulo: 'Las suscripciones literarias de Espacios',
     paraQue:
       'Cargar y revisar el directorio de suscripciones —las cajas y clubes por abono— y entender ' +
       'qué pasa con el precio, que es lo único del sitio que envejece solo.',
     puntos: [
       {
         texto:
-          'Es la segunda sección de la Guía, al lado de las librerías, y funciona igual: se carga ' +
+          'Es la segunda sección de Espacios, al lado de las librerías, y funciona igual: se carga ' +
           'desde el botón «Suscripciones» del listado, guardar no publica, y la ficha espera ' +
           'decisión hasta que toques «Publicar».',
       },
@@ -1078,7 +1078,7 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
-          'Si la ofrece una librería que ya está en la Guía, poné su dirección web en el campo ' +
+          'Si la ofrece una librería que ya está en Espacios, poné su dirección web en el campo ' +
           'de la librería: la ficha las enlaza, pero solo si esa librería está publicada. Si ' +
           'está esperando decisión, el enlace no aparece en vez de llevar a una página que no existe.',
       },
@@ -1096,7 +1096,7 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'Una suscripción también puede llegar  sola, desde el formulario público de «Sumar ' +
-          'una suscripción» que está en la Guía. Entra a la bandeja igual que si la hubieras ' +
+          'una suscripción» que está en Espacios. Entra a la bandeja igual que si la hubieras ' +
           'cargado vos, esperando decisión — pero **sin ninguna foto**: quien la carga desde ' +
           'afuera no tiene el editor de galería, así que si la vas a publicar conviene ' +
           'agregarle una antes.',
@@ -1138,11 +1138,11 @@ export const CAPITULOS: CapituloAyuda[] = [
     paraQue:
       'Cargar y revisar el directorio de bibliotecas —dónde sacar libros, con qué horario de ' +
       'sala y si hay que asociarse— y entender por qué una biblioteca puede estar cargada dos ' +
-      'veces en la Guía.',
+      'veces en Espacios.',
     puntos: [
       {
         texto:
-          'Es la cuarta sección de la Guía y funciona igual que las otras tres: se carga desde ' +
+          'Es la cuarta sección de Espacios y funciona igual que las otras tres: se carga desde ' +
           'el botón «Bibliotecas» del listado, guardar no publica, y la ficha espera decisión ' +
           'hasta que toques «Publicar».',
       },
@@ -1215,7 +1215,7 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'Una biblioteca también puede llegar sola, desde el formulario público de «Sumar una ' +
-          'biblioteca» que está en la Guía. Entra a la bandeja igual que si la hubieras cargado ' +
+          'biblioteca» que está en Espacios. Entra a la bandeja igual que si la hubieras cargado ' +
           'vos, esperando decisión — pero **sin ninguna foto**: quien la carga desde afuera no ' +
           'tiene el editor de galería, así que si la vas a publicar conviene agregarle una antes.',
         cuidado: true,
@@ -1329,7 +1329,7 @@ export const CAPITULOS: CapituloAyuda[] = [
     puntos: [
       {
         texto:
-          'Es la tercera sección de la Guía y funciona igual que las otras dos: se carga desde ' +
+          'Es la tercera sección de Espacios y funciona igual que las otras dos: se carga desde ' +
           'el botón «Lugares» del listado, guardar no publica, y la ficha espera decisión hasta ' +
           'que toques «Publicar».',
       },
@@ -1387,7 +1387,7 @@ export const CAPITULOS: CapituloAyuda[] = [
       {
         texto:
           'Un lugar también puede llegar solo sola, desde el formulario público de «Sumar ' +
-          'un lugar» que está en la Guía. Entra a la bandeja igual que si la hubieras ' +
+          'un lugar» que está en Espacios. Entra a la bandeja igual que si la hubieras ' +
           'cargado vos, esperando decisión — pero **sin ninguna foto**: quien la carga desde ' +
           'afuera no tiene el editor de galería, así que si la vas a publicar conviene ' +
           'agregarle una antes. También llega sin la dirección exacta publicada: ese dato se guarda para que vos sepas de qué lugar se trata, y la ficha muestra el barrio. Prender la dirección es una decisión tuya, y conviene pedirle permiso primero a quien vive o trabaja ahí.',

@@ -266,7 +266,7 @@ export function SuscripcionFormulario({ uid, inicial, onGuardado, onCancelar }: 
             aparece en vez de llevar a una página que no existe.
           */}
           <Campo
-            label="Si la ofrece una librería de la Guía"
+            label="Si la ofrece una librería de Espacios"
             htmlFor="sus-libreria"
             error={errorDe('ofrecidaPor.libreriaSlug')}
             ayuda="Su dirección web, sin /guia/librerias/. Solo se enlaza si esa librería está publicada."

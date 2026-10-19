@@ -65,6 +65,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'la-guia-se-llama-espacios',
+    fecha: '2026-10-19',
+    version: '1.11.0',
+    titulo: 'La Guía ahora se llama «Espacios»',
+    detalle:
+      'En el sitio la pestaña dice «Espacios» y la página agrupa las secciones en tres: ' +
+      'para comprar libros, para leer, consultar o retirar libros, y para hacer tu evento ' +
+      'literario. Las direcciones no cambiaron: los enlaces que ya compartiste siguen andando.',
+    donde: 'En el sitio, la pestaña «Espacios».',
+  },
+  {
     id: 'cancelar-desde-recordatorios',
     fecha: '2026-10-06',
     version: '1.11.0',

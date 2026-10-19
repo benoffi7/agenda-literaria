@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **La Guía se llama «Espacios» y está agrupada en tres** (D-1274), como pidió el
+  dueño: espacios para comprar libros (librerías y suscripciones), para leer,
+  consultar o retirar libros (bibliotecas) y para hacer tu evento literario
+  (lugares). Cambia el nombre en la barra, el pie, las migas, el 404, la ayuda y el
+  panel; las direcciones siguen en `/guia/…` para no romper enlaces ni el SEO.
+
 - **Cada encuentro de un ciclo con varias sedes dice dónde ocurre** (B-734). Search
   Console marcaba inválidos los encuentros de una actividad con más de una fila de
   modalidad («Falta el campo "location"»): se publicaban sin lugar, apostando a que

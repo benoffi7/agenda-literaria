@@ -237,7 +237,7 @@ describe('barrido de la ficha y del marcado', () => {
     const migas = migasDeBiblioteca(ficha()) as { itemListElement: { name: string }[] };
     expect(migas.itemListElement.map((i) => i.name)).toEqual([
       NOMBRE,
-      'Guía',
+      'Espacios',
       'Bibliotecas',
       CENTINELA_BIBLIOTECA.nombre,
     ]);

@@ -495,7 +495,7 @@ describe('la Guía tiene su propia pregunta — B-902', () => {
   });
 
   it('enlaza `/guia` y no las secciones una por una', () => {
-    expect(pregunta()!.enlaces).toEqual([{ href: RUTAS.RUTA_GUIA, texto: 'La Guía' }]);
+    expect(pregunta()!.enlaces).toEqual([{ href: RUTAS.RUTA_GUIA, texto: 'Espacios' }]);
   });
 
   it('«¿Qué es esto?» ya no carga la Guía como tercer párrafo', () => {

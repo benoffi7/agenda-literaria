@@ -635,7 +635,7 @@ describe('la ficha y su marcado estructurado', () => {
     const migas = migasDeSuscripcion(ficha()) as { itemListElement: { name: string }[] };
     expect(migas.itemListElement.map((m) => m.name)).toEqual([
       NOMBRE,
-      'Guía',
+      'Espacios',
       'Suscripciones literarias',
       CENTINELA_SUSCRIPCION.nombre,
     ]);

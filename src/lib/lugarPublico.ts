@@ -54,6 +54,7 @@ import { imagenesDeFichaPublica } from '@/lib/imagenesDeFicha';
 import { NOMBRE } from '@/lib/identidad';
 import { normalize } from '@/lib/normalize';
 import { RUTA_AGENDA, RUTA_GUIA, RUTA_LUGARES, rutaDeLugar, urlAbsoluta } from '@/lib/rutasPublicas';
+import { NOMBRE_DE_LA_GUIA } from '@/lib/directorios';
 import { slugify } from '@/lib/slugify';
 import { opcionesPublicas, type OpcionPublica } from '@/lib/toPublic';
 import {
@@ -907,7 +908,7 @@ export const migasDeLugar = (f: FichaDeLugar): Record<string, unknown> => ({
   '@type': 'BreadcrumbList',
   itemListElement: [
     { '@type': 'ListItem', position: 1, name: NOMBRE, item: urlAbsoluta(RUTA_AGENDA) },
-    { '@type': 'ListItem', position: 2, name: 'Guía', item: urlAbsoluta(RUTA_GUIA) },
+    { '@type': 'ListItem', position: 2, name: NOMBRE_DE_LA_GUIA, item: urlAbsoluta(RUTA_GUIA) },
     {
       '@type': 'ListItem',
       position: 3,

@@ -49,7 +49,14 @@
  */
 import Base from '@/layouts/Base.astro';
 import { NOMBRE } from '@/lib/identidad';
-import { DIRECTORIOS, directoriosDisponibles, enumeracionDeLaGuia } from '@/lib/directorios';
+import {
+  GRUPOS_DE_ESPACIOS,
+  NOMBRE_DE_LA_GUIA,
+  directorioPorId,
+  directoriosDisponibles,
+  enumeracionDeLaGuia,
+  type Directorio,
+} from '@/lib/directorios';
 import { RUTA_CONTACTO } from '@/lib/rutasPublicas';
 import {
   claseBloque,
@@ -58,7 +65,15 @@ import {
   claseTituloSeccion,
 } from '@/components/sitio/estilos';
 
-const TITULO = 'Guía';
+const TITULO = NOMBRE_DE_LA_GUIA;
+// D-1274 — las filas van agrupadas por para qué vas; el grupo resuelve sus ids
+// contra `DIRECTORIOS`, que sigue siendo de donde sale cada fila.
+const grupos = GRUPOS_DE_ESPACIOS.map((g) => ({
+  titulo: g.titulo,
+  directorios: g.directorios
+    .map((id) => directorioPorId(id))
+    .filter((d): d is Directorio => d !== undefined),
+}));
 // Derivada de las secciones disponibles y no escrita a mano: la versión a mano
 // nombraba tres y se había quedado sin bibliotecas (B-1430).
 const secciones = enumeracionDeLaGuia();
@@ -72,46 +87,51 @@ const DESCRIPCION =
     <h1 class="display-md text-balance text-acento">{TITULO}</h1>
 
     <p class="body-lectura mt-6 max-w-[65ch] text-super">
-      La agenda dice qué pasa y cuándo. Acá está el resto del circuito: dónde se compran los
-      libros, dónde sacarlos prestados, qué te llega por correo si te suscribís, y qué lugares
-      prestan o alquilan su espacio para hacer una actividad.
+      La agenda dice qué pasa y cuándo. Acá están los espacios alrededor: dónde comprar
+      libros, dónde leerlos, consultarlos o retirarlos, y dónde hacer tu evento literario.
     </p>
 
-    <ul class="mt-12 flex flex-col gap-4 sm:mt-16">
-      {
-        DIRECTORIOS.map((directorio) => (
-          <li class={`flex min-w-0 flex-col p-5 sm:p-6 ${claseBloque}`}>
-            {/*
-              El título es el enlace cuando la sección existe, y texto plano
-              cuando no. **No es un enlace deshabilitado**: un `<a>` sin `href` no
-              se enfoca, no se anuncia como enlace y no se puede clickear, o sea
-              que es texto con otro nombre y con una promesa visual de más.
-            */}
-            <h2 class={claseTituloSeccion}>
-              {directorio.disponible ? (
-                <a class={claseEnlace} href={directorio.ruta}>
-                  {directorio.titulo}
-                </a>
-              ) : (
-                directorio.titulo
-              )}
-            </h2>
+    {
+      grupos.map((grupo) => (
+        <section class="mt-12 sm:mt-16">
+          <h2 class="headline-md text-balance text-tinta">{grupo.titulo}</h2>
 
-            <p class="body-lectura mt-2 text-super">{directorio.que}</p>
+          <ul class="mt-6 flex flex-col gap-4">
+            {grupo.directorios.map((directorio) => (
+              <li class={`flex min-w-0 flex-col p-5 sm:p-6 ${claseBloque}`}>
+                {/*
+                  El título es el enlace cuando la sección existe, y texto plano
+                  cuando no. **No es un enlace deshabilitado**: un `<a>` sin `href` no
+                  se enfoca, no se anuncia como enlace y no se puede clickear, o sea
+                  que es texto con otro nombre y con una promesa visual de más.
+                */}
+                <h3 class={claseTituloSeccion}>
+                  {directorio.disponible ? (
+                    <a class={claseEnlace} href={directorio.ruta}>
+                      {directorio.titulo}
+                    </a>
+                  ) : (
+                    directorio.titulo
+                  )}
+                </h3>
 
-            {!directorio.disponible && (
-              /*
-                El rótulo va **abajo y en versalitas**, no como una insignia al
-                lado del título: es información sobre el estado de la sección, no
-                una categoría de la sección. Y dice «en camino» y no «próximamente»
-                porque lo segundo es lo que escribe un sitio que no va a hacerlo.
-              */
-              <p class={`${claseRotulo} mt-4`}>En camino</p>
-            )}
-          </li>
-        ))
-      }
-    </ul>
+                <p class="body-lectura mt-2 text-super">{directorio.que}</p>
+
+                {!directorio.disponible && (
+                  /*
+                    El rótulo va **abajo y en versalitas**, no como una insignia al
+                    lado del título: es información sobre el estado de la sección, no
+                    una categoría de la sección. Y dice «en camino» y no «próximamente»
+                    porque lo segundo es lo que escribe un sitio que no va a hacerlo.
+                  */
+                  <p class={`${claseRotulo} mt-4`}>En camino</p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))
+    }
 
     {/*
       B-1600 — el cierre manda a cada formulario público (`rutaSumar`), derivado de

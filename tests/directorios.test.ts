@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CAMPOS_DE_MAQUINA_FICHA,
   DIRECTORIOS,
+  GRUPOS_DE_ESPACIOS,
   ESTADOS_DIRECTORIO,
   ESTADO_INICIAL,
   ESTADO_PUBLICO,
@@ -520,5 +521,27 @@ describe('el cierre de `/guia` manda a los formularios de cada sección — B-16
     expect(pagina).toContain('directoriosDisponibles().map(');
     expect(pagina).toContain('d.rutaSumar');
     expect(pagina).not.toContain('Escribinos</a> y lo cargamos');
+  });
+});
+
+describe('`/guia` se llama «Espacios» y agrupa por para qué vas — D-1274', () => {
+  it('cada directorio está en un grupo, y en uno solo', () => {
+    // Mutación probada: sacar 'lugares' de su grupo pone esto en rojo.
+    const agrupados = GRUPOS_DE_ESPACIOS.flatMap((g) => g.directorios);
+    expect([...agrupados].sort()).toEqual(DIRECTORIOS.map((d) => d.id).sort());
+  });
+
+  it('son los tres grupos del dueño, en su orden', () => {
+    expect(GRUPOS_DE_ESPACIOS.map((g) => g.titulo)).toEqual([
+      'Espacios para comprar libros',
+      'Espacios para leer, consultar o retirar libros',
+      'Espacios para hacer tu evento literario',
+    ]);
+  });
+
+  it('la página pinta los grupos y no la lista plana', () => {
+    const pagina = readFileSync(raiz('src/pages/guia/index.astro'), 'utf8');
+    expect(pagina).toContain('GRUPOS_DE_ESPACIOS.map(');
+    expect(pagina).not.toContain('DIRECTORIOS.map(');
   });
 });

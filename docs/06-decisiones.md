@@ -14122,3 +14122,25 @@ alcanza, el log dice `se cortó por el tiempo` con cuántos faltaron, igual que
 antes. Retomarlos en otra corrida pediría una marca persistente y un barrido
 programado; hoy no hace falta.
 
+
+---
+
+## D-1274 · La Guía se llama «Espacios» y agrupa por para qué vas; la URL sigue en `/guia`
+
+**Pedido del dueño (2026-10-18):** «En vez de guía llamarlo "Espacios"», con tres
+grupos: espacios para comprar libros, espacios para leer, consultar o retirar
+libros (bibliotecas) y espacios para hacer tu evento literario.
+
+**Qué cambia:** todo texto visible que nombraba la sección —la pestaña, el pie,
+las migas y su JSON-LD, el rótulo del 404, la ayuda del sitio y los textos del
+panel— sale de `NOMBRE_DE_LA_GUIA` (`src/lib/directorios.ts`). `/guia` pinta
+`GRUPOS_DE_ESPACIOS`: librerías y suscripciones en «comprar» (una suscripción
+también es comprar libros), bibliotecas en «leer, consultar o retirar», lugares
+en «hacer tu evento». `tests/directorios.test.ts` exige que cada directorio
+esté en un grupo y en uno solo.
+
+**Qué no cambia, a propósito:** la URL. `/guia/…` ya está compartida y en el
+índice de Google; moverla a `/espacios` pide redirecciones 301 y pierde señal
+(trampa 10, en su versión de sección). Tampoco el nombre en el código: «la
+Guía» sigue siendo el nombre interno de los directorios. Las novedades viejas
+del panel quedan como se escribieron, porque cuentan lo que pasó.

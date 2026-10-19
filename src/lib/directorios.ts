@@ -433,6 +433,38 @@ export const DIRECTORIOS: readonly Directorio[] = [
   },
 ];
 
+/**
+ * **Cómo se llama la Guía para quien la lee** — D-1274. El dueño la renombró
+ * «Espacios» el 2026-10-18; en el código sigue siendo «la Guía» y la URL sigue
+ * siendo `/guia`, porque ya está compartida y en el índice de Google (trampa 10).
+ * Todo texto visible que nombre la sección sale de esta constante.
+ */
+export const NOMBRE_DE_LA_GUIA = 'Espacios';
+
+export interface GrupoDeEspacios {
+  /** El título del grupo en `/guia`, con las palabras del dueño. */
+  titulo: string;
+  /** Los directorios del grupo, en el orden en que se muestran. */
+  directorios: readonly IdDirectorio[];
+}
+
+/**
+ * **Los tres grupos de `/guia`** — D-1274. Agrupan por para qué vas, no por
+ * qué cosa es: comprar, leer o retirar, hacer tu evento. Las suscripciones van
+ * con las librerías porque también son comprar libros.
+ *
+ * `tests/directorios.test.ts` exige que cada directorio esté en un grupo y en
+ * uno solo: un directorio nuevo que no se agrupe quedaría fuera de la página.
+ */
+export const GRUPOS_DE_ESPACIOS: readonly GrupoDeEspacios[] = [
+  { titulo: 'Espacios para comprar libros', directorios: ['librerias', 'suscripciones'] },
+  {
+    titulo: 'Espacios para leer, consultar o retirar libros',
+    directorios: ['bibliotecas'],
+  },
+  { titulo: 'Espacios para hacer tu evento literario', directorios: ['lugares'] },
+];
+
 /** El directorio con ese id, o `undefined`. Lo usan el panel y los tests. */
 export const directorioPorId = (id: string): Directorio | undefined =>
   DIRECTORIOS.find((d) => d.id === id);

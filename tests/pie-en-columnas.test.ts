@@ -91,7 +91,7 @@ describe('la Guía en el pie — B-900', () => {
      */
     const c = codigo();
     expect(c).toMatch(/import \{[^}]*\bRUTA_GUIA\b[^}]*\} from '@\/lib\/rutasPublicas'/);
-    expect(c).toMatch(/<li class="break-inside-avoid">\s*<a [^>]*href=\{RUTA_GUIA\}>Guía<\/a>\s*<\/li>/);
+    expect(c).toMatch(/<li class="break-inside-avoid">\s*<a [^>]*href=\{RUTA_GUIA\}>\{NOMBRE_DE_LA_GUIA\}<\/a>\s*<\/li>/);
   });
 
   it('y no las secciones una por una: ésas las lista `/guia`', () => {

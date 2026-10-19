@@ -31,7 +31,7 @@
  */
 import opcionesBase from '@/lib/opciones-base.json';
 import { hayBoletin } from '@/lib/boletinDelSitio';
-import { enumeracionDeLaGuia } from '@/lib/directorios';
+import { NOMBRE_DE_LA_GUIA, enumeracionDeLaGuia } from '@/lib/directorios';
 import {
   RUTA_AGENDA,
   RUTA_ANUNCIAR,
@@ -204,13 +204,13 @@ export const GRUPOS_DE_AYUDA: GrupoDeAyuda[] = [
         id: 'la-guia',
         pregunta: '¿Esto solo tiene actividades?',
         respuesta: [
-          'No. Además de la agenda está la Guía, con el resto del circuito alrededor de las ' +
-            `actividades: ${enumeracionDeLaGuia()}.`,
+          `No. Además de la agenda está la sección ${NOMBRE_DE_LA_GUIA}, con el resto del ` +
+            `circuito alrededor de las actividades: ${enumeracionDeLaGuia()}.`,
           'Cada sección es un listado con su propio buscador, y cada ficha tiene su página.',
           'Si tenés una de esas cosas y no está, cada sección tiene un formulario para sumarla. ' +
             'Lo leemos antes de publicarlo, igual que una actividad.',
         ],
-        enlaces: [{ href: RUTA_GUIA, texto: 'La Guía' }],
+        enlaces: [{ href: RUTA_GUIA, texto: NOMBRE_DE_LA_GUIA }],
       },
       {
         /*

@@ -68,6 +68,7 @@ import {
   RUTA_PROPONER,
   RUTA_SUSCRIBIRSE,
 } from '@/lib/rutasPublicas';
+import { NOMBRE_DE_LA_GUIA } from '@/lib/directorios';
 import { claseEnlace, claseRotulo, foco } from '@/components/sitio/estilos';
 
 /**
@@ -186,7 +187,7 @@ const claseFila = `label-caps flex min-h-touch items-center text-tinta underline
             de las de quien viene a dar algo («Proponer», «Sugerir»): la Guía es
             del primer lado.
           */}
-          <a class={`${claseFila} sm:justify-end`} href={RUTA_GUIA}>Guía</a>
+          <a class={`${claseFila} sm:justify-end`} href={RUTA_GUIA}>{NOMBRE_DE_LA_GUIA}</a>
         </li>
         <li class="break-inside-avoid">
           {/*

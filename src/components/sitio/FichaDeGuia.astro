@@ -26,6 +26,7 @@
  */
 import { claseAfiche, claseEnlace } from '@/components/sitio/estilos';
 import { RUTA_GUIA } from '@/lib/rutasPublicas';
+import { NOMBRE_DE_LA_GUIA } from '@/lib/directorios';
 
 interface Enlace {
   texto: string;
@@ -79,7 +80,7 @@ const publicados = contactos.filter((c): c is Enlace => c.href !== null);
 
 <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
   <p class="label-caps text-azul">
-    <a class={claseEnlace} href={RUTA_GUIA}>Guía</a>
+    <a class={claseEnlace} href={RUTA_GUIA}>{NOMBRE_DE_LA_GUIA}</a>
     {' · '}
     <a class={claseEnlace} href={seccion.href}>{seccion.texto}</a>
   </p>

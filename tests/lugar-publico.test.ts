@@ -939,7 +939,7 @@ describe('la ficha y su marcado estructurado', () => {
     const migas = migasDeLugar(ficha()) as { itemListElement: { name: string }[] };
     expect(migas.itemListElement.map((m) => m.name)).toEqual([
       NOMBRE,
-      'Guía',
+      'Espacios',
       'Lugares para eventos',
       CENTINELA_LUGAR.nombre,
     ]);

@@ -11,6 +11,7 @@ import {
   RUTA_GUIA,
   RUTA_SUSCRIBIRSE,
 } from '@/lib/rutasPublicas';
+import { NOMBRE_DE_LA_GUIA } from '@/lib/directorios';
 /**
  * La barra de navegación del sitio público — B-229, B-253, rehecha en B-260.
  *
@@ -153,7 +154,7 @@ const ENLACES: { seccion: Seccion; href: string; texto: string }[] = [
    * comentario de «Anunciar»/«Apoyar», que es donde estaba el aviso de que la
    * fila tiene un techo.
    */
-  { seccion: 'guia', href: RUTA_GUIA, texto: 'Guía' },
+  { seccion: 'guia', href: RUTA_GUIA, texto: NOMBRE_DE_LA_GUIA },
   { seccion: 'suscribirse', href: RUTA_SUSCRIBIRSE, texto: 'Suscribirse' },
   { seccion: 'ayuda', href: RUTA_AYUDA, texto: 'Ayuda' },
   { seccion: 'contacto', href: RUTA_CONTACTO, texto: 'Contacto' },

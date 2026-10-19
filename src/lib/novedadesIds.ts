@@ -11,6 +11,7 @@
 
 /** Lo más nuevo arriba, igual que `NOVEDADES`. */
 export const NOVEDADES_IDS: readonly string[] = [
+  'la-guia-se-llama-espacios',
   'cancelar-desde-recordatorios',
   'contacto-del-organizador',
   'organizador-de-relleno',

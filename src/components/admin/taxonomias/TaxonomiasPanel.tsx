@@ -79,23 +79,23 @@ const DONDE: Record<CampoTaxonomia, string> = {
   'incluye-actividad':
     'Se elige en «Qué es». Sale en la página de la actividad; no es filtro ni va al calendario.',
   periodicidad:
-    'Se elige al cargar una suscripción, y arranca en «Mensual». Es uno de los filtros de la Guía.',
+    'Se elige al cargar una suscripción, y arranca en «Mensual». Es uno de los filtros de Espacios.',
   'tipo-oferente': 'Se elige al cargar una suscripción: quién la ofrece. No es filtro.',
   'perfil-editorial':
-    'Se elige al cargar una suscripción que manda libros. Es uno de los filtros de la Guía.',
+    'Se elige al cargar una suscripción que manda libros. Es uno de los filtros de Espacios.',
   'incluye-suscripcion': 'Qué te llega con la suscripción. Sale en la ficha; no es filtro.',
   'extras-suscripcion': 'Qué te llega además. Sale en la ficha; no es filtro.',
-  'alcance-envio': 'A dónde llega la suscripción. Es uno de los filtros de la Guía.',
+  'alcance-envio': 'A dónde llega la suscripción. Es uno de los filtros de Espacios.',
   'tipo-lugar':
-    'Se elige al cargar un lugar. Es uno de los filtros de la Guía, y además decide si la ' +
+    'Se elige al cargar un lugar. Es uno de los filtros de Espacios, y además decide si la ' +
     'dirección se publica: «Casa» arranca sin publicarla.',
-  'incluye-lugar': 'Qué tiene el lugar (mesa, proyector, patio). Es uno de los filtros de la Guía.',
+  'incluye-lugar': 'Qué tiene el lugar (mesa, proyector, patio). Es uno de los filtros de Espacios.',
   'condicion-de-uso':
     'Cómo se usa el lugar: gratis, con consumición, alquiler. En el sitio se agrupa en tres ' +
     'opciones —sin costo, consumiendo, pagando— y no hay filtro por precio.',
   'tipo-biblioteca':
     'Qué biblioteca es: popular, municipal, provincial, nacional, universitaria, ' +
-    'especializada, comunitaria o escolar. Es uno de los filtros de la Guía, y se ' +
+    'especializada, comunitaria o escolar. Es uno de los filtros de Espacios, y se ' +
     'elige al cargar la ficha.',
 };
 

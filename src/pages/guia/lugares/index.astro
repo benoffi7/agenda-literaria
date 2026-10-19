@@ -45,6 +45,7 @@ import { vistaDeDirectorio } from '@/lib/contenidoDeLaGuia';
 import { coleccionDeLugares, descripcionDelDirectorioDeLugares } from '@/lib/lugarPublico';
 import { NOMBRE } from '@/lib/identidad';
 import { RUTA_ANUNCIAR, RUTA_CONTACTO, RUTA_GUIA, RUTA_SUMAR_LUGAR } from '@/lib/rutasPublicas';
+import { NOMBRE_DE_LA_GUIA } from '@/lib/directorios';
 import { claseEnlace } from '@/components/sitio/estilos';
 
 export const prerender = true;
@@ -74,7 +75,7 @@ const descripcion = descripcionDelDirectorioDeLugares(cuantos);
 >
   <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6 sm:py-14">
     <p class="label-caps text-azul">
-      <a class={claseEnlace} href={RUTA_GUIA}>Guía</a>
+      <a class={claseEnlace} href={RUTA_GUIA}>{NOMBRE_DE_LA_GUIA}</a>
     </p>
 
     <h1 class="display-md mt-2 text-balance text-acento">Lugares para hacer eventos</h1>
