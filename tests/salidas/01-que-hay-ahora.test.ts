@@ -254,8 +254,9 @@ describe('barrido del tríptico de «¿qué hay ahora?» (§5, salida 1 · 7º p
      * la portada de la home el `searchText` (la descripción entera, normalizada)
      * y el `resumen` de cada una de las doce actividades del tríptico.
      *
-     * Se exige que el barrido falle **nombrando** `searchText`, que es el campo
-     * más caro de los que el índice lleva y el panel no muestra.
+     * Se exige que el barrido falle **nombrando** la descripción, que viaja dentro
+     * del `searchText` —el campo más caro de los que el índice lleva y el panel no
+     * muestra—.
      */
     const programacion = panelesDeAhora(indice(), AHORA, LABELS_CENTINELA)!;
     const entrada = indice().actividades[0]!;
@@ -280,6 +281,9 @@ describe('barrido del tríptico de «¿qué hay ahora?» (§5, salida 1 · 7º p
 
     expect(mensaje, 'el barrido NO detectó la entrada entera en la fila').not.toBe('');
     expect(mensaje).toContain('FUGA');
-    expect(mensaje).toContain('searchText');
+    // Desde B-2185 el `searchText` de la entrada se deriva y ya no lleva el centinela
+    // del campo guardado; la fuga se nombra por la descripción, que la entrada lleva
+    // dentro del índice de búsqueda.
+    expect(mensaje).toContain('descripcion');
   });
 });

@@ -56,11 +56,19 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
   const PERMITIDO_EN_EL_INDICE: readonly Excepcion[] = [
     {
       nombre: 'identidad y búsqueda',
-      centinelas: ['titulo', 'slug', 'searchText'],
+      centinelas: ['titulo', 'slug'],
       porque:
-        'el título es lo que la tarjeta muestra, el slug es el link al detalle, y el ' +
-        'searchText es el índice de la búsqueda en memoria del §6 — es la razón de ser ' +
-        'de este archivo.',
+        'el título es lo que la tarjeta muestra y el slug es el link al detalle. El ' +
+        'searchText va, pero derivado del documento (B-2185): el centinela del campo ' +
+        'guardado no puede salir.',
+    },
+    {
+      nombre: 'el libro, dentro del searchText',
+      centinelas: ['libro.titulo', 'libro.autor'],
+      porque:
+        'DEC-1: el libro presentado entra a la búsqueda —se busca «Pedro Páramo»—. ' +
+        'Antes de B-2185 el centinela no aparecía porque el fixture traía el searchText ' +
+        'guardado a mano; derivado, lo lleva, igual que la página de detalle lo muestra.',
     },
     {
       nombre: 'el resumen, que es descripción recortada',
@@ -350,6 +358,32 @@ describe('barrido del índice del listado (§3.1, B-106)', () => {
       PERMITIDO_EN_EL_INDICE,
       { insensible: true },
     );
+  });
+
+  it('un link de reunión pegado en la descripción no llega al índice: ni al resumen ni al searchText (B-2185, D-129, trampa 5)', () => {
+    /*
+     * El caso privado de una plataforma que la lista de hosts no conoce, más uno
+     * de Meet. Hasta B-2185 el resumen (que es la descripción recortada) y el
+     * searchText lo publicaban; el saneo vive en `toPublic`, que tiene la `url`
+     * privada, y este caso es el que lo sostiene desde el lado del índice.
+     * Mutación probada: volver a `descripcion: a.descripcion` en `toPublic` lo
+     * pone rojo.
+     */
+    const privado = 'https://bbb.miescuela.edu.ar/b/tal-ler';
+    const conLink = actividadCentinela({
+      descripcion: `Entrá a ${privado} o a https://meet.google.com/abc-defg-hij el martes.`,
+      online: { plataforma: CENTINELA['online.plataforma'], url: privado, urlPublica: false },
+    });
+    const indice = construirIndice({
+      actividades: [toPublic(conLink, 'act_link')],
+      opciones: { arancel: [opcionCentinela()] },
+      version: '1.0.0+abc1234',
+      generadoEn: '2026-08-27T00:00:00.000Z',
+    });
+    const json = JSON.stringify(indice);
+    expect(json).not.toContain('bbb.miescuela');
+    expect(json).not.toContain('meet.google');
+    expect(json).not.toContain('abc-defg-hij');
   });
 
   it('un `imagenUrl` legacy que `urlSegura` rechaza NO llega al índice (B-860)', () => {

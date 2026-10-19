@@ -295,11 +295,12 @@ export const canastaDelGateCoincide = (
 export const PERMITIDO_EN_LA_PROYECCION: readonly Excepcion[] = [
   {
     nombre: 'identidad',
-    centinelas: ['titulo', 'descripcion', 'slug', 'searchText'],
+    centinelas: ['titulo', 'descripcion', 'slug'],
     porque:
-      'es la actividad: el título y la descripción son lo que el listado muestra, el ' +
-      'slug es la URL de la página de detalle (§7, trampa 10) y el searchText es el ' +
-      'índice de la búsqueda en memoria del §6 — viaja entero al JSON (quinta fila de D-126).',
+      'es la actividad: el título y la descripción son lo que el listado muestra y el ' +
+      'slug es la URL de la página de detalle (§7, trampa 10). El searchText guardado ' +
+      'NO está: desde B-2185 la proyección lo deriva del documento, así que el ' +
+      'centinela del campo guardado no puede salir.',
   },
   {
     nombre: 'galería',

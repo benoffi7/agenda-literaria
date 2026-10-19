@@ -9198,6 +9198,16 @@ Las ya guardadas se recalculan con `scripts/recalcular-search-text.mjs`, que
 escribe solo `searchText` (ni versión ni Calendar), ensayado contra el emulador
 —segunda corrida: 0—. Va **después** del deploy de functions.
 
+**Segunda vuelta, por el `auditor-privacidad` (mismo día).** `toPublic` ya no
+copia el `searchText` guardado: lo **deriva** del documento con `buildSearchText`,
+como los lugares con `searchTextDeLugar`. Así el link sale del `/events.json` en
+el próximo build aunque el guardado sea viejo o venga de la consola, y el script
+de recálculo deja de ser una urgencia de privacidad: queda para que la próxima
+edición de cada actividad no haga sonar `derivados-no-coinciden`. El `resumen` del
+índice —la descripción recortada— también filtraba y se cerró de rebote con el
+saneo en `toPublic`; ahora lo fija un caso en
+`tests/salidas/01-indice-del-listado.test.ts` (mutación probada).
+
 ## P1 — bloquean el objetivo del proyecto
 
 ### DEC-14 · ¿El correo registra quién lo abrió y qué clickeó? — ✅ resuelta (2026-09-23, D-802) · P1

@@ -182,6 +182,9 @@ describe('barrido del correo semanal (§5, salida 29, B-1230)', () => {
 
     expect(mensaje, 'el barrido NO detectó la entrada entera en la fila').not.toBe('');
     expect(mensaje).toContain('FUGA');
-    expect(mensaje).toContain('searchText');
+    // Desde B-2185 el `searchText` de la entrada se deriva y ya no lleva el centinela
+    // del campo guardado; la fuga se nombra por la descripción, que la entrada lleva
+    // dentro del índice de búsqueda.
+    expect(mensaje).toContain('descripcion');
   });
 });

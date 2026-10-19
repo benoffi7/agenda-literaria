@@ -9,6 +9,7 @@ import { filaDeEncuentro } from '@/lib/modalidades';
 import { motivoDeCancelacion } from '@calendario';
 // B-2190 — el saneador vive en `functions/` (D-20), como en `descripcionEnlazada.ts`.
 import { linksDeReunionDe, sinLinksDeReunion } from '../../functions/links-de-reunion.js';
+import { buildSearchText } from '@/lib/normalize';
 /*
  * De `taxonomia` y no de `opciones`: las dos exportan `opcionesVisibles` —la
  * segunda la re-exporta— pero `opciones.ts` importa `firestore-client`, y esto
@@ -706,7 +707,13 @@ export const toPublic = (a: Actividad, id: string, ahora = Date.now()): Activida
   // D-26 — `[]` para el documento anterior al campo.
   incluye: a.incluye ?? [],
   destacado: a.destacado ?? false,
-  searchText: a.searchText ?? '',
+  /*
+   * B-2185 — se **deriva** del documento y no se copia el guardado, como ya hacen
+   * los lugares (`searchTextDeLugar`): el guardado lo escribe el cliente, y uno
+   * escrito antes del saneo —o desde la consola— llevaba el link de la reunión
+   * entero a `/events.json`. Es la misma función que usan los tres productores.
+   */
+  searchText: buildSearchText(a),
   /*
    * D-138 — la fecha de alta, para el orden «Recién agregadas».
    *
