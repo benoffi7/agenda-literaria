@@ -862,6 +862,18 @@ de terceros más tiempo del prometido.
 Function; un índice faltante lo dice con el link para crearlo. Arreglado, se puede
 correr a mano desde Cloud Scheduler («Forzar ejecución») sin esperar a mañana.
 
+### Cuando suena `reportes-atascados` (B-2205)
+
+**Qué dice el mail:** uno o más reportes del panel llevaban más de 15 minutos en
+«creando el issue…» y `verificarFrescuraDelSitio` los pasó a **error** (trae los
+`ids`). Pasa cuando la Function se corta entre que toma el reporte y anota el
+número del issue.
+
+**Qué hacer:** antes de tocar «Reintentar» en el panel, buscar en el repo de
+GitHub si el issue **ya está**: si lo que se cortó fue la escritura de vuelta, el
+issue existe y reintentar lo duplicaría en un repo público. Si está, no hace falta
+nada más; si no, reintentar.
+
 ### Cuando suena `sede-sin-ciudad` (B-2052)
 
 **Qué dice el mail:** una cuenta publicadora **con ciudad** guardó una actividad con

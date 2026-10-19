@@ -151,6 +151,41 @@ export const decidirAccion = (reporte) => {
 };
 
 /**
+ * B-2205 — cuánto puede estar un reporte en `enviando` antes de darlo por cortado.
+ * Crear el issue tarda segundos; 15 minutos es que el contenedor murió entre la
+ * transacción que lo tomó y el `update` final.
+ */
+export const PLAZO_ENVIANDO_MS = 15 * 60_000;
+
+/**
+ * B-2205 — los reportes que quedaron en `enviando` sin salida: los toma la
+ * transacción, el contenedor muere (OOM, timeout) antes del `update` final, y
+ * ninguna ruta los vuelve a mirar. Las reglas no dejan reintentarlos desde el
+ * panel, a propósito (`reintentoValido`: solo desde `error`).
+ *
+ * Se pasan a **`error`** y no a `pendiente`: si el issue **sí** se creó y lo que
+ * falló fue la escritura de vuelta, reenviarlo solo crearía un duplicado en el
+ * repo público. En `error` el panel lo muestra, y quien lo mira decide.
+ *
+ * @param {{ id: string, estado?: string, github?: { numero?: number } | null, actualizadoEn?: { toMillis?: () => number } | null }[]} reportes
+ * @param {number} ahora
+ * @returns {string[]} los ids a destrabar
+ */
+export const reportesAtascados = (reportes, ahora) =>
+  reportes
+    .filter((r) => r.estado === 'enviando' && !r.github?.numero)
+    .filter((r) => {
+      const desde = r.actualizadoEn?.toMillis?.();
+      return typeof desde !== 'number' || ahora - desde > PLAZO_ENVIANDO_MS;
+    })
+    .map((r) => r.id);
+
+/** El texto que ve el panel en un reporte destrabado. */
+export const ERROR_DE_ENVIO_CORTADO =
+  'El envío se cortó a mitad de camino. Antes de reintentar, fijate en GitHub si el issue ' +
+  'ya se creó: si está, no hace falta mandarlo de nuevo.';
+
+/**
  * ¿Vale la pena reintentar este fallo de la API de GitHub?
  *
  * 401/403/404 son configuración (token vencido, sin permiso, repo mal

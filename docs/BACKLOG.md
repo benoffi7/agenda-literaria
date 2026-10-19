@@ -224,14 +224,6 @@ vuelta, más de 11.000 en una sesión de 20 ediciones. El badge de propuestas
 `useContactoDeOrganizador`) o un `onSnapshot` compartido; `getCountFromServer`
 para el badge.
 
-### B-2205 · Un reporte que queda en `enviando` no tiene salida · P2 (auditoría 2026-10-19)
-
-`reportes-trigger.js:114` y `reportes.js:143`: si el contenedor muere entre la
-transacción y el `update` final, el reporte queda en `enviando` y nadie lo
-retoma (se pierde, o el issue existe y el panel nunca muestra el número).
-**Arreglo:** `actualizadoEn` y tratar `enviando` de más de ~5 min como
-`pendiente`.
-
 ### B-2206 · Cada arranque en frío de las 25 Functions carga `googleapis` entero · P2 (auditoría 2026-10-19)
 
 `index.js` importa todos los triggers, y `calendario-api.js:16` y

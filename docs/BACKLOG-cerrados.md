@@ -18349,6 +18349,22 @@ vuelve a pasar por `decidirOptimizacion` con los metadatos de ahora; un objeto
 que ya no existe corta sin error. Una lectura de metadatos más por subida.
 `tests/imagenes-function.test.ts` fija el orden (mutación probada).
 
+### B-2205 · Un reporte que queda en `enviando` no tiene salida · P2 — ✅ hecho (2026-10-19)
+
+`reportes-trigger.js:114` y `reportes.js:143`: si el contenedor muere entre la
+transacción y el `update` final, el reporte queda en `enviando` y nadie lo
+retoma (se pierde, o el issue existe y el panel nunca muestra el número).
+**Arreglo:** `actualizadoEn` y tratar `enviando` de más de ~5 min como
+`pendiente`.
+
+**Hecho:** `reportesAtascados` (`functions/reportes.js`, puro) toma los que llevan
+más de 15 min en `enviando` sin número de issue, y `verificarFrescuraDelSitio`
+—que ya corre cada 30 min— los pasa a **`error`** al principio de cada corrida, con
+`alerta: 'reportes-atascados'` y un texto que pide mirar GitHub antes de
+reintentar. A `error` y no a `pendiente`: si el issue se creó y falló la escritura
+de vuelta, reenviarlo lo duplicaría en el repo público. Sin schedule propio: sería
+un job más de Scheduler que se cobra. `tests/reportes-atascados.test.ts`.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

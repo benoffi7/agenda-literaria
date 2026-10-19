@@ -55,6 +55,7 @@ import { defineSecret } from 'firebase-functions/params';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { OPCIONES_BASE } from './despliegue.js';
 import { crearIssue } from './github-issues.js';
+import { ERROR_DE_ENVIO_CORTADO, reportesAtascados } from './reportes.js';
 import { remarcarPorFrescura } from './marca-de-rebuild.js';
 import {
   compararFrescura,
@@ -233,10 +234,48 @@ const fechasDeSobrantes = async (db, sobran, idPorSlug) => {
   return fechas;
 };
 
+/** B-2205 — ver `reportesAtascados` en `reportes.js`. Lee solo los `enviando`. */
+const destrabarReportes = async (db, ahora) => {
+  const snap = await db
+    .collection('reportes')
+    .where('estado', '==', 'enviando')
+    .select('estado', 'github', 'actualizadoEn')
+    .get();
+  const ids = reportesAtascados(
+    snap.docs.map((d) => ({ id: d.id, ...d.data() })),
+    ahora,
+  );
+  for (const id of ids) {
+    await db.doc(`reportes/${id}`).update({
+      estado: 'error',
+      error: ERROR_DE_ENVIO_CORTADO,
+      actualizadoEn: FieldValue.serverTimestamp(),
+    });
+  }
+  if (ids.length > 0) {
+    logger.warn('reportes destrabados: el envío se había cortado', {
+      alerta: 'reportes-atascados',
+      ids,
+    });
+  }
+};
+
 export const verificarFrescuraDelSitio = onSchedule(OPCIONES, async () => {
   const db = getFirestore();
   const ref = db.doc(DOC);
   const ahora = Date.now();
+
+  // B-2205 — de paso, los reportes del panel que quedaron en `enviando`. Va acá y
+  // no en un schedule propio porque un job más de Scheduler se cobra (B-2212), y
+  // va **primero** y en su propio `try` para que ningún corte de abajo lo saltee.
+  try {
+    await destrabarReportes(db, ahora);
+  } catch (e) {
+    logger.error('no se pudieron destrabar los reportes en «enviando»', {
+      alerta: 'reportes-atascados',
+      error: e?.message,
+    });
+  }
 
   if (!SITIO_PUBLICO) {
     // Falta configuración, no falló nada. Como `dispararRebuild` sin GITHUB_REPO.

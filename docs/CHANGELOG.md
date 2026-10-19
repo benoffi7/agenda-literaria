@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Un reporte que se trabó «creando el issue…» ya no queda así para siempre** (B-2205).
+  A los 15 minutos pasa a error, con un aviso de que conviene mirar en GitHub si el
+  issue ya se creó antes de reintentar.
+
 - **Una foto ya optimizada no se vuelve a comprimir** (B-2204). Si el aviso de la
   subida llegaba dos veces, la segunda la recomprimía y perdía calidad.
 
