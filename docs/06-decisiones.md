@@ -14207,3 +14207,36 @@ entero.
 
 **Qué no cambia:** las páginas de detalle, de mes y `/pasadas` existen igual; lo
 que se mueve es qué JSON baja cada island.
+
+---
+
+## D-1277 · La huella de lo que Calendar aceptó vive aparte, y el sync que llega tarde corta
+
+**B-2218 y B-2194, 2026-10-19.** El diff del §7.2 comparaba el evento de ahora
+contra el del documento de antes de la edición. Con eso, un `update` que fallaba no
+se reenviaba nunca (la edición siguiente veía antes y después iguales), y dos
+guardados procesados fuera de orden podían dejar en Calendar el contenido viejo.
+
+**Qué cambia:**
+
+- **Una huella por sesión del último evento que Calendar aceptó**
+  (`huellaDeEvento`: cyrb53 del `JSON.stringify`, la misma forma de `mismoEvento`).
+  `planificar` compara contra ella cuando la tiene; sin huella, como antes. Lo que
+  falla conserva la huella vieja, así que la escritura siguiente lo reenvía.
+- **Vive en `actividades/{id}/sincronizacion/calendar` y no en `sesiones[]`.** En
+  `sesiones[]` habría tenido el camino entero del `calendarEventId` en el panel
+  —formulario, relectura antes de guardar, autoguardado, herencia por posición,
+  duplicar—, o sea dos dueños del mismo campo (la clase de B-80). Aparte, el panel
+  no la ve, no deja versión del historial, no está en ninguna proyección, y
+  escribirla no vuelve a disparar `syncCalendar` (el trigger escucha el documento,
+  no sus subcolecciones): sin riesgo de loop.
+- **El sync que llegó tarde corta** (`llegoTarde`): se relee el documento antes de
+  cualquier escritura propia y, si su `updateTime` ya no es el de la foto del
+  evento, no se planifica —viene otra invocación con lo último—. Los efectos que
+  corresponden por esa escritura (rebuild, marca de publicada, derivados) corren
+  igual; se corta recién antes de planificar (B-83). Una reentrega del mismo evento
+  trae el mismo `updateTime` y no corta: la idempotencia sigue siendo la del id
+  derivado (B-82).
+
+**El costo:** dos lecturas más por invocación (el documento y las huellas) y una
+escritura de huellas cuando hubo operaciones.

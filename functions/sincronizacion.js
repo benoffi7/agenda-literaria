@@ -123,6 +123,50 @@ export const reponerIds = (sesiones = [], ids) => {
 };
 
 /**
+ * B-2194 — ¿esta invocación llegó tarde? Sí si el documento ya no es el de la foto
+ * del evento: hay una escritura más nueva, y su invocación —que viene— trae lo
+ * último.
+ *
+ * Firestore no garantiza el orden de entrega: con dos guardados seguidos, el
+ * evento del primero puede procesarse después del segundo y dejar en Calendar el
+ * contenido viejo. Cortando la que llegó tarde, gana siempre la foto más nueva. Se
+ * compara el `updateTime` del documento, que cambia en cada escritura, incluida la
+ * del write-back del propio sync.
+ *
+ * Una actividad borrada (`despues` nulo) nunca llega tarde: el borrado es final.
+ *
+ * @param {{ updateTime?: { isEqual?: (o: unknown) => boolean } } | null | undefined} fotoDelEvento
+ * @param {{ exists: boolean, updateTime?: unknown } | null | undefined} actual
+ * @returns {boolean}
+ */
+export const llegoTarde = (fotoDelEvento, actual) => {
+  if (!fotoDelEvento) return false;
+  if (!actual?.exists) return true;
+  const deLaFoto = fotoDelEvento.updateTime;
+  if (!deLaFoto || typeof deLaFoto.isEqual !== 'function' || !actual.updateTime) return false;
+  return !deLaFoto.isEqual(actual.updateTime);
+};
+
+/**
+ * B-2218 — las huellas que quedan después de aplicar las operaciones: las de lo que
+ * Calendar aceptó se ponen, las de lo que se borró se sacan, y las de lo que falló
+ * **quedan como estaban**, que es lo que hace que la escritura siguiente lo
+ * reenvíe.
+ *
+ * @param {Record<string, string>} previas
+ * @param {Map<string, string | null>} aceptadas `sesionId → huella`, o `null` si se borró
+ * @returns {Record<string, string>}
+ */
+export const huellasDespues = (previas, aceptadas) => {
+  const nuevas = { ...previas };
+  for (const [id, huella] of aceptadas) {
+    if (huella) nuevas[id] = huella;
+    else delete nuevas[id];
+  }
+  return nuevas;
+};
+
+/**
  * Los códigos con que Calendar dice "ese evento no está": 404 si nunca existió
  * o si el id se liberó, 410 si está borrado y todavía retenido.
  */

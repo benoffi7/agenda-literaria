@@ -14,7 +14,7 @@
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions/v2';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { planificar } from './calendario.js';
 import { CALENDAR_ID, calendario, crearEvento } from './calendario-api.js';
 import { OPCIONES_BASE } from './despliegue.js';
@@ -32,7 +32,14 @@ import { cargarLabels } from './etiquetas.js';
 import { faltaMarcarPublicada } from './historial.js';
 import { marcarPublicada } from './marca-de-publicada.js';
 import { marcarRebuild } from './marca-de-rebuild.js';
-import { conReintentos, decidirAnteFallo, esperasParaCrear, reponerIds } from './sincronizacion.js';
+import {
+  conReintentos,
+  decidirAnteFallo,
+  esperasParaCrear,
+  huellasDespues,
+  llegoTarde,
+  reponerIds,
+} from './sincronizacion.js';
 
 /**
  * Las opciones van **explícitas** y no heredadas del `setGlobalOptions` de
@@ -91,6 +98,17 @@ export const syncCalendar = onDocumentWritten(
         });
       }
     }
+
+    /*
+     * B-2194 — ¿el documento ya cambió desde la foto de este evento? Se lee
+     * **acá**, antes de toda escritura de este trigger —la marca de publicada y
+     * la corrección de derivados cambiarían el documento y engañarían a la
+     * comparación—, pero se corta recién antes de planificar: los efectos de
+     * abajo corresponden por esta escritura y tienen que correr igual (B-83).
+     */
+    const tarde = despues
+      ? llegoTarde(event.data?.after, await db.doc(`actividades/${id}`).get())
+      : false;
 
     /*
      * B-285 — la marca de «estuvo publicada alguna vez», que reemplaza la
@@ -244,13 +262,28 @@ export const syncCalendar = onDocumentWritten(
       }
     }
 
+    if (tarde) {
+      // Viene otra invocación con lo último: Calendar lo toma de ésa.
+      logger.info('el sync llegó tarde: hay una escritura más nueva', { id });
+      return;
+    }
+
     const labels = await cargarLabels(db);
+    /*
+     * B-2218 — las huellas de lo que Calendar ya aceptó. Viven en una subcolección
+     * que solo escribe esta Function: el panel no la ve (no hay un segundo dueño,
+     * la clase de B-80), no deja versión del historial, no está en ninguna
+     * proyección y escribirla **no** vuelve a disparar este trigger, que escucha
+     * el documento y no sus subcolecciones.
+     */
+    const refHuellas = db.doc(`actividades/${id}/sincronizacion/calendar`);
+    const huellasPrevias = (await refHuellas.get()).data()?.huellas ?? {};
     // B-2050 — el diff se planifica sobre los derivados **recalculados**: una `sede`
     // escrita a mano que no es la de las filas no llega al `location` del evento,
     // y su corrección —que vuelve a disparar esto— no manda un `update` en falso.
     let ops;
     try {
-      ops = planificar(conDerivados(antes), conDerivados(despues), labels);
+      ops = planificar(conDerivados(antes), conDerivados(despues), labels, huellasPrevias);
     } catch (e) {
       // B-2186 — una sesión con fecha ilegible (escrita fuera del panel: el schema
       // la rechaza) hace tirar `aIso`. Sin esto la Function fallaba entera, sin
@@ -281,6 +314,9 @@ export const syncCalendar = onDocumentWritten(
     // y se escriben de una sola vez al final: un update por sesión serían N
     // disparos más de esta misma Function.
     const ids = new Map();
+    // B-2218 — lo que Calendar aceptó en esta corrida: `sesionId → huella`, o
+    // `null` si el evento se borró. Lo que falló no entra, y su huella vieja queda.
+    const aceptadas = new Map();
 
     const alReintentar = (e, n) =>
       logger.warn('Calendar falló de forma pasajera: se reintenta', {
@@ -297,6 +333,7 @@ export const syncCalendar = onDocumentWritten(
             esperas: esperasParaCrear(op),
           });
           ids.set(op.id, eventId);
+          aceptadas.set(op.id, op.huella ?? null);
           logger.info('evento creado', { id, sesion: op.id, eventId });
         } else if (op.tipo === 'actualizar') {
           await conReintentos(
@@ -315,6 +352,7 @@ export const syncCalendar = onDocumentWritten(
           // el documento antes de escribir, así que esto pasó a ser la red de
           // abajo y no el arreglo.
           ids.set(op.id, op.eventId);
+          aceptadas.set(op.id, op.huella ?? null);
           logger.info('evento actualizado', { id, sesion: op.id });
         } else if (op.tipo === 'borrar') {
           await conReintentos(
@@ -322,6 +360,7 @@ export const syncCalendar = onDocumentWritten(
             { alReintentar },
           );
           ids.set(op.id, null);
+          aceptadas.set(op.id, null);
           logger.info('evento borrado', { id, sesion: op.id });
         }
       } catch (e) {
@@ -332,6 +371,7 @@ export const syncCalendar = onDocumentWritten(
 
         if (accion === 'limpiar-id') {
           ids.set(op.id, null);
+          aceptadas.set(op.id, null);
           logger.warn('el evento ya no existía en Calendar', { id, sesion: op.id, motivo });
         } else if (accion === 'recrear') {
           // B-125 — alguien borró el evento a mano y el encuentro sigue
@@ -344,6 +384,7 @@ export const syncCalendar = onDocumentWritten(
             esperas: esperasParaCrear(op),
           });
             ids.set(op.id, eventId);
+            aceptadas.set(op.id, op.huella ?? null);
             logger.warn('el evento no estaba en Calendar: se recreó', {
               id,
               sesion: op.id,
@@ -372,6 +413,25 @@ export const syncCalendar = onDocumentWritten(
             error: e?.message,
           });
         }
+      }
+    }
+
+    /*
+     * B-2218 — las huellas de lo aceptado, antes del write-back de ids: si éste
+     * falla, la huella ya dice lo que Calendar tiene. Un fallo acá no corta nada —
+     * sin huella nueva, la próxima escritura compara como antes de B-2218—.
+     * Borrada la actividad, se va el documento entero.
+     */
+    if (aceptadas.size > 0 || !despues) {
+      try {
+        if (!despues) await refHuellas.delete();
+        else
+          await refHuellas.set({
+            huellas: huellasDespues(huellasPrevias, aceptadas),
+            actualizado: FieldValue.serverTimestamp(),
+          });
+      } catch (e) {
+        logger.warn('no se pudieron guardar las huellas del calendario', { id, error: e?.message });
       }
     }
 

@@ -10,6 +10,7 @@ Este documento no la repite: explica cómo se usa y dónde están las trampas.
 |---|---|---|
 | `/actividades/{id}` | una actividad con sus N sesiones embebidas | panel (claim `admin`, o `publicador` **solo sobre las suyas** — B-888) y `syncCalendar` |
 | `/actividades/{id}/versiones/{version}` | historial de versiones (§12) | `guardarVersion` y `guardarVersionAlBorrar` (Admin SDK) |
+| `/actividades/{id}/sincronizacion/calendar` | `{ huellas: { [sesionId]: string }, actualizado }`: la huella del último evento que Calendar aceptó por sesión (B-2218, D-1277). Ningún cliente la lee ni la escribe | `syncCalendar` (Admin SDK) |
 | `/opciones/{campo}` | taxonomías autogestionadas (§4) | panel y scripts |
 | `/sistema/audiencia-del-mes` | la audiencia del último mes cerrado: `{ mes: 'AAAA-MM', personas, vistas, actualizado }` y nada más (roadmap 3.3, B-771). Documento aparte de `sistema/analitica-sitio` porque es lo único de la analítica que va a una página pública (`/anunciar`); el build lo **proyecta** (`audienciaProyectada`) | `traerAnaliticaDelSitio`, en transacción; marca el rebuild cuando cambia el mes |
 | `/sistema/rebuild` | flag de rebuild pendiente y estado de los reintentos (§8) | `syncCalendar`, `rebuildPorOpciones`, `dispararRebuild` |

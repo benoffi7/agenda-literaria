@@ -1066,6 +1066,37 @@ export const debeExistir = (actividad, sesion) => actividad?.estado === 'publica
 const mismoEvento = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 
 /**
+ * **La huella de un evento** — B-2218: un hash corto y estable de su
+ * `JSON.stringify`, la misma forma que compara `mismoEvento`.
+ *
+ * Es lo que se guarda del último evento que Calendar **aceptó** para cada sesión
+ * (`actividades/{id}/sincronizacion/calendar`), y contra lo que `planificar`
+ * compara cuando la tiene. Sin ella, la comparación era contra el documento de
+ * antes de la edición: un `update` que fallaba no se reenviaba nunca, porque la
+ * edición siguiente veía «antes» y «después» iguales.
+ *
+ * JS puro (cyrb53, 53 bits) y no `node:crypto`: este módulo lo importa también el
+ * panel para la vista previa (D-20). Una colisión haría que un cambio no se envíe;
+ * con 53 bits es una en nueve mil billones.
+ *
+ * @param {unknown} evento
+ * @returns {string}
+ */
+export const huellaDeEvento = (evento) => {
+  const texto = JSON.stringify(evento) ?? '';
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < texto.length; i++) {
+    const c = texto.charCodeAt(i);
+    h1 = Math.imul(h1 ^ c, 2654435761);
+    h2 = Math.imul(h2 ^ c, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+};
+
+/**
  * §7.2 — Diff por id de sesión. Devuelve las operaciones a aplicar, sin
  * ejecutarlas.
  *
@@ -1074,7 +1105,20 @@ const mismoEvento = (a, b) => JSON.stringify(a) === JSON.stringify(b);
  * en vez de uno, borrando y recreando eventos que la gente ya tiene agendados
  * (y perdiendo sus recordatorios).
  */
-export const planificar = (antes, despues, labels = {}) => {
+/**
+ * B-2218 — `huellas` es `{ [sesionId]: huella }` del último evento que Calendar
+ * aceptó. Con huella, una sesión se actualiza si su evento de ahora no coincide
+ * con lo que Calendar tiene, aunque antes y después de la edición sean iguales:
+ * así un `update` que falló se reenvía en la escritura siguiente. Sin huella (los
+ * documentos de antes de B-2218, o una sesión que nunca sincronizó con ella) se
+ * compara como siempre, contra el evento de antes de la edición.
+ *
+ * @param {any} antes
+ * @param {any} despues
+ * @param {Record<string, Record<string, string>>} [labels]
+ * @param {Record<string, string> | null} [huellas]
+ */
+export const planificar = (antes, despues, labels = {}, huellas = null) => {
   const ops = [];
   const sesionesAntes = porId(antes?.sesiones);
   const sesionesDespues = porId(despues?.sesiones);
@@ -1107,8 +1151,17 @@ export const planificar = (antes, despues, labels = {}) => {
 
     const evento = construirEvento(despues, sesion, labels);
 
+    const huella = huellaDeEvento(evento);
+
     if (!eventId) {
-      ops.push({ tipo: 'crear', id, evento });
+      ops.push({ tipo: 'crear', id, evento, huella });
+      continue;
+    }
+
+    const guardada = huellas?.[id];
+    if (typeof guardada === 'string') {
+      // B-2218 — contra lo que Calendar tiene, no contra el documento de antes.
+      if (guardada !== huella) ops.push({ tipo: 'actualizar', id, eventId, evento, huella });
       continue;
     }
 
@@ -1120,7 +1173,7 @@ export const planificar = (antes, despues, labels = {}) => {
         : null;
 
     if (!mismoEvento(evento, eventoAntes)) {
-      ops.push({ tipo: 'actualizar', id, eventId, evento });
+      ops.push({ tipo: 'actualizar', id, eventId, evento, huella });
     }
   }
 

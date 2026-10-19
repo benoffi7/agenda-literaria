@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **El calendario público se repara solo** (B-2218, B-2194, D-1277). Si un cambio no
+  llegó a Google Calendar, abrir la actividad y guardar lo reenvía, aunque no se haya
+  cambiado nada; y dos guardados seguidos ya no pueden dejar el evento con lo
+  anterior.
+
 - **El código de las Functions también pasa por el chequeo de tipos** (B-2198). Los 53
   avisos eran anotaciones que no coincidían con el código; ninguno cambiaba qué hace.
 

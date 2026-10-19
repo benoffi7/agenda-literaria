@@ -811,9 +811,9 @@ red caída—; lo que llega acá es lo que no se arregló así, o un fallo que r
 arregla (un 400, un 403 de permiso). El log trae `id` de la actividad, `sesion`,
 `tipo` (`crear`, `actualizar`, `borrar`) y `codigo`.
 
-**Por qué importa:** el calendario **no se repara solo**. `planificar` solo vuelve
-a emitir una operación cuando el evento calculado cambia, así que si falló el
-`update` de un cambio de sede, guardar la actividad sin tocar nada no lo reenvía.
+**Por qué importa:** mientras nadie vuelva a guardar la actividad, el evento queda
+como estaba en el calendario público. Desde B-2218 la próxima escritura lo
+reenvía; antes de B-2218 no lo reenviaba nunca.
 
 **Qué hacer:**
 
@@ -821,11 +821,10 @@ a emitir una operación cuando el evento calculado cambia, así que si falló el
    está compartido con `calendar-sync@` o el `GOOGLE_CALENDAR_ID` es otro (D-06).
    **400** es un evento mal armado: mirar el documento.
 2. Si fue pasajero (429/5xx persistentes, un corte de Google), cuando se normalice
-   hay que **forzar** el reenvío: en el panel, cambiar algo que salga al evento (un
-   espacio en el título y sacarlo, guardando las dos veces). Si lo que falló fue un
-   `crear`, `scripts/verificar-calendario.mjs --reparar` también lo repone; un
-   `actualizar` fallido no lo ve, porque el script compara existencia y no
-   contenido (B-2218).
+   alcanza con **abrir la actividad en el panel y guardar**, sin cambiar nada: desde
+   B-2218 el sync compara contra la huella de lo que Calendar aceptó, y lo que
+   falló sigue con la huella vieja, así que se reenvía. También se reenvía solo con
+   la próxima edición de esa actividad.
 3. Si el mensaje es **`no se pudo planificar el sync de Calendar`**: no se mandó
    **ninguna** operación para esa actividad. Casi siempre una sesión con `inicio` o
    `fin` ilegible escrita fuera del panel; corregirla en la consola o abrir y

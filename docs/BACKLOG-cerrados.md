@@ -18542,6 +18542,44 @@ inicializados con `{}`, uniones sin acotar. Dos casts `any` con su porqué
 en runtime). Sin cambio en runtime; dos tests de integración ganaron un `as
 string` porque el `@param` ahora rige.
 
+### B-2218 · Un fallo persistente de Calendar no se reemite solo · P2 — ✅ hecho (2026-10-19)
+
+Desde B-2186 lo pasajero se reintenta y lo que igual falla manda un mail, pero
+reparar sigue siendo a mano: `planificar` solo emite si el evento calculado cambió,
+así que guardar la actividad no reenvía un `update` que falló. **Arreglo:** guardar
+por sesión un hash del último evento que Calendar aceptó y planificar contra eso, no
+contra `before` (resuelve también el desorden de B-2194); o un barrido diario con
+`reconciliacion.js` que compare contenido y no solo existencia. También: que una
+sesión con fecha ilegible se saltee y no frene a las demás (hoy avisa y no manda
+ninguna).
+
+**Cómo encararlo (2026-10-19):** la huella por sesión es un campo nuevo en
+`sesiones[]` y toca 22 archivos —panel, schema, reglas, historial, duplicar,
+autoguardado, proyección, Functions—. Va en una pasada propia con el skill
+`campo-nuevo` y los dos auditores: es la parte más frágil del sistema y Calendar
+no tiene emulador. Ojo con dos cosas: el panel tiene que **conservar** la huella al
+guardar, como el `calendarEventId`, y `construirEvento` tiene que ser
+determinista, o el write-back de la huella dispara el trigger sin fin.
+
+**Hecho (D-1277):** huella por sesión de lo que Calendar aceptó, en
+`actividades/{id}/sincronizacion/calendar` y no en `sesiones[]` —así no hizo falta
+tocar el panel, el schema, el historial ni duplicar, y no hay riesgo de loop—.
+`planificar` compara contra ella; lo que falla conserva la vieja y se reenvía en la
+escritura siguiente, que puede ser abrir y guardar sin cambios.
+`tests/huellas-de-calendar.test.ts` (mutación probada) y
+`tests/huellas-reglas.integracion.test.ts` contra el emulador. Lo de la sesión con
+fecha ilegible que frena a las demás no se hizo: sigue avisando con `calendar-fallo`.
+
+### B-2194 · Dos guardados seguidos procesados fuera de orden dejan Calendar con el contenido anterior · P2 — ✅ hecho (2026-10-19)
+
+El evento se arma con `event.data.after` de cada invocación, y Firestore no
+garantiza orden. **Arreglo:** releer el documento al ejecutar y comparar contra un
+hash del último evento enviado por sesión (el mismo campo de B-2186).
+
+**Hecho (D-1277):** `llegoTarde` relee el documento antes de cualquier escritura
+propia del trigger y, si cambió desde la foto del evento, corta antes de planificar:
+viene otra invocación con lo último. Una reentrega no corta (mismo `updateTime`).
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

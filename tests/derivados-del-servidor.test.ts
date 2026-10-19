@@ -500,7 +500,7 @@ describe('el cableado en `syncCalendar`', () => {
   });
 
   it('el diff de Calendar se planifica sobre la vista derivada', () => {
-    expect(trigger).toContain('planificar(conDerivados(antes), conDerivados(despues), labels)');
+    expect(trigger).toContain('planificar(conDerivados(antes), conDerivados(despues), labels, huellasPrevias)');
   });
 
   it('el rebuild del sitio pregunta `pideRebuild`, no solo el historial', () => {

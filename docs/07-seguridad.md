@@ -1961,6 +1961,11 @@ node scripts/preparar-produccion.mjs <email>
 
 El claim entra al token en el próximo login.
 
+**Las huellas del calendario** (`actividades/{id}/sincronizacion/calendar`,
+B-2218) no tienen regla: el default de Firestore las niega a todo cliente, también
+al admin del panel, y las escribe solo `syncCalendar`. No salen a ninguna salida;
+lo fija `tests/huellas-reglas.integracion.test.ts`.
+
 ## Las cabeceras de seguridad de Hosting (B-2196)
 
 Toda ruta del sitio sale con `X-Frame-Options: DENY`,

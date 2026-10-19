@@ -300,9 +300,11 @@ describe('B-82 · la entrega de eventos de Firestore es al-menos-una-vez', () =>
     expect(src).toContain('const antes = event.data?.before?.data() ?? null;');
     // B-2050 — sobre la vista derivada, que sale del mismo payload: sin relectura.
     // Desde B-2186 adentro de un `try` que avisa si una fecha ilegible lo hace tirar.
-    expect(src).toContain('ops = planificar(conDerivados(antes), conDerivados(despues), labels);');
-    // Sigue sin haber guarda por id de evento ni relectura previa al plan: la
-    // idempotencia no está en la Function, está en el id que elige el cliente.
+    expect(src).toContain('ops = planificar(conDerivados(antes), conDerivados(despues), labels, huellasPrevias);');
+    // Sigue sin haber guarda por id de evento: la idempotencia no está en la
+    // Function, está en el id que elige el cliente. Desde B-2194 sí hay una
+    // relectura previa al plan, pero no es de idempotencia sino de **orden**: una
+    // reentrega del mismo evento trae el mismo `updateTime` y no corta.
     expect(src).not.toMatch(/event\.id/);
     expect(src).toContain('const propuesto = idDeEvento(op.id);');
     expect(src).toContain('requestBody: propuesto ? { ...op.evento, id: propuesto } : op.evento,');

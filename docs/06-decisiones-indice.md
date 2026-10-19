@@ -339,6 +339,7 @@ cambio.
 - [D-1274](06-decisiones.md#d-1274--la-guía-se-llama-espacios-y-agrupa-por-para-qué-vas-la-url-sigue-en-guia) · La Guía se llama «Espacios» y agrupa por para qué vas; la URL sigue en `/guia`
 - [D-1275](06-decisiones.md#d-1275--el-rebuild-por-contenido-publica-datos-nunca-código) · El rebuild por contenido publica datos, nunca código
 - [D-1276](06-decisiones.md#d-1276--el-índice-público-va-en-dos-archivos-lo-vigente-y-lo-pasado) · El índice público va en dos archivos: lo vigente y lo pasado
+- [D-1277](06-decisiones.md#d-1277--la-huella-de-lo-que-calendar-aceptó-vive-aparte-y-el-sync-que-llega-tarde-corta) · La huella de lo que Calendar aceptó vive aparte, y el sync que llega tarde corta
 
 ## Otras secciones del registro
 
