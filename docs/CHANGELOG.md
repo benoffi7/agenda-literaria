@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Una carga masiva ya no puede dejar una actividad sin calendario** (B-2193). Si
+  marcar el rebuild del sitio falla por la cantidad de escrituras a la vez, se
+  reintenta; y si igual falla, el calendario se sincroniza igual y llega un aviso.
+
 - **Renombrar una etiqueta ya no se deshace en el calendario** (B-2192). Una edición
   posterior podía volver a escribir la etiqueta vieja en un evento ya corregido; ahora
   el sync relee las etiquetas cada minuto.

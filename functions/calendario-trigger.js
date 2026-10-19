@@ -78,7 +78,18 @@ export const syncCalendar = onDocumentWritten(
     // sitio (`sede`, `modalidad`, `online`, `searchText`): desde B-2050 son de
     // máquina para el historial, y su corrección tiene que llegar al sitio igual.
     if (pideRebuild(antes, despues)) {
-      await marcarRebuild(db, `actividad ${id}`);
+      // B-2193 — un fallo acá (ya reintentado adentro) no puede tirar la Function
+      // antes del sync de Calendar, que no tiene nada que ver. Pero el sitio queda
+      // sin el cambio hasta la próxima marca, así que avisa.
+      try {
+        await marcarRebuild(db, `actividad ${id}`);
+      } catch (e) {
+        logger.error('no se pudo marcar el rebuild del sitio', {
+          alerta: 'rebuild-sin-marcar',
+          id,
+          codigo: e?.code ?? null,
+        });
+      }
     }
 
     /*

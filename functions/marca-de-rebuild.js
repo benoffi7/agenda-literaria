@@ -23,16 +23,40 @@ import { CAMPOS_REARME } from './rebuild.js';
  * durante el dispatch (B-85). Los que sí entran a un cálculo —`ultimoIntento`,
  * `disparado`— los escribe `rebuild.js` como `Date`, para no mezclar dos relojes.
  */
-export const marcarRebuild = (db, motivo) =>
-  db.doc('sistema/rebuild').set(
-    {
-      pendiente: true,
-      motivo,
-      actualizado: FieldValue.serverTimestamp(),
-      ...CAMPOS_REARME,
-    },
-    { merge: true },
-  );
+/**
+ * B-2193 — los códigos gRPC con que Firestore dice «ahora no, probá de nuevo».
+ * Una carga masiva (los scripts de lote escriben de a 400) dispara cientos de
+ * `syncCalendar` a la vez, todos sobre **este** documento, que aguanta ~1
+ * escritura por segundo sostenida: 4 DEADLINE_EXCEEDED, 8 RESOURCE_EXHAUSTED,
+ * 10 ABORTED (contención), 14 UNAVAILABLE.
+ */
+const CODIGOS_PASAJEROS = [4, 8, 10, 14];
+
+/** Las esperas entre intentos: ~2 s en total, con algo de azar para desparejar la ráfaga. */
+export const ESPERAS_DE_LA_MARCA_MS = Object.freeze([200, 600, 1500]);
+
+export const marcarRebuild = async (
+  db,
+  motivo,
+  { esperas = ESPERAS_DE_LA_MARCA_MS, dormir = (ms) => new Promise((r) => setTimeout(r, ms)) } = {},
+) => {
+  for (let n = 0; ; n++) {
+    try {
+      return await db.doc('sistema/rebuild').set(
+        {
+          pendiente: true,
+          motivo,
+          actualizado: FieldValue.serverTimestamp(),
+          ...CAMPOS_REARME,
+        },
+        { merge: true },
+      );
+    } catch (e) {
+      if (n >= esperas.length || !CODIGOS_PASAJEROS.includes(Number(e?.code))) throw e;
+      await dormir(esperas[n] * (0.5 + Math.random()));
+    }
+  }
+};
 
 /**
  * Volver a pedir el build porque **el sitio quedó atrasado**, no porque una

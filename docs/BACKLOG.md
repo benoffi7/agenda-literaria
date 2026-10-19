@@ -153,16 +153,6 @@ filas en el HTML. **Arreglo:** partir en vigentes + `pasadas.json`, sacar
 `imagenUrl`, emitir minificado, y que `/pasadas` haga el fetch al usar el
 buscador. Actualizar el barrido de salidas y el gate post-build.
 
-### B-2193 · `marcarRebuild` sin `try`, y una carga masiva concentra cientos de escrituras en `sistema/rebuild` · P2 (auditoría 2026-10-19)
-
-`calendario-trigger.js:74`: un error de contención en el `set` aborta la
-invocación antes del sync, sin reintento ni alerta. Los scripts de lote (de a 400)
-disparan hasta 400 `syncCalendar` sobre el mismo documento (~1 escritura/s
-sostenida) y una ráfaga de `events.update` contra la cuota de Calendar.
-**Arreglo:** no escribir si `pendiente` ya está en `true` y es reciente; `try` con
-`alerta: 'rebuild-sin-marcar'` (manteniendo la llamada arriba, B-83); pausas en
-los scripts de lote.
-
 ### B-2194 · Dos guardados seguidos procesados fuera de orden dejan Calendar con el contenido anterior · P2 (auditoría 2026-10-19)
 
 El evento se arma con `event.data.after` de cada invocación, y Firestore no

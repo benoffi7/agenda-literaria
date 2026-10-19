@@ -18275,6 +18275,24 @@ edición. **Arreglo:** TTL de ~60 s a 5 min en `cargarLabels`.
 inyectable; `tests/etiquetas-vencen.test.ts` prueba que no relee dentro de la
 vigencia y que pasada trae la etiqueta nueva (mutación probada).
 
+### B-2193 · `marcarRebuild` sin `try`, y una carga masiva concentra cientos de escrituras en `sistema/rebuild` · P2 — ✅ hecho (2026-10-19)
+
+`calendario-trigger.js:74`: un error de contención en el `set` aborta la
+invocación antes del sync, sin reintento ni alerta. Los scripts de lote (de a 400)
+disparan hasta 400 `syncCalendar` sobre el mismo documento (~1 escritura/s
+sostenida) y una ráfaga de `events.update` contra la cuota de Calendar.
+**Arreglo:** no escribir si `pendiente` ya está en `true` y es reciente; `try` con
+`alerta: 'rebuild-sin-marcar'` (manteniendo la llamada arriba, B-83); pausas en
+los scripts de lote.
+
+**Hecho:** `marcarRebuild` reintenta los códigos gRPC pasajeros (4, 8, 10, 14)
+con ~2 s de espera y algo de azar; en `syncCalendar` va en un `try` que avisa con
+`alerta: 'rebuild-sin-marcar'` (runbook en `08-operacion.md`), arriba de los
+cortes como pide B-83. `tests/marca-de-rebuild.test.ts`. **No** se hizo el «no
+escribir si ya está en `true`»: entre que el despachador manda el build y baja la
+marca hay una ventana en la que saltear la escritura dejaría un cambio fuera del
+sitio. Las pausas en los scripts de lote tampoco: con el reintento no hacen falta.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

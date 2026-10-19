@@ -834,6 +834,19 @@ a emitir una operación cuando el evento calculado cambia, así que si falló el
    renombre de etiqueta no llegó a reescribir todos los eventos (D-1273). Los que
    faltan se ponen al día con su próxima edición.
 
+### Cuando suena `rebuild-sin-marcar` (B-2193)
+
+**Qué dice el mail:** una actividad cambió algo que sale al sitio y `syncCalendar`
+no pudo escribir `sistema/rebuild.pendiente`, aun reintentando (~2 s). Casi
+siempre es contención: una carga masiva —un script de lote— escribiendo cientos de
+actividades a la vez sobre el mismo documento. El calendario se sincronizó igual.
+
+**Qué hacer:** si es un caso suelto en medio de una ráfaga, nada: la próxima marca
+de la misma ráfaga ya pide el build, y el sitio sale con todo. Si llegó solo, sin
+ráfaga, el sitio no tiene ese cambio hasta la próxima edición: guardar cualquier
+actividad, o correr `gh workflow run deploy.yml --ref main`, que reconstruye los
+datos. Si se repite, mirar el `codigo`: 7 es IAM de `calendar-sync@`.
+
 ### Cuando suena `sede-sin-ciudad` (B-2052)
 
 **Qué dice el mail:** una cuenta publicadora **con ciudad** guardó una actividad con
