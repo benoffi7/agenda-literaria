@@ -22907,6 +22907,33 @@ después de volver a estar visible y en línea. Menos mails que no piden nada, y
 llega es de alguien que de verdad estaba usando el panel. Con test del caso «oculta
 toda la noche, vuelve y verifica sola: no avisa».
 
+### B-2217 · Higiene menor de seguridad · P3 — ✅ cerrado (2026-10-19): uno hecho, tres decididos
+
+Cinco `firebase-export-*` vacíos en la raíz y el patrón no está en `.gitignore`
+(un export con datos podría subirse con `git add -A`).
+`flyer-de-propuesta-trigger.js:67`: `consumeAppCheckToken: false` permite reusar
+un token una hora desde un script; consumirlo en esa callable no pesa.
+`cors.json` y `ORIGENES_PERMITIDOS` no listan los mismos dominios. El
+`events.update` del trigger (`calendario-trigger.js:262`) no manda
+`status: 'confirmed'`, que según `crearEvento` es lo que resucita un evento
+borrado: medir contra la API real.
+
+**Cerrado así (2026-10-19):**
+- **`firebase-export-*`:** los cinco estaban vacíos; borrados, y el patrón en
+  `.gitignore`. Hecho.
+- **`consumeAppCheckToken`:** no se cambia. Consumirlo exige que el cliente pida un
+  token de un solo uso (`limitedUseAppCheckTokens`), cada uno es una evaluación de
+  reCAPTCHA que se cobra, y quien tenga la página abierta desde antes del deploy
+  fallaría al subir. Para un riesgo bajo —un token reusable una hora, con la
+  bandeja y la retención detrás— no compensa. Se retoma si la bandeja muestra
+  abuso.
+- **Los orígenes:** la diferencia es inofensiva. Medido el 2026-10-19:
+  `www.agendaleh.ar` no resuelve y `agendaleh.com.ar` redirige a `agendaleh.ar`, así
+  que ninguno de los dos sirve una página que pueda pedir algo. Igualar las listas
+  obligaría a reaplicar el CORS del bucket a mano por nada.
+- **`status: 'confirmed'` en el `update`:** queda para cuando se mida contra la API
+  real; no hay emulador de Calendar. Va con B-2218.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

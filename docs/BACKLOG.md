@@ -544,17 +544,6 @@ ellos `tieneClaimAdmin`, `TOPE_INSTAGRAM_LUGAR`, `TOPE_INSTAGRAM_SUSCRIPCION`,
 (`detallePublico.ts:1703`) no sigue la forma de `12-sitio-publico.md:1301` y deja
 el barrido después del corte de ~60 caracteres.
 
-### B-2217 · Higiene menor de seguridad · P3 (auditoría 2026-10-19)
-
-Cinco `firebase-export-*` vacíos en la raíz y el patrón no está en `.gitignore`
-(un export con datos podría subirse con `git add -A`).
-`flyer-de-propuesta-trigger.js:67`: `consumeAppCheckToken: false` permite reusar
-un token una hora desde un script; consumirlo en esa callable no pesa.
-`cors.json` y `ORIGENES_PERMITIDOS` no listan los mismos dominios. El
-`events.update` del trigger (`calendario-trigger.js:262`) no manda
-`status: 'confirmed'`, que según `crearEvento` es lo que resucita un evento
-borrado: medir contra la API real.
-
 ### B-2176 · «Algunos etiquetados menos»: averiguar qué pidió la publicadora · P3
 
 En el mismo mensaje que pidió B-2175 (2026-09-29) agregó «y algunos etiquetados

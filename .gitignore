@@ -73,3 +73,7 @@ functions/.env.*.local
 # B-2178 — la tabla real de unión de organizadores: nombres de todas las
 # actividades, borradores incluidos, y el repo es público.
 scripts/datos/organizadores-a-unir.local.json
+
+# B-2217 — exports-on-exit del emulador: si un día salen con datos, no tienen que
+# poder subirse con un `git add -A`.
+firebase-export-*
