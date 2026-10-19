@@ -176,7 +176,12 @@ export const decidirAnteFallo = (op, code) => {
  * Las razones con que Calendar dice «pasaste la cuota»: llegan como **403**, no
  * como 429, así que el código solo no alcanza para distinguirlas de un permiso.
  */
-const RAZONES_DE_CUOTA = ['rateLimitExceeded', 'userRateLimitExceeded', 'quotaExceeded'];
+const RAZONES_DE_CUOTA = [
+  'rateLimitExceeded',
+  'userRateLimitExceeded',
+  'quotaExceeded',
+  'calendarUsageLimitsExceeded',
+];
 
 /** Errores de red de Node: la respuesta no llegó, no hay código HTTP. */
 const ERRORES_DE_RED = ['ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED', 'EAI_AGAIN', 'ENOTFOUND', 'ESOCKETTIMEDOUT'];
@@ -196,17 +201,34 @@ export const esFalloPasajero = (e) => {
   const code = Number(e?.code ?? e?.response?.status);
   if (code === 429 || (code >= 500 && code < 600)) return true;
   if (code === 403) {
-    const errores = e?.errors ?? e?.response?.data?.error?.errors ?? [];
-    return errores.some((x) => RAZONES_DE_CUOTA.includes(x?.reason));
+    const errores = e?.errors ?? e?.response?.data?.error?.errors;
+    // Si no es un array no se sabe la razón: tirar acá taparía el error real.
+    return Array.isArray(errores) && errores.some((x) => RAZONES_DE_CUOTA.includes(x?.reason));
   }
   return ERRORES_DE_RED.includes(e?.code);
 };
 
 /**
- * Cuánto se espera antes de cada reintento. Tres reintentos suman ~6 s, que entran
- * de sobra en el timeout de `syncCalendar` aun con varias sesiones que fallen.
+ * Cuánto se espera antes de cada reintento: ~6 s en total por operación. Con
+ * Calendar caído del todo, un ciclo de ~80 sesiones se acerca a los 540 s de
+ * `syncCalendar`; si vence se pierde el write-back de ids, pero no se duplica
+ * nada: la próxima edición choca con el 409 del id derivado (B-82).
  */
 export const ESPERAS_DE_REINTENTO_MS = Object.freeze([500, 1500, 4000]);
+
+/**
+ * Las esperas para **crear** el evento de esta sesión: ninguna si la sesión no
+ * tiene id derivado.
+ *
+ * Lo que hace seguro reintentar un `insert` es el 409 del id que elige el cliente
+ * (B-82). Una sesión vieja cuyo id no tiene la forma `ses_<uuid>` se crea **sin**
+ * id, y ahí un 5xx con el insert ya aplicado más un reintento serían dos eventos
+ * en el calendario público.
+ *
+ * @param {{ id?: unknown }} op
+ * @returns {readonly number[]}
+ */
+export const esperasParaCrear = (op) => (idDeEvento(op?.id) ? ESPERAS_DE_REINTENTO_MS : []);
 
 /**
  * B-2186 — una operación de Calendar, reintentada si el fallo es pasajero.

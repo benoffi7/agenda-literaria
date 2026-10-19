@@ -36,8 +36,9 @@ export const TIMEOUT_RESYNC_S = 540;
  * Deja 90 s de margen antes del timeout: lo que el tope protegía es que la
  * corrida no venza, porque una que vence deja eventos a medio reescribir y no se
  * reintenta (ningún trigger lleva `retry`). A
- * ~200 ms por evento, entran unos 2.000. Si igual se alcanza, se loguea `error`
- * con lo que faltó: cada actividad se pone al día con su próxima edición, y el
+ * ~200 ms por evento, entran unos 2.000 si Calendar anda; con la cuota caída cada
+ * evento cuesta ~6 s de reintentos (B-2186) y entran unos 75. Si igual se
+ * alcanza, se loguea `error` con lo que faltó: cada actividad se pone al día con su próxima edición, y el
  * sitio (que sí muestra la etiqueta nueva) ya se rebuildeó.
  */
 export const PRESUPUESTO_RESYNC_MS = (TIMEOUT_RESYNC_S - 90) * 1000;

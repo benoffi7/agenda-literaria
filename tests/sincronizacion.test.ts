@@ -20,6 +20,8 @@ import {
   reponerIds,
   conReintentos,
   esFalloPasajero,
+  esperasParaCrear,
+  ESPERAS_DE_REINTENTO_MS,
 } from '../functions/sincronizacion.js';
 import { planificar } from '../functions/calendario.js';
 import { nuevaSesionId } from '@/lib/sesiones';
@@ -723,6 +725,9 @@ describe('los fallos pasajeros de Calendar se reintentan — B-2186', () => {
     expect(esFalloPasajero(http(503))).toBe(true);
     expect(esFalloPasajero(http(403, 'rateLimitExceeded'))).toBe(true);
     expect(esFalloPasajero(http(403, 'userRateLimitExceeded'))).toBe(true);
+    expect(esFalloPasajero(http(403, 'calendarUsageLimitsExceeded'))).toBe(true);
+    // Un `errors` que no es array no puede hacer tirar adentro del catch.
+    expect(esFalloPasajero(Object.assign(new Error('x'), { code: 403, errors: 'raro' }))).toBe(false);
     expect(esFalloPasajero(Object.assign(new Error('reset'), { code: 'ECONNRESET' }))).toBe(true);
     // Lo que repetir no arregla.
     expect(esFalloPasajero(http(403, 'forbidden'))).toBe(false);
@@ -795,5 +800,14 @@ describe('los fallos pasajeros de Calendar se reintentan — B-2186', () => {
       expect(llamadas.length).toBeGreaterThan(0);
       expect(envueltas.length).toBe(llamadas.length);
     }
+  });
+
+  it('un crear sin id derivado no se reintenta: sin el 409 de B-82 duplicaría el evento', () => {
+    expect(esperasParaCrear({ id: nuevaSesionId() })).toEqual(ESPERAS_DE_REINTENTO_MS);
+    expect(esperasParaCrear({ id: 'sesion-vieja-3' })).toEqual([]);
+    expect(esperasParaCrear({})).toEqual([]);
+    // Y el trigger la usa en los dos `crear` (el normal y el recrear).
+    const src = readFileSync('functions/calendario-trigger.js', 'utf8');
+    expect(src.match(/esperas: esperasParaCrear\(op\)/g)?.length).toBe(2);
   });
 });

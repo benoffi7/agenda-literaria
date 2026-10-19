@@ -32,7 +32,7 @@ import { cargarLabels } from './etiquetas.js';
 import { faltaMarcarPublicada } from './historial.js';
 import { marcarPublicada } from './marca-de-publicada.js';
 import { marcarRebuild } from './marca-de-rebuild.js';
-import { conReintentos, decidirAnteFallo, reponerIds } from './sincronizacion.js';
+import { conReintentos, decidirAnteFallo, esperasParaCrear, reponerIds } from './sincronizacion.js';
 
 /**
  * Las opciones van **explícitas** y no heredadas del `setGlobalOptions` de
@@ -281,7 +281,10 @@ export const syncCalendar = onDocumentWritten(
     for (const op of ops) {
       try {
         if (op.tipo === 'crear') {
-          const eventId = await conReintentos(() => crearEvento(cal, op), { alReintentar });
+          const eventId = await conReintentos(() => crearEvento(cal, op), {
+            alReintentar,
+            esperas: esperasParaCrear(op),
+          });
           ids.set(op.id, eventId);
           logger.info('evento creado', { id, sesion: op.id, eventId });
         } else if (op.tipo === 'actualizar') {
@@ -325,7 +328,10 @@ export const syncCalendar = onDocumentWritten(
           // volviera a emitir `actualizar` contra un evento inexistente, así que
           // el encuentro se perdía del calendario público para siempre.
           try {
-            const eventId = await conReintentos(() => crearEvento(cal, op), { alReintentar });
+            const eventId = await conReintentos(() => crearEvento(cal, op), {
+            alReintentar,
+            esperas: esperasParaCrear(op),
+          });
             ids.set(op.id, eventId);
             logger.warn('el evento no estaba en Calendar: se recreó', {
               id,
