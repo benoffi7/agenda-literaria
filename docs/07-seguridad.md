@@ -1197,6 +1197,11 @@ tapando una forma de hacer daño:
 Borrar sigue prohibido: un reporte es el pedido de una persona y el panel no
 tiene por qué poder hacerlo desaparecer.
 
+**Lo borra el servidor a los seis meses de resuelto** (B-2213, decisión del dueño
+del 2026-10-19): `borrarPropuestasVencidas` corre `barrerReportesResueltos` cada
+día. Un reporte guarda el mail de quien lo mandó y su texto; el issue de GitHub
+queda. Los no resueltos no se tocan.
+
 `tests/reportes-reintento.integracion.test.ts` fija los siete casos contra el
 emulador. Está en su propio archivo porque **carga en el emulador las reglas de
 este checkout** antes de correr: el emulador sirve el `firestore.rules` del

@@ -23015,6 +23015,25 @@ más uno. La ventana de la frescura no cambia (el peor caso sigue siendo dos bui
 seguidos) y `tests/frescura.test.ts` lo fija. Mover el chequeo al job `deploy`
 obligaba a rehacer los tres cinturones de los tests de avisos sin ganar nada más.
 
+### B-2213 · Índices sobrantes, sin exenciones, y `/reportes` sin retención · P3 — ✅ cerrado (2026-10-19)
+
+`firestore.indexes.json:7` (`estado` + `updatedAt desc`) es del listado anónimo
+que D-128 sacó. `fieldOverrides` vacío: cada versión indexa el documento entero,
+y en `actividades` se indexan `descripcion` y `searchText`. `/reportes` tiene
+`delete: if false` y guarda `reportadoPor.email` sin retención.
+
+**Cerrado así (2026-10-19):**
+- **`/reportes`:** el dueño eligió borrar los resueltos a los 180 días. Lo hace
+  `barrerReportesResueltos` dentro del barrido diario de retención (sin job nuevo
+  de Scheduler), con `actualizadoEn` como fecha de resuelto y falla hacia guardar
+  si no la tiene. `tests/retencion-de-reportes.test.ts`; la integración de la
+  retención sigue en verde contra el emulador.
+- **El índice sobrante y las exenciones:** no se tocan. Sacar el índice del
+  archivo no lo borra de producción (el deploy no borra sin `--force`) y ahorra
+  nada; exentar `descripcion` y `searchText`, o los campos de `versiones`, ahorra
+  centavos de almacenamiento de índices y toca las consultas del build
+  (`documento.estado` sí se consulta).
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

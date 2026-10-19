@@ -488,13 +488,6 @@ arreglo es todo junto: esos módulos más las dos conversiones, con la suite en 
 zonas como red (el gate ya corre la de Tokio). La red de `TZ` que pedía el ítem ya
 existe: `verificar-todo.sh` corre `unidad` y `render` con `TZ=Asia/Tokyo`.
 
-### B-2213 · Índices sobrantes, sin exenciones, y `/reportes` sin retención · P3 (auditoría 2026-10-19)
-
-`firestore.indexes.json:7` (`estado` + `updatedAt desc`) es del listado anónimo
-que D-128 sacó. `fieldOverrides` vacío: cada versión indexa el documento entero,
-y en `actividades` se indexan `descripcion` y `searchText`. `/reportes` tiene
-`delete: if false` y guarda `reportadoPor.email` sin retención.
-
 ### B-2214 · CSS del panel en el sitio público, una lib del panel en el bundle del Buscador, `indiceDelSitio()` sin memo · P3 — 🟡 dos de cuatro (2026-10-19)
 
 168 de 769 selectores de `Base.*.css` son solo del panel (~12 KB sin comprimir).

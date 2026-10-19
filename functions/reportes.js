@@ -186,6 +186,32 @@ export const ERROR_DE_ENVIO_CORTADO =
   'ya se creó: si está, no hace falta mandarlo de nuevo.';
 
 /**
+ * B-2213 — cuánto vive un reporte **resuelto**. Decisión del dueño del
+ * 2026-10-19: seis meses. El reporte guarda el mail de quien lo mandó y su
+ * texto; el issue de GitHub queda, que es donde está la historia.
+ */
+export const RETENCION_REPORTE_RESUELTO_MS = 180 * 24 * 60 * 60 * 1000;
+
+/**
+ * Los reportes resueltos hace más de seis meses. La fecha es `actualizadoEn`:
+ * marcar resuelto la escribe en el mismo cambio (`resueltoValido` en las reglas) y
+ * un reporte resuelto no se vuelve a tocar, salvo para reabrirlo —que lo saca de
+ * acá—. Sin fecha legible no se borra: falla hacia guardar.
+ *
+ * @param {{ id: string, resuelto?: boolean, actualizadoEn?: { toMillis?: () => number } | null }[]} reportes
+ * @param {number} ahora
+ * @returns {string[]}
+ */
+export const reportesParaBorrar = (reportes, ahora) =>
+  reportes
+    .filter((r) => r.resuelto === true)
+    .filter((r) => {
+      const en = r.actualizadoEn?.toMillis?.();
+      return typeof en === 'number' && ahora - en > RETENCION_REPORTE_RESUELTO_MS;
+    })
+    .map((r) => r.id);
+
+/**
  * ¿Vale la pena reintentar este fallo de la API de GitHub?
  *
  * 401/403/404 son configuración (token vencido, sin permiso, repo mal

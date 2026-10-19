@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **Los reportes del panel resueltos se borran a los seis meses** (B-2213). Guardaban el
+  mail de quien los mandó para siempre; el issue de GitHub queda.
+
 - **Si un barrido diario deja de correr, llega un aviso** (B-2220): cada uno anota que
   corrió, y si pasan dos días sin noticias, suena `barrido-sin-correr`.
 

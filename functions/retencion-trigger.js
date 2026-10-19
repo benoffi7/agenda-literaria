@@ -37,6 +37,7 @@ import { borrarFlyer, relevarFlyeresSinPlazo } from './retencion-flyers-firestor
 import { MAX_FICHAS_POR_CORRIDA, decidirRetencionDeFichas } from './retencion-fichas.js';
 import { borrarFicha, fichasVencibles } from './retencion-fichas-firestore.js';
 import { MAX_ORIGINALES_POR_CORRIDA, borrarOriginalesConCopia } from './propuestas.js';
+import { reportesParaBorrar } from './reportes.js';
 
 /**
  * **B-1370 — el original de una aceptada que sobra porque la foto se subió
@@ -230,6 +231,29 @@ const barrerFlyeresDePropuestas = async (db, bucket) => {
   }
 };
 
+/**
+ * B-2213 — los reportes del panel resueltos hace más de seis meses (decisión del
+ * dueño del 2026-10-19). Lee solo los resueltos y solo los campos que decide, y
+ * borra de a uno: son pocos. Un fallo avisa y no corta el resto del barrido.
+ */
+const barrerReportesResueltos = async (db) => {
+  try {
+    const snap = await db
+      .collection('reportes')
+      .where('resuelto', '==', true)
+      .select('resuelto', 'actualizadoEn')
+      .get();
+    const ids = reportesParaBorrar(
+      snap.docs.map((d) => ({ id: d.id, ...d.data() })),
+      Date.now(),
+    );
+    for (const id of ids) await db.doc(`reportes/${id}`).delete();
+    if (ids.length > 0) logger.info('reportes resueltos borrados por antigüedad', { cuantos: ids.length });
+  } catch (e) {
+    logger.error('falló el barrido de reportes resueltos', { alerta: 'barrido-fallo', error: e?.message });
+  }
+};
+
 export const borrarPropuestasVencidas = onSchedule(
   {
     // Opciones explícitas y no heredadas del `setGlobalOptions` de `index.js`,
@@ -420,6 +444,8 @@ export const borrarPropuestasVencidas = onSchedule(
       await barrerOriginalesConCopia(db, bucket);
       // B-871 — después de B-1370, que borra antes lo que ya tiene copia.
       await barrerFlyeresDePropuestas(db, bucket);
+      // B-2213 — y los reportes del panel resueltos hace más de seis meses.
+      await barrerReportesResueltos(db);
     }
   }, latido('borrarPropuestasVencidas')),
 );
