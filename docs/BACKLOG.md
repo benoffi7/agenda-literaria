@@ -504,22 +504,6 @@ panel—. `indiceDelSitio()` está memoizado atado a la promesa del contenido, a
 `olvidarContenido()` lo invalida; ningún consumidor muta el índice. **Falta:** el
 CSS del panel en la hoja pública (~12 KB) y el `/indice/<version>.json` inmutable.
 
-### B-2215 · Sin linter, y exports muertos que tsc no ve · P3 — 🟡 locales y parámetros sí (2026-10-19), faltan los exports
-
-Sin `noUnusedLocals`/`noUnusedParameters`. Hay 16 exports sin ningún uso (entre
-ellos `tieneClaimAdmin`, `TOPE_INSTAGRAM_LUGAR`, `TOPE_INSTAGRAM_SUSCRIPCION`,
-`AA_GRANDE`, `DICHO_DEL_MOTIVO`). **Arreglo:** prender esos dos flags y evaluar
-`knip`.
-
-**Hecho (2026-10-19):** `noUnusedLocals` y `noUnusedParameters` prendidos en
-`tsconfig.json`, con los 71 sin uso limpios —69 de `tsc` y 2 que vio `astro
-check` en `anunciar.astro`—: 56 imports, 8 constantes y helpers, 3 valores de
-hook o props desestructurados y 3 parámetros de firma con `_`
-(`hubsPublicos.etiquetaDelHub`, `noEncontrado`, un callback de test). Sin cambio de
-comportamiento: `tsc`, `astro check` y la suite en verde. **Falta:** los exports
-sin uso en ningún lado (los 16 de la auditoría), que `noUnusedLocals` no ve; para
-eso es `knip`.
-
 ### B-2176 · «Algunos etiquetados menos»: averiguar qué pidió la publicadora · P3
 
 En el mismo mensaje que pidió B-2175 (2026-09-29) agregó «y algunos etiquetados

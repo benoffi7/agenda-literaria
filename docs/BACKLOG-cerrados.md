@@ -23034,6 +23034,30 @@ y en `actividades` se indexan `descripcion` y `searchText`. `/reportes` tiene
   centavos de almacenamiento de índices y toca las consultas del build
   (`documento.estado` sí se consulta).
 
+### B-2215 · Sin linter, y exports muertos que tsc no ve · P3 — ✅ cerrado (2026-10-19): locales sí, exports decididos en contra
+
+Sin `noUnusedLocals`/`noUnusedParameters`. Hay 16 exports sin ningún uso (entre
+ellos `tieneClaimAdmin`, `TOPE_INSTAGRAM_LUGAR`, `TOPE_INSTAGRAM_SUSCRIPCION`,
+`AA_GRANDE`, `DICHO_DEL_MOTIVO`). **Arreglo:** prender esos dos flags y evaluar
+`knip`.
+
+**Hecho (2026-10-19):** `noUnusedLocals` y `noUnusedParameters` prendidos en
+`tsconfig.json`, con los 71 sin uso limpios —69 de `tsc` y 2 que vio `astro
+check` en `anunciar.astro`—: 56 imports, 8 constantes y helpers, 3 valores de
+hook o props desestructurados y 3 parámetros de firma con `_`
+(`hubsPublicos.etiquetaDelHub`, `noEncontrado`, un callback de test). Sin cambio de
+comportamiento: `tsc`, `astro check` y la suite en verde. **Falta:** los exports
+sin uso en ningún lado (los 16 de la auditoría), que `noUnusedLocals` no ve; para
+eso es `knip`.
+
+**Los exports, decididos en contra (2026-10-19):** `npx knip --include
+exports,files` marca más de cien, y casi todos son exports que se usan dentro de su
+propio módulo o que un test lee como texto —la auditoría ya los contaba como
+legítimos en este repo—. Sacar el `export` en masa no borra código, no achica el
+bundle (Vite ya descarta lo que no se importa) y puede romper esos tests. Si un día
+se quiere, `knip` en CI con una lista de ignorados explícita, no una limpieza a
+mano.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1
