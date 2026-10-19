@@ -748,3 +748,35 @@ describe('un workflow que nadie está mirando avisa cuando falla — B-883', () 
     }
   });
 });
+
+describe('el rebuild por contenido publica el código que ya está publicado — B-2187', () => {
+  type Paso = { name?: string; id?: string; run?: string; uses?: string; with?: Record<string, unknown>; env?: Record<string, string> };
+  const pasos = (): Paso[] => {
+    const wf = parsear('deploy.yml').toJS() as { jobs: { deploy: { steps: Paso[] } } };
+    return wf.jobs.deploy.steps;
+  };
+
+  it('después del checkout se para en el commit publicado, antes de instalar o construir nada', () => {
+    // Mutación probada: borrar el paso `commit` lo pone rojo.
+    const lista = pasos();
+    const checkout = lista.findIndex((p) => p.uses?.startsWith('actions/checkout'));
+    const commit = lista.findIndex((p) => p.id === 'commit');
+    const instalar = lista.findIndex((p) => p.run?.includes('npm ci'));
+    expect(checkout).toBeGreaterThanOrEqual(0);
+    expect(commit).toBeGreaterThan(checkout);
+    expect(instalar).toBeGreaterThan(commit);
+    // Sin historial no hay commit anterior al que volver.
+    expect(lista[checkout]!.with?.['fetch-depth']).toBe(0);
+    const run = lista[commit]!.run!;
+    expect(run).toContain('./scripts/commit-base-deploy.sh');
+    expect(run).toContain("git describe --tags --match 'v*+*'");
+    expect(run).toContain('git checkout');
+    // Falla cerrada: sin saber qué está publicado, no se publica.
+    expect(run).toMatch(/if \[ -z "\$ANTES" \][\s\S]*exit 1/);
+  });
+
+  it('la suite se saltea mirando el commit que se construye, no la punta de main', () => {
+    const suite = pasos().find((p) => p.id === 'suite')!;
+    expect(suite.env?.SHA).toBe('${{ steps.commit.outputs.sha }}');
+  });
+});

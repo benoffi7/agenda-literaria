@@ -184,7 +184,8 @@ describe('el YAML usa la salida como se debe', () => {
     expect(suite!.id).toBe('suite');
     expect(suite!['continue-on-error']).toBe(true);
     expect(suite!.run).toContain('$GITHUB_OUTPUT');
-    expect(suite!.env?.SHA).toBe('${{ github.sha }}');
+    // B-2187 — el commit que se construye (el publicado), no la punta de `main`.
+    expect(suite!.env?.SHA).toBe('${{ steps.commit.outputs.sha }}');
     expect(deploy.permissions?.actions).toBe('read');
   });
 

@@ -63,18 +63,6 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## P1 — bloquean el objetivo del proyecto
 
-### B-2187 · El rebuild por contenido publica `main` HEAD aunque `push-main` lo haya rechazado · P1 (auditoría 2026-10-19)
-
-`deploy.yml:81` hace checkout de HEAD y, si la suite de ese SHA no está en verde,
-corre `npm test` sin emuladores ni `tsc` (`:118`, `:132`). Con concurrency
-distinta de `push-main.yml:28`, un push rojo se publica igual con la próxima
-edición de una actividad, y un rebuild a mitad de `push-main` puede publicar el
-panel nuevo antes que las reglas nuevas.
-
-**Arreglo:** que `deploy.yml` construya desde el último commit que publicó
-`push-main` (el tag del job `etiquetar`), nunca desde HEAD; compartir el grupo de
-concurrency con el job de hosting de `push-main`.
-
 ### B-1235 · La imagen de una propuesta no queda en la actividad al promoverla · P1 — 🟡 arreglado y verificado por partes, falta una conversión real (2026-09-24)
 
 > 🟡 **Causa encontrada y verificada contra el bucket de producción (2026-09-23).** No era la cadena de guardado: era el **CORS**. La respuesta con los bytes (`alt=media`) no manda `Access-Control-Allow-Origin` para ningún origen, así que el `fetch` de `promoverImagenDePropuesta` falla en el navegador («Failed to fetch»); en el emulador anda porque no aplica el CORS del bucket, y en la bandeja la foto «se ve» porque un `<img>` no lo necesita. **Hecho** (`de19dc2`, `d245919`): `cors.json` en la raíz (solo GET/HEAD desde los cuatro orígenes del sitio), y una alerta visible arriba del formulario cuando la foto no entra, con la causa y qué hacer (`avisoDeImagenNoPromovida`, `Conversion.imagenNoPromovida`). **Falta:** B-1235a, y probar una conversión real. Se cierra cuando una propuesta con foto se convierta y la actividad reabra con el flyer.

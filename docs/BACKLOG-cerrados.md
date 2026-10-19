@@ -15705,8 +15705,9 @@ canal de preview), regla para `/bibliotecas.json`, y que el verificador pida
 `/bibliotecas.json`, `/sitemap.xml` y `/robots.txt`. Medido en el emulador de
 Hosting sobre el `dist/`: todas las páginas dan `no-cache` y `/_astro/*` sigue
 `immutable`. El verificador pide `MUESTRAS_DE_REGEX`; el test fija la regla con
-la mutación probada. Falta confirmarlo en producción con
-`node scripts/verificar-produccion.mjs` después del deploy.
+la mutación probada. **Confirmado en producción** el 2026-10-19 (deploy
+`f4a301a`): `/cartelera/`, `/pasadas/`, `/ayuda/`, `/guia/`, `/bibliotecas.json`
+y `/sitemap.xml` dan `no-cache`.
 
 ### B-2186 · Un fallo de Calendar que no es 404 se traga: sin reintento, sin alerta, y puede no repararse nunca · P1 — ✅ hecho (2026-10-19), la reparación automática sigue en B-2218
 
@@ -15775,6 +15776,27 @@ mensaje propio, probado con un PNG que declara 20000 × 20000 y pesa menos de 1
 KB (mutación probada). Una imagen del panel por encima del tope hace fallar
 `optimizarImagen` y queda como se subió, sin miniatura: igual que antes por
 encima de 268 MP.
+
+### B-2187 · El rebuild por contenido publica `main` HEAD aunque `push-main` lo haya rechazado · P1 — ✅ hecho (2026-10-19)
+
+`deploy.yml:81` hace checkout de HEAD y, si la suite de ese SHA no está en verde,
+corre `npm test` sin emuladores ni `tsc` (`:118`, `:132`). Con concurrency
+distinta de `push-main.yml:28`, un push rojo se publica igual con la próxima
+edición de una actividad, y un rebuild a mitad de `push-main` puede publicar el
+panel nuevo antes que las reglas nuevas.
+
+**Arreglo:** que `deploy.yml` construya desde el último commit que publicó
+`push-main` (el tag del job `etiquetar`), nunca desde HEAD; compartir el grupo de
+concurrency con el job de hosting de `push-main`.
+
+**Hecho (D-1275):** `deploy.yml` se para en el commit que `/version.json` dice
+publicado (o el último tag de deploy) y sin ninguno no publica; la suite se
+saltea mirando ese commit. `tests/workflows.test.ts` fija el orden y la falla
+cerrada (mutación probada). Probado local contra el `version.json` de producción
+y con el sitio caído. El grupo de concurrency **no** se compartió: con
+`cancel-in-progress` un rebuild cancelaría un deploy de código; la carrera del
+escenario C la detecta la frescura. Se corrigió el runbook de `08-operacion.md`
+que mandaba a republicar código con `deploy.yml`.
 
 ## P2 — mejoras reales
 

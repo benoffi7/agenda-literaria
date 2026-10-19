@@ -337,6 +337,7 @@ cambio.
 - [D-1272](06-decisiones.md#d-1272--la-query-se-sigue-recortando-entera-salvo-la-pareja-de-campaña-de-una-lista-cerrada) · La query se sigue recortando entera, salvo la pareja de campaña de una lista cerrada
 - [D-1273](06-decisiones.md#d-1273--el-re-sync-por-renombre-de-etiqueta-corta-por-tiempo-no-por-cantidad) · El re-sync por renombre de etiqueta corta por tiempo, no por cantidad
 - [D-1274](06-decisiones.md#d-1274--la-guía-se-llama-espacios-y-agrupa-por-para-qué-vas-la-url-sigue-en-guia) · La Guía se llama «Espacios» y agrupa por para qué vas; la URL sigue en `/guia`
+- [D-1275](06-decisiones.md#d-1275--el-rebuild-por-contenido-publica-datos-nunca-código) · El rebuild por contenido publica datos, nunca código
 
 ## Otras secciones del registro
 

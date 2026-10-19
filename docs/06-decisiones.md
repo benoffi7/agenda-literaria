@@ -14151,3 +14151,28 @@ esté en un grupo y en uno solo.
 (trampa 10, en su versión de sección). Tampoco el nombre en el código: «la
 Guía» sigue siendo el nombre interno de los directorios. Las novedades viejas
 del panel quedan como se escribieron, porque cuentan lo que pasó.
+
+---
+
+## D-1275 · El rebuild por contenido publica datos, nunca código
+
+**B-2187, 2026-10-19.** `deploy.yml` —el workflow que corre con cada edición de una
+actividad— hacía checkout de la punta de `main`. Como ahí corren solo los tests
+puros (sin emuladores ni `tsc`), un push que `push-main.yml` había rechazado salía
+igual a producción con la próxima edición; y un rebuild a mitad de `push-main`
+publicaba el panel nuevo antes que las reglas nuevas, rompiendo el orden reglas →
+hosting → functions.
+
+**Qué cambia:** `deploy.yml` construye el commit que `/version.json` dice
+publicado (`scripts/commit-base-deploy.sh`, el de B-205), con el último tag de
+deploy de `push-main` como respaldo. Sin ninguno de los dos, no publica. El código
+lo adelanta **solo** `push-main`; para republicar código a mano es
+`gh workflow run push-main.yml`, no `deploy.yml`.
+
+**El costo, dicho:** los pasos de `deploy.yml` corren los scripts del commit
+publicado, así que un paso nuevo que llame a un script nuevo falla hasta que
+`push-main` publique ese commit. Y no se comparte el grupo de concurrency con
+`push-main`: con `cancel-in-progress` un rebuild cancelaría un deploy de código.
+Queda la carrera en la que el hosting de `push-main` termina después de un rebuild
+más nuevo y publica datos de unos minutos antes; la detecta
+`verificarFrescuraDelSitio`.

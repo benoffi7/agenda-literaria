@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **Editar una actividad ya no puede publicar código sin revisar** (B-2187, D-1275). La
+  publicación automática que sigue a cada edición reconstruye el sitio con el código
+  que ya está en producción; el código nuevo sale solo por el deploy del push, que es
+  el que corre todos los controles.
+
 - **Las imágenes que sube cualquiera se procesan con una librería sin vulnerabilidades
   conocidas, y con tope** (B-2189). `sharp` pasó a la 0.35.5 en las Functions, y una
   imagen de más de 64 megapíxeles se rechaza con un mensaje claro antes de ocupar la

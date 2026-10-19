@@ -79,6 +79,39 @@ jobs:
           echo "Motivo: $MOTIVO"
 
       - uses: actions/checkout@v4
+        with:
+          # Todo el historial y los tags: el paso de abajo vuelve a un commit
+          # anterior a la punta de `main`.
+          fetch-depth: 0
+
+      - name: Pararse en el commit que ya está publicado
+        # **B-2187 — este workflow publica DATOS, no código.** Hasta acá hacía
+        # checkout de la punta de `main`: un push que `push-main.yml` rechazó
+        # (tests con emuladores, `tsc`) salía igual con la próxima edición de una
+        # actividad, porque acá corren solo los tests puros; y un rebuild a mitad
+        # de `push-main` publicaba el panel nuevo antes que las reglas nuevas.
+        #
+        # El código lo adelanta solo `push-main`. Acá se construye el commit que
+        # `/version.json` dice que está publicado (`commit-base-deploy.sh`, el
+        # mismo de B-205), y si el sitio no contesta, el último tag de deploy que
+        # `push-main` puso al terminar bien. Sin ninguno de los dos **no se
+        # publica**: es preferible el sitio con los datos de hace un rato.
+        #
+        # Consecuencia a saber: los pasos de abajo corren los scripts **de ese
+        # commit**. Un paso nuevo de este archivo que llame a un script nuevo
+        # falla hasta que `push-main` publique el commit que lo trae.
+        id: commit
+        run: |
+          RESPALDO=$(git describe --tags --match 'v*+*' --abbrev=0 HEAD 2>/dev/null || true)
+          eval "$(EVENT_BEFORE="$RESPALDO" ./scripts/commit-base-deploy.sh)"
+          if [ -z "$ANTES" ]; then
+            echo "::error::no se sabe qué commit está publicado: ni /version.json ni un tag de deploy"
+            exit 1
+          fi
+          git checkout --quiet --detach "$ANTES"
+          SHA=$(git rev-parse HEAD)
+          echo "::notice::se construye el commit publicado ${SHA:0:7} (main está en ${GITHUB_SHA:0:7})"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v4
         with:
@@ -112,7 +145,8 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-          SHA: ${{ github.sha }}
+          # B-2187 — el commit que se construye, no la punta de `main`.
+          SHA: ${{ steps.commit.outputs.sha }}
         run: ./scripts/suite-verde-del-commit.sh | tee -a "$GITHUB_OUTPUT"
 
       - name: Tests
