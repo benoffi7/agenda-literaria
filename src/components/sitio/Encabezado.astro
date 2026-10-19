@@ -116,7 +116,15 @@ export type Seccion =
    * **no entra a `ENLACES`**, por lo mismo que `/apoyar` y `/mis-favoritos`:
    * la barra tiene techo, y el camino de ida es el renglón de la home y el pie.
    */
-  | 'efemerides';
+  | 'efemerides'
+  /**
+   * B-2200 — `/proponer` tenía `'ninguna'` de cuando estaba escrita y no
+   * anunciada, y así quedó después de B-896: quien llegaba desde Google no tenía
+   * barra ni pie para seguir, no había «saltar al contenido», y sin el aviso de
+   * cookies la página de conversión no se medía. Declara su sección y **no entra
+   * a `ENLACES`**: el camino de ida es el pie y `/contacto`.
+   */
+  | 'proponer';
 
 interface Props {
   activa?: Seccion;

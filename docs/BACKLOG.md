@@ -196,17 +196,6 @@ CI; un `functions/jsconfig.json` con `checkJs`, adoptado de a poco con
 `// @ts-check` empezando por `calendario.js`, `sincronizacion.js` y
 `calendario-trigger.js`.
 
-### B-2200 · `/proponer` repite ids y no tiene encabezado, pie ni GA · P2 (auditoría 2026-10-19)
-
-`FormularioPublico.tsx` (370, 441, 471, 504, 587) repite en el `<div>` el `id` que
-`Campo comoGrupo` ya puso en el rótulo: `prop-modalidad`, `prop-arancel`,
-`prop-inscripcion`, `prop-via` salen dos veces y el `aria-labelledby` es ambiguo.
-Además `seccion="ninguna"` (`proponer.astro:75`) apaga encabezado, pie, «saltar
-al contenido» y el aviso de cookies: quien llega desde Google no puede navegar, y
-la página de conversión no se mide. Quedó así de cuando no estaba anunciada; no
-hay D. **Arreglo:** ids `${htmlFor}-rotulo` y una red que barra ids repetidos en
-`dist/`; darle a `/proponer` el chrome como a `/anunciar`.
-
 ### B-2203 · El panel relee la colección entera de `/actividades` cada vez que se vuelve al listado · P2 — 🟡 entre vistas resuelto (2026-10-19), falta la vuelta del formulario
 
 `useActividades.ts` hace `getDocs` completo sin caché, y `ListaActividades` /

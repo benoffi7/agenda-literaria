@@ -2,6 +2,11 @@
 
 ## Sin publicar
 
+- **«Proponer una actividad» tiene barra y pie como el resto del sitio** (B-2200).
+  Quien llegaba desde Google no tenía cómo seguir navegando, y la página no se medía.
+  De paso, sus grupos de botones dejaron de repetir ids, y el build ahora revisa que
+  ninguna página los repita.
+
 - **Con teclado se ve en qué campo estás** (B-2199). El anillo de foco de los
   formularios —el de proponer, los de sumar y todo el panel— pasó a terracota pleno;
   antes era casi invisible.

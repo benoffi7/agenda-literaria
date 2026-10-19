@@ -1,9 +1,9 @@
 /**
  * Paso 10 del gate (B-122).
  */
-import { problemasDeJerarquia, tituloDe } from '../../seo-del-artefacto.mjs';
+import { idsRepetidos, problemasDeJerarquia, tituloDe } from '../../seo-del-artefacto.mjs';
 
-export const nombre = "el <title> único y la jerarquía de encabezados";
+export const nombre = "el <title> único, la jerarquía de encabezados y los ids sin repetir";
 
 /** @param {import('../contexto.mjs').Contexto} ctx */
 export const chequear = async (ctx) => {
@@ -49,6 +49,7 @@ export const chequear = async (ctx) => {
 
     const titulos = new Map();
     const jerarquia = [];
+    const ids = [];
 
     for (const { relativa, contenido: html } of paginas) {
 
@@ -63,6 +64,20 @@ export const chequear = async (ctx) => {
 
       // 10b · Un solo `h1`, y ningún nivel salteado al bajar.
       for (const p of problemasDeJerarquia(html)) jerarquia.push(`    dist/${relativa} → ${p}`);
+
+      // 10c · B-2200 — ningún `id` repetido en la misma página.
+      const repetidosDeLaPagina = idsRepetidos(html);
+      if (repetidosDeLaPagina.length > 0)
+        ids.push(`    dist/${relativa} → ${repetidosDeLaPagina.join(', ')}`);
+    }
+
+    if (ids.length > 0) {
+      fallo(
+        'hay ids repetidos en una misma página:\n' +
+          ids.join('\n') +
+          '\n  Todo lo que apunta a ese id —un aria-labelledby, un <label for>, un ancla—\n' +
+          '  queda ambiguo, y la página se ve bien igual (B-2200).',
+      );
     }
 
     const repetidos = [...titulos.entries()].filter(([, rutas]) => rutas.length > 1);

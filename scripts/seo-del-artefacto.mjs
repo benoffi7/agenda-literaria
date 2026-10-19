@@ -59,3 +59,26 @@ export const problemasDeJerarquia = (html) => {
   }
   return problemas;
 };
+
+/**
+ * **Los `id` que se repiten en una página** — B-2200.
+ *
+ * Un id repetido es HTML inválido y, peor, deja ambiguo todo lo que apunta a él:
+ * un `aria-labelledby`, un `<label for>`, un `#ancla`. Lo encontró la auditoría
+ * del 2026-10-19 en `/proponer`, donde el rótulo de cada grupo y el contenedor de
+ * sus botones se llamaban igual, y se rompe en silencio: la página se ve bien.
+ *
+ * Se sacan antes los `<script>` y los `<template>`: su contenido no es DOM de la
+ * página (el JSON-LD, el código de una island) y un `id="` adentro no cuenta.
+ *
+ * @param {string} html
+ * @returns {string[]} los ids que aparecen más de una vez, sin repetir
+ */
+export const idsRepetidos = (html) => {
+  const sinScripts = html
+    .replace(/<script\b[\s\S]*?<\/script>/gi, '')
+    .replace(/<template\b[\s\S]*?<\/template>/gi, '');
+  const vistos = new Map();
+  for (const m of sinScripts.matchAll(/\sid="([^"]+)"/g)) vistos.set(m[1], (vistos.get(m[1]) ?? 0) + 1);
+  return [...vistos.entries()].filter(([, n]) => n > 1).map(([id]) => id);
+};

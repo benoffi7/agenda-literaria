@@ -18395,6 +18395,25 @@ deja solo el cambio de borde (1,49:1) y un anillo al 15 % (1,27:1). Lo usan
 `tests/foco-de-los-campos.test.ts` lo mide con `lib/contraste.ts`, con el anillo
 viejo al 15 % como control que no llega (mutación probada).
 
+### B-2200 · `/proponer` repite ids y no tiene encabezado, pie ni GA · P2 — ✅ hecho (2026-10-19)
+
+`FormularioPublico.tsx` (370, 441, 471, 504, 587) repite en el `<div>` el `id` que
+`Campo comoGrupo` ya puso en el rótulo: `prop-modalidad`, `prop-arancel`,
+`prop-inscripcion`, `prop-via` salen dos veces y el `aria-labelledby` es ambiguo.
+Además `seccion="ninguna"` (`proponer.astro:75`) apaga encabezado, pie, «saltar
+al contenido» y el aviso de cookies: quien llega desde Google no puede navegar, y
+la página de conversión no se mide. Quedó así de cuando no estaba anunciada; no
+hay D. **Arreglo:** ids `${htmlFor}-rotulo` y una red que barra ids repetidos en
+`dist/`; darle a `/proponer` el chrome como a `/anunciar`.
+
+**Hecho:** el rótulo de un `Campo comoGrupo` se llama `${htmlFor}-rotulo` (y el
+`aria-labelledby` con él), así que el contenedor de los botones conserva su id
+sin chocar. El gate de build barre todas las páginas con `idsRepetidos`
+(`scripts/seo-del-artefacto.mjs`, paso 10c) y pasa. `/proponer` declara
+`seccion="proponer"`, sin pestaña en la barra, como `/anunciar`: encabezado, pie,
+«saltar al contenido» y aviso de cookies. El formulario no mide nada propio; con
+Analytics solo suma la vista de la página.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

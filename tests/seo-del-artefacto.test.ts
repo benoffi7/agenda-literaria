@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { problemasDeJerarquia, tituloDe } from '../scripts/seo-del-artefacto.mjs';
+import { idsRepetidos, problemasDeJerarquia, tituloDe } from '../scripts/seo-del-artefacto.mjs';
 
 /**
  * Las dos propiedades del HTML indexable que decidían B-122, probadas sin build.
@@ -159,5 +159,29 @@ describe('el gate consume estas decisiones y no tiene su propia copia', () => {
     expect(gate).not.toMatch(/const (tituloDe|problemasDeJerarquia)\s*=/);
     // Ni reimplementa el regex de los encabezados por su cuenta.
     expect(gate).not.toContain('<h([1-6])');
+  });
+});
+
+describe('los ids repetidos de una página — B-2200', () => {
+  it('encuentra el id que aparece dos veces, una sola vez', () => {
+    const html =
+      '<span id="prop-via">Cómo</span><div id="prop-via"><button id="ok">x</button></div>' +
+      '<div id="prop-via"></div>';
+    expect(idsRepetidos(html)).toEqual(['prop-via']);
+  });
+
+  it('una página con ids únicos no tiene nada', () => {
+    expect(idsRepetidos('<main id="contenido"><h1 id="t">Hola</h1></main>')).toEqual([]);
+  });
+
+  it('lo de adentro de un <script> o un <template> no cuenta', () => {
+    const html =
+      '<div id="a"></div><script type="application/ld+json">{"x":" id=\\"a\\""}</script>' +
+      '<script>el.innerHTML = \'<p id="a">\'</script><template><p id="a"></p></template>';
+    expect(idsRepetidos(html)).toEqual([]);
+  });
+
+  it('`data-id` y `aria-labelledby` no son ids', () => {
+    expect(idsRepetidos('<p id="a" data-id="a"></p><div aria-labelledby="a"></div>')).toEqual([]);
   });
 });

@@ -139,8 +139,11 @@ describe('clase de B-827 · todo `Campo` asocia su label con su control', () => 
     // los dos barridos de arriba miden el uso de una garantía que ya no existe.
     const campo = fuente('src/components/campos/Campo.tsx');
     expect(campo, 'el `<label>` dejó de apuntar al control').toContain('<label htmlFor={htmlFor}');
-    expect(campo, 'el grupo dejó de nombrarse').toContain('aria-labelledby={htmlFor}');
-    expect(campo, 'el rótulo del grupo dejó de tener id').toContain('<span id={htmlFor}');
+    // B-2200 — el id del rótulo lleva `-rotulo`: el contenedor de los botones del
+    // grupo suele usar `htmlFor` y salían dos ids iguales. Lo que importa es que
+    // los dos lados digan lo mismo.
+    expect(campo, 'el grupo dejó de nombrarse').toContain('aria-labelledby={`${htmlFor}-rotulo`}');
+    expect(campo, 'el rótulo del grupo dejó de tener id').toContain('<span id={`${htmlFor}-rotulo`}');
     expect(campo, '`htmlFor` volvió a ser opcional').not.toMatch(/^\s*htmlFor\?:/m);
   });
 

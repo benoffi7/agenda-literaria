@@ -68,7 +68,9 @@ export function Campo({
       className={`flex min-w-0 scroll-mt-16 flex-col gap-1.5 ${className}`}
     >
       {comoGrupo ? (
-        <span id={htmlFor} className={claseRotulo}>
+        // B-2200 — `-rotulo` y no `htmlFor` a secas: quien usa el grupo suele
+        // ponerle ese id al contenedor de los botones, y salían dos iguales.
+        <span id={`${htmlFor}-rotulo`} className={claseRotulo}>
           {rotulo}
         </span>
       ) : (
@@ -77,7 +79,11 @@ export function Campo({
         </label>
       )}
       {comoGrupo ? (
-        <div role="group" aria-labelledby={htmlFor} className="flex min-w-0 flex-col gap-1.5">
+        <div
+          role="group"
+          aria-labelledby={`${htmlFor}-rotulo`}
+          className="flex min-w-0 flex-col gap-1.5"
+        >
           {children}
         </div>
       ) : (
