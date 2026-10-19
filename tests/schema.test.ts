@@ -205,6 +205,20 @@ describe('schema — lo que bloquea en los dos niveles', () => {
     expect(e['sesiones.0.fin']).toBeUndefined();
   });
 
+  it('un encuentro de más de una semana se frena: es casi seguro un año mal tipeado (B-2221)', () => {
+    // El caso real del 2026-10-19: fin el 25/09/4050. Mutación probada: sacar la
+    // regla deja pasar esto.
+    const v = valido();
+    v.sesiones = [{ ...v.sesiones[0]!, inicio: '2026-09-25T19:00', fin: '4050-09-25T20:30' }];
+    expect(mensajes(v)['sesiones.0.fin']).toMatch(/más de una semana/);
+  });
+
+  it('una feria de tres días sigue entrando', () => {
+    const v = valido();
+    v.sesiones = [{ ...v.sesiones[0]!, inicio: '2026-09-25T10:00', fin: '2026-09-27T20:00' }];
+    expect(mensajes(v)['sesiones.0.fin']).toBeUndefined();
+  });
+
   it('una fecha de fin corrupta se rechaza con su propio mensaje', () => {
     const v = valido();
     v.sesiones = [{ ...v.sesiones[0]!, fin: 'tampoco esto' }];

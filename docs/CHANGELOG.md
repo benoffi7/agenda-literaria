@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **El formulario frena un encuentro que dura más de una semana** (B-2221): casi
+  siempre es un año mal tipeado. Había uno publicado que terminaba en el año 4050.
+
 - **Las páginas del sitio pasan por un chequeo de tipos antes de publicarse** (B-2198).
   Encontró y corrigió tres errores que nadie veía.
 

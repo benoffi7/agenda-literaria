@@ -15798,6 +15798,16 @@ y con el sitio caído. El grupo de concurrency **no** se compartió: con
 escenario C la detecta la frescura. Se corrigió el runbook de `08-operacion.md`
 que mandaba a republicar código con `deploy.yml`.
 
+### B-2221 · Un encuentro con el fin en el año 4050 se publicó sin aviso · P1 — ✅ hecho (2026-10-19), falta corregir el dato
+
+Apareció midiendo B-2191 en producción: «Tertulias Fanzineras» tiene un encuentro
+del 25/09/2026 que termina el 25/09/**4050**. El schema solo exigía que el fin
+fuera después del inicio. **Hecho:** `sesionSchema` frena un encuentro de más de
+una semana (`DURACION_MAXIMA_DE_ENCUENTRO_MS`) con un mensaje que pide revisar el
+año; una feria de tres días entra. `tests/schema.test.ts` con el caso real
+(mutación probada). El dato en sí lo corrige el dueño: ver «Pendiente de acción
+manual».
+
 ## P2 — mejoras reales
 
 ### B-1113 · La red de D-88 no ve las dos copias que existen hoy, y su firma no puede verlas — ✅ hecho (2026-09-21) · P2 — del `auditor-trampas` (2026-09-17)
@@ -18458,6 +18468,12 @@ los dos archivos se barren con la misma canasta. `tests/indice-partido.test.ts`
 probada). De rebote se arregló `scripts/cors-del-bucket.mjs`, que sacaba la
 imagen del índice y desde la primera mitad quedaba siempre «saltado»: ahora la
 toma de la cartelera, probado contra producción (5 verificados).
+
+**Medido en producción después del deploy (`8db3160`):** `/events.json` 519,
+`/pasadas.json` 0. No es un error: el sitio arrancó a fines de agosto y ninguna
+actividad terminó antes de septiembre, que hoy es «el mes pasado» (237 terminan
+en septiembre, 230 en octubre). El ahorro empieza el 1 de noviembre. Midiéndolo
+apareció B-2221.
 
 ## P3 — cuando sobre tiempo
 

@@ -238,6 +238,9 @@ const MENSAJES_DE_ID = {
  */
 export { imagenSchema };
 
+/** B-2221 — lo más que puede durar un encuentro antes de que se lo tome por un error de tipeo. */
+export const DURACION_MAXIMA_DE_ENCUENTRO_MS = 7 * 24 * 60 * 60 * 1000;
+
 const sesionSchema = z
   .object({
     id: z.string().regex(/^ses_/, MENSAJES_DE_ID.sesion),
@@ -306,6 +309,23 @@ const sesionSchema = z
         code: 'custom',
         path: ['fin'],
         message: 'El encuentro tiene que terminar después de empezar',
+      });
+    }
+    /*
+     * B-2221 — un encuentro de más de una semana es casi seguro un año mal
+     * tipeado. El 2026-10-19 había uno publicado con fin el 25/09/**4050**: en el
+     * calendario público era un evento de dos mil años, y en el índice no pasaba
+     * nunca a «Lo que ya pasó». Una feria de dos o tres días entra de sobra.
+     */
+    if (
+      inicioValida &&
+      finValida &&
+      new Date(s.fin).getTime() - new Date(s.inicio).getTime() > DURACION_MAXIMA_DE_ENCUENTRO_MS
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['fin'],
+        message: 'El encuentro dura más de una semana: revisá la fecha de fin (¿el año?)',
       });
     }
   });

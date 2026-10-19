@@ -41,6 +41,10 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## Pendiente de acción manual del dueño
 
+- **B-2221** — corregir en el panel la fecha de fin del encuentro del 25/09 de
+  **Tertulias Fanzineras**: dice el año **4050**. En el calendario público es un
+  evento de dos mil años. Desde B-2221 el formulario no deja guardarla así, así que
+  al abrirla y guardar va a marcar justo ese campo.
 - **B-2167** — revisar once pares de actividades publicadas que parecen duplicadas:
   el filtro «Posibles duplicados» del listado los muestra juntos. Dejar una de cada
   par que sea la misma.
