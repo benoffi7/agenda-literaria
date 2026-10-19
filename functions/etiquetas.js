@@ -101,8 +101,17 @@ export const TAXONOMIAS_FUERA_DEL_EVENTO = [
 /**
  * Caché por instancia: son siete documentos que cambian muy de vez en cuando y
  * la Function corre una vez por escritura de actividad.
+ *
+ * **Vence a los 60 s** (B-2192). `invalidarLabels` solo limpia la instancia que
+ * lo llama, que es la de `rebuildPorOpciones` —otro servicio—, así que una
+ * instancia tibia de `syncCalendar` seguía con el mapa viejo hasta reciclarse:
+ * la próxima edición reescribía la etiqueta vieja en un evento que el renombre
+ * ya había puesto al día, y una opción recién creada salía con su `desSlug`. Un
+ * minuto cuesta siete lecturas por instancia activa y acota esa ventana.
  */
+export const VIGENCIA_DE_LABELS_MS = 60_000;
 let _labels = null;
+let _cargadasEn = 0;
 
 /**
  * `{ campo: { slug: label } }` para las siete taxonomías.
@@ -113,8 +122,8 @@ let _labels = null;
  * legítimamente y el evento es público: filtrar acá haría que la descripción
  * dijera "con-beca-parcial" en lugar de "Con beca parcial".
  */
-export const cargarLabels = async (db) => {
-  if (_labels) return _labels;
+export const cargarLabels = async (db, ahora = Date.now) => {
+  if (_labels && ahora() - _cargadasEn < VIGENCIA_DE_LABELS_MS) return _labels;
   const labels = {};
   const snaps = await db.getAll(...CAMPOS_TAXONOMIA.map((c) => db.doc(`opciones/${c}`)));
   snaps.forEach((snap, i) => {
@@ -124,6 +133,7 @@ export const cargarLabels = async (db) => {
     );
   });
   _labels = labels;
+  _cargadasEn = ahora();
   return labels;
 };
 
@@ -133,7 +143,7 @@ export const cargarLabels = async (db) => {
  * etiquetas viejas hasta reciclarse — y es justo la instancia que a continuación
  * reescribe los eventos con las nuevas (B-04).
  *
- * Solo invalida **esta** instancia; las demás lo recargan al reciclarse.
+ * Solo invalida **esta** instancia; las demás lo recargan cuando vence (B-2192).
  */
 export const invalidarLabels = () => {
   _labels = null;

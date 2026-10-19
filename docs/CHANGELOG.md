@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Renombrar una etiqueta ya no se deshace en el calendario** (B-2192). Una edición
+  posterior podía volver a escribir la etiqueta vieja en un evento ya corregido; ahora
+  el sync relee las etiquetas cada minuto.
+
 - **Editar una actividad ya no puede publicar código sin revisar** (B-2187, D-1275). La
   publicación automática que sigue a cada edición reconstruye el sitio con el código
   que ya está en producción; el código nuevo sale solo por el deploy del push, que es

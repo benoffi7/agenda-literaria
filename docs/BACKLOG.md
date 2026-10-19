@@ -153,13 +153,6 @@ filas en el HTML. **Arreglo:** partir en vigentes + `pasadas.json`, sacar
 `imagenUrl`, emitir minificado, y que `/pasadas` haga el fetch al usar el
 buscador. Actualizar el barrido de salidas y el gate post-build.
 
-### B-2192 · El caché de etiquetas de `syncCalendar` no vence y puede deshacer un renombre · P2 (auditoría 2026-10-19)
-
-`functions/etiquetas.js:117`: `invalidarLabels` limpia solo la instancia de
-`rebuildPorOpciones`, que es otro servicio. Una instancia tibia de `syncCalendar`
-reescribe la etiqueta vieja (o el `desSlug` de una opción nueva) en la próxima
-edición. **Arreglo:** TTL de ~60 s a 5 min en `cargarLabels`.
-
 ### B-2193 · `marcarRebuild` sin `try`, y una carga masiva concentra cientos de escrituras en `sistema/rebuild` · P2 (auditoría 2026-10-19)
 
 `calendario-trigger.js:74`: un error de contención en el `set` aborta la

@@ -18264,6 +18264,17 @@ corregir las citas.
 de cursar» en Estadísticas → El catálogo, y `tests/sedes-repetidas.test.ts`
 repuso las dos aserciones que se habían retirado al integrar.
 
+### B-2192 · El caché de etiquetas de `syncCalendar` no vence y puede deshacer un renombre · P2 — ✅ hecho (2026-10-19)
+
+`functions/etiquetas.js:117`: `invalidarLabels` limpia solo la instancia de
+`rebuildPorOpciones`, que es otro servicio. Una instancia tibia de `syncCalendar`
+reescribe la etiqueta vieja (o el `desSlug` de una opción nueva) en la próxima
+edición. **Arreglo:** TTL de ~60 s a 5 min en `cargarLabels`.
+
+**Hecho:** `cargarLabels` vence a los 60 s (`VIGENCIA_DE_LABELS_MS`), con reloj
+inyectable; `tests/etiquetas-vencen.test.ts` prueba que no relee dentro de la
+vigencia y que pasada trae la etiqueta nueva (mutación probada).
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)
