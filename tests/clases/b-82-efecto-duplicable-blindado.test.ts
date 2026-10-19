@@ -37,7 +37,10 @@ const deDocumento = TRIGGERS.filter((t) => t.clase !== 'onSchedule');
  * copias literales del mismo criterio, o sea la clase de B-88 esperando a que
  * alguien ensanchara una sola de las dos.
  */
-const RE_RED = /\bfetch\(|cal\.events\.|\bgoogle\.\w+\(/;
+// B-2206 — desde que `googleapis` se partió en `@googleapis/<api>`, el cliente es
+// `calendar(`, `analyticsdata(` o `searchconsole(` y no `google.<api>(`: los dos.
+const RE_RED =
+  /\bfetch\(|cal\.events\.|\bgoogle\.\w+\(|\b(?:calendar|analyticsdata|searchconsole)\(\{/;
 
 
 /**

@@ -13,7 +13,9 @@
  */
 import { logger } from 'firebase-functions/v2';
 import { GoogleAuth } from 'google-auth-library';
-import { google } from 'googleapis';
+// B-2206 — solo el cliente de Calendar, no `googleapis` entero (114 MB, +58 MB de
+// heap en cada arranque en frío de las 25 Functions).
+import { calendar } from '@googleapis/calendar';
 import { idDeEvento } from './sincronizacion.js';
 
 export const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID;
@@ -33,7 +35,7 @@ export const calendario = async () => {
   const auth = new GoogleAuth({
     scopes: ['https://www.googleapis.com/auth/calendar.events'],
   });
-  _calendar = google.calendar({ version: 'v3', auth: await auth.getClient() });
+  _calendar = calendar({ version: 'v3', auth: await auth.getClient() });
   return _calendar;
 };
 

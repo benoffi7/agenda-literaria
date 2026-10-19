@@ -39,7 +39,9 @@ import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { logger } from 'firebase-functions/v2';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { GoogleAuth } from 'google-auth-library';
-import { google } from 'googleapis';
+// B-2206 — los dos clientes que se usan, no `googleapis` entero.
+import { analyticsdata } from '@googleapis/analyticsdata';
+import { searchconsole } from '@googleapis/searchconsole';
 import { marcarRebuild } from './marca-de-rebuild.js';
 import {
   MOTIVOS_SIN_CONFIGURAR,
@@ -165,8 +167,8 @@ const clientes = async () => {
   const auth = new GoogleAuth({ scopes: SCOPES });
   const authClient = await auth.getClient();
   _clientes = {
-    ga4: google.analyticsdata({ version: 'v1beta', auth: authClient }),
-    searchConsole: google.searchconsole({ version: 'v1', auth: authClient }),
+    ga4: analyticsdata({ version: 'v1beta', auth: authClient }),
+    searchConsole: searchconsole({ version: 'v1', auth: authClient }),
   };
   return _clientes;
 };

@@ -218,15 +218,6 @@ releer; ahorrar ahí pide rediseñar cómo el panel decide qué está viejo, sob
 pantalla que más se usa, y a los precios de Firestore son centavos por mes. No
 vale el riesgo hasta que el costo o la espera molesten.
 
-### B-2206 · Cada arranque en frío de las 25 Functions carga `googleapis` entero · P2 (auditoría 2026-10-19)
-
-`index.js` importa todos los triggers, y `calendario-api.js:16` y
-`analitica-trigger.js:42` importan `googleapis` (114 MB en disco, +58 MB de heap
-medido en local). Lo pagan también las callables y `dispararRebuild`.
-**Arreglo:** `@googleapis/calendar`, `@googleapis/analyticsdata` y
-`@googleapis/searchconsole`; una sola `google-auth-library` (hoy conviven la 9 y
-la 10); `import()` perezoso de `sharp`.
-
 ### B-2208 · Dependencias mayores atrasadas · P2 (auditoría 2026-10-19)
 
 Raíz: `firebase` 11→13, `vitest` 3→5, `@astrojs/react` 6→7, `zod` 3→4,

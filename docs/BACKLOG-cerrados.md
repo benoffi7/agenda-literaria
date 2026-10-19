@@ -18475,6 +18475,27 @@ actividad terminó antes de septiembre, que hoy es «el mes pasado» (237 termin
 en septiembre, 230 en octubre). El ahorro empieza el 1 de noviembre. Midiéndolo
 apareció B-2221.
 
+### B-2206 · Cada arranque en frío de las 25 Functions carga `googleapis` entero · P2 — ✅ hecho (2026-10-19)
+
+`index.js` importa todos los triggers, y `calendario-api.js:16` y
+`analitica-trigger.js:42` importan `googleapis` (114 MB en disco, +58 MB de heap
+medido en local). Lo pagan también las callables y `dispararRebuild`.
+**Arreglo:** `@googleapis/calendar`, `@googleapis/analyticsdata` y
+`@googleapis/searchconsole`; una sola `google-auth-library` (hoy conviven la 9 y
+la 10); `import()` perezoso de `sharp`.
+
+**Hecho:** `functions/` usa `@googleapis/calendar`, `@googleapis/analyticsdata` y
+`@googleapis/searchconsole` en vez de `googleapis` (114 MB → 1,7 MB en disco), y
+una sola `google-auth-library` propia, la 11 que pide `googleapis-common` 9 (las
+otras copias las trae `firebase-admin`). Medido en local: cargar `index.js` entero
+suma 32 MB de heap; antes `googleapis` solo sumaba 58. El detector de red de
+`tests/clases/b-82-efecto-duplicable-blindado.test.ts` se amplió a los nombres
+nuevos de los clientes. **Lo que no se probó acá:** una llamada real a Calendar,
+GA4 o Search Console con los clientes nuevos —no hay emulador—; la primera
+edición de una actividad y la corrida diaria de la analítica después del deploy lo
+dicen, y si falla suena `calendar-fallo`. El `import()` perezoso de `sharp` no se
+hizo.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **Las Functions arrancan más livianas** (B-2206): cargan solo los clientes de
+  Calendar, Analytics y Search Console, y no la librería entera de Google APIs.
+
 - **El formulario frena un encuentro que dura más de una semana** (B-2221): casi
   siempre es un año mal tipeado. Había uno publicado que terminaba en el año 4050.
 
