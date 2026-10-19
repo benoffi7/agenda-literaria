@@ -218,7 +218,7 @@ releer; ahorrar ahí pide rediseñar cómo el panel decide qué está viejo, sob
 pantalla que más se usa, y a los precios de Firestore son centavos por mes. No
 vale el riesgo hasta que el costo o la espera molesten.
 
-### B-2208 · Dependencias mayores atrasadas · P2 (auditoría 2026-10-19)
+### B-2208 · Dependencias mayores atrasadas · P2 — 🟡 parches y audit fix hechos (2026-10-19), faltan las mayores
 
 Raíz: `firebase` 11→13, `vitest` 3→5, `@astrojs/react` 6→7, `zod` 3→4,
 `typescript` 5.9→7, `firebase-admin` 13→14; patches de `astro` (7.3.8) y `react`
@@ -229,6 +229,19 @@ sin breaking `devalue`, `undici`, `http-cache-semantics`, `source-map-js` y
 `smol-toml`. La foto de `10-salud` §6.2 es del 2026-09-09. **Arreglo:** un ítem
 por salto, empezando por los patches y `firebase-functions` + `googleapis` contra
 el emulador.
+
+**Hecho (2026-10-19):** `npm update` dentro de los rangos (Astro 7.3.8, React y
+React DOM 19.3.1, `@astrojs/react` 6.0.6, Testing Library, `yaml`) y `npm audit
+fix` sin breaking en la raíz; `google-auth-library` pasó a `devDependencies`. En
+`functions/` ya se había hecho con B-2189 y B-2206 (una sola `google-auth-library`,
+la 11). Verificado con `tsc`, `astro check`, la suite y el gate de build. Quedan 4
+altas en la raíz, todas `@grpc/grpc-js` dentro de `firebase` 11: en el navegador
+Firestore no usa gRPC, así que no hay superficie, y se van con firebase 13.
+
+**Falta, cada una en su ítem cuando se encare:** `firebase` 11→13 y
+`firebase-admin` 13→14 (el SDK del panel y del build), `vitest` 3→5, `zod` 3→4
+(cambia la API de los schemas), `typescript` 5.9→7, `@astrojs/react` 6→7 y
+`firebase-functions` 6→7.
 
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
 

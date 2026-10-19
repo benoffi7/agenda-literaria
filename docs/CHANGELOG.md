@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **Dependencias al día dentro de su versión** (B-2208): Astro 7.3.8, React 19.3.1 y
+  los parches de seguridad que no rompen nada.
+
 - **Las Functions arrancan más livianas** (B-2206): cargan solo los clientes de
   Calendar, Analytics y Search Console, y no la librería entera de Google APIs.
 
