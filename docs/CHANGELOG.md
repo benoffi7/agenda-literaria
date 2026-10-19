@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **Cada página baja 86 KB menos** (B-2201): el logo del encabezado pasó del PNG de
+  512 px (91 KB) a uno de 80 px (4,5 KB), que es lo que se ve.
+
 - **Otro sitio ya no puede meter este dentro de un iframe** (B-2196). El sitio, los
   formularios y el panel salen con las cabeceras que lo impiden, más `nosniff` y una
   política de referrer explícita. El login del panel no cambia.

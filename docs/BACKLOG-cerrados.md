@@ -18327,6 +18327,16 @@ contenido no se hizo**: en `Report-Only` sin un receptor de reportes no mide
 nada, y enforzada sin medir puede romper GA o reCAPTCHA. Si se retoma, primero un
 endpoint que junte los reportes.
 
+### B-2201 · El logo del encabezado es un PNG de 91 KB mostrado a 40 px · P2 — ✅ hecho (2026-10-19)
+
+`Encabezado.astro:271` usa `marca-512.png` (90.944 B) en todas las páginas: pesa
+más que las tres fuentes precargadas juntas. **Arreglo:** una versión de ~80 px
+con `srcset` 1x/2x (o SVG) por `astro:assets`, con hash e inmutable.
+
+**Hecho:** `public/marca-80.png` (4,5 KB, el doble de los 40 px a los que se
+muestra), sacado del de 512. Sin `astro:assets`: con 4,5 KB la hora de caché ya no
+pesa. `tests/logo-del-encabezado.test.ts`.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

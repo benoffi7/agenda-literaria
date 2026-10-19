@@ -267,8 +267,14 @@ const activaEstaAdentro = SECUNDARIAS.some((e) => e.seccion === activa);
       tipografía.
     */}
     <a href={RUTA_AGENDA} class={`group flex min-w-0 items-center gap-2 sm:gap-3 ${focoAmplio}`}>
+      {/*
+        B-2201 — 80 px (el doble de los 40 a los que se muestra, para pantallas
+        densas) y no el de 512: eran 91 KB en todas las páginas, más que las tres
+        fuentes precargadas juntas. El de 512 sigue siendo el ícono y el `logo`
+        del JSON-LD.
+      */}
       <img
-        src="/marca-512.png"
+        src="/marca-80.png"
         alt=""
         width="40"
         height="40"

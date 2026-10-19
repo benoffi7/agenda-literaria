@@ -204,12 +204,6 @@ la página de conversión no se mide. Quedó así de cuando no estaba anunciada;
 hay D. **Arreglo:** ids `${htmlFor}-rotulo` y una red que barra ids repetidos en
 `dist/`; darle a `/proponer` el chrome como a `/anunciar`.
 
-### B-2201 · El logo del encabezado es un PNG de 91 KB mostrado a 40 px · P2 (auditoría 2026-10-19)
-
-`Encabezado.astro:271` usa `marca-512.png` (90.944 B) en todas las páginas: pesa
-más que las tres fuentes precargadas juntas. **Arreglo:** una versión de ~80 px
-con `srcset` 1x/2x (o SVG) por `astro:assets`, con hash e inmutable.
-
 ### B-2202 · El buscador de la home recalcula todo en cada tecla · P2 (auditoría 2026-10-19)
 
 `Buscador.tsx:617` va directo a `setFiltros`; `chipsDe` (`:760`) corre
