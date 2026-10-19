@@ -1388,6 +1388,10 @@ Los otros cuatro significan, en orden: el documento **previo** tiene mi uid en
 `createdBy`; el documento **nuevo** lo tiene; el `createdBy` no cambia entre los
 dos; y el `updatedBy` del documento nuevo es mío.)*
 
+**El slug de una actividad que estuvo publicada no cambia** (B-2210): el `update`
+de `/actividades` exige `slugDeActividadIntacto()`, la misma guarda que las fichas
+de Espacios. Antes lo frenaban solo el formulario y la restauración del historial.
+
 ### Los dos roles del panel, y el modelo de amenaza del acotado (B-888)
 
 `admin` ve y toca todo. `publicador` **gestiona solo las actividades que él

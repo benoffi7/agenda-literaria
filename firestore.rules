@@ -425,13 +425,29 @@ service cloud.firestore {
        * que el backfill (`npm run ciudades:sembrar:prod`) sea un paso del
        * despliegue.
        */
-      allow update: if esAdmin()
+      allow update: if slugDeActividadIntacto()
+        && (esAdmin()
         || (esPublicador()
              && resource.data.get('createdBy', '') == request.auth.uid
              && request.resource.data.get('createdBy', '') == resource.data.get('createdBy', '')
              && request.resource.data.get('updatedBy', '') == request.auth.uid
              && (dentroDeSuCiudad()
-                  || request.resource.data.get('ciudades', []) == resource.data.get('ciudades', [])));
+                  || request.resource.data.get('ciudades', []) == resource.data.get('ciudades', []))));
+
+      /*
+       * B-2210 — **el slug de una actividad que estuvo publicada no cambia**
+       * (trampa 10). El formulario y la restauración del historial ya lo frenan
+       * (`slugRestaurable`), pero hasta acá la regla no: la consola o un SDK con
+       * la sesión de alguien podían cambiar la URL de una página indexada. Es la
+       * misma guarda que tienen las fichas de Espacios (`slugDeLibreriaCongelado`):
+       * la marca `publicadaAlgunaVez`, o el estado si la marca todavía no llegó.
+       * Al **publicar** se puede elegir el slug: el previo no estaba publicado.
+       */
+      function slugDeActividadIntacto() {
+        return !(resource.data.get('publicadaAlgunaVez', false) == true
+                 || resource.data.get('estado', '') == 'publicado')
+          || request.resource.data.get('slug', '') == resource.data.get('slug', '');
+      }
 
       /*
        * Borrar lo propio sí, y es una decisión y no un descuido: `estado:

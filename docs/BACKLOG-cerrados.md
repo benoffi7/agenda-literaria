@@ -22934,6 +22934,21 @@ borrado: medir contra la API real.
 - **`status: 'confirmed'` en el `update`:** queda para cuando se mida contra la API
   real; no hay emulador de Calendar. Va con B-2218.
 
+### B-2210 · El slug de una actividad solo es inmutable por el formulario · P3 — ✅ hecho (2026-10-19)
+
+`firestore.rules` congela el slug de las cuatro fichas de la Guía, pero no el de
+`/actividades`: la consola, un script o una restauración pueden cambiarlo
+(trampa 10). **Arreglo:** `!publicadaAlgunaVez(previo) || d.slug == previo.slug`
+con un test de reglas.
+
+**Hecho:** el `update` de `/actividades` exige `slugDeActividadIntacto()`, la misma
+guarda que las fichas de Espacios (marca `publicadaAlgunaVez` o estado
+`publicado`). Al publicar se puede elegir el slug, porque el previo no estaba
+publicado. `tests/slug-de-actividad-congelado.integracion.test.ts` contra el
+emulador, con la mutación probada; `actividades`, `rol-publicador` y
+`cancelar-encuentro` siguen en verde. Los scripts con Admin SDK no pasan por la
+regla, y ninguno toca el slug.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

@@ -497,13 +497,6 @@ arreglo es todo junto: esos módulos más las dos conversiones, con la suite en 
 zonas como red (el gate ya corre la de Tokio). La red de `TZ` que pedía el ítem ya
 existe: `verificar-todo.sh` corre `unidad` y `render` con `TZ=Asia/Tokyo`.
 
-### B-2210 · El slug de una actividad solo es inmutable por el formulario · P3 (auditoría 2026-10-19)
-
-`firestore.rules` congela el slug de las cuatro fichas de la Guía, pero no el de
-`/actividades`: la consola, un script o una restauración pueden cambiarlo
-(trampa 10). **Arreglo:** `!publicadaAlgunaVez(previo) || d.slug == previo.slug`
-con un test de reglas.
-
 ### B-2211 · El aviso «volvió a publicar» hace figurar como canceladas corridas que publicaron · P3 (auditoría 2026-10-19)
 
 `deploy.yml:340`: `avisar-recuperado` corre en otro runner bajo

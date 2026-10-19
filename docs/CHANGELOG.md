@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **La dirección de una actividad publicada no se puede cambiar ni desde afuera del
+  panel** (B-2210). Lo frenaba el formulario; ahora también las reglas de la base.
+
 - **Dependencias al día dentro de su versión** (B-2208): Astro 7.3.8, React 19.3.1 y
   los parches de seguridad que no rompen nada.
 
