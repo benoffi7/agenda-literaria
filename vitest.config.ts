@@ -126,9 +126,14 @@ export default defineConfig({
            * cualquiera de los dos reabre la mitad que le toca. Eso es
            * exactamente lo que dicen la segunda y la cuarta observación de
            * B-219. Antes la fila era `fileParallelism: false` para toda la
-           * suite; ese no se puede poner por proyecto, `singleFork` sí.
+           * suite, y después `poolOptions.forks.singleFork` por proyecto.
+           *
+           * B-2208 — Vitest 4 sacó `poolOptions`: con esa línea ignorada los
+           * archivos de integración corrían en paralelo sobre el mismo emulador
+           * y se pisaban (95 rojos). El equivalente es un solo worker para este
+           * proyecto.
            */
-          poolOptions: { forks: { singleFork: true } },
+          maxWorkers: 1,
         },
       },
     ],

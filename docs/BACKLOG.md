@@ -203,9 +203,18 @@ del deploy. Las 4 altas de `@grpc/grpc-js` se van con la 13.
 cinco días; `oxc-transform-react` es un par opcional. Build, suite con emuladores y
 gate en verde.
 
+**`vitest` 3→5, hecho (2026-10-20):** el único cambio que pegó fue que Vitest 4
+sacó `poolOptions`. Con la opción ignorada en silencio, los tests de integración
+corrían en paralelo sobre el mismo emulador y daban 95 rojos; ahora el proyecto
+`integracion` usa `maxWorkers: 1`. La suite con emuladores, la de Tokio y `tsc`
+pasan.
+
+**TypeScript 7, bloqueado:** `@astrojs/check` 0.9 acepta TypeScript 5 o 6, y sin
+él los `.astro` vuelven a quedar sin chequear (B-2198). Se retoma cuando Astro lo
+soporte.
+
 **Falta, cada una en su ítem cuando se encare:** `firebase` 12→13 cuando tenga
-parches, `vitest` 3→5, `zod` 3→4
-(cambia la API de los schemas) y `typescript` 5.9→7.
+parches y `zod` 3→4 (cambia la API de los schemas).
 
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
 

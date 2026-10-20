@@ -2,6 +2,8 @@
 
 ## Sin publicar
 
+- **Vitest 5** (B-2208), con los tests de integración otra vez en un solo worker.
+
 - **`@astrojs/react` 7** (B-2208).
 
 - **El SDK de Firebase del navegador, de la 11 a la 12** (B-2208).
