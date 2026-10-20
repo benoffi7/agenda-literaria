@@ -218,12 +218,25 @@ inglés, como en la 3: los obligatorios tienen mensaje propio. Pesa ~11 KB gzip 
 (24 contra 13) en el panel y en los formularios públicos «Sumar…»; el listado y
 el detalle no lo cargan. La suite con emuladores y el gate dan verde.
 
+**`google-auth-library` 10→11 en la raíz, hecho (2026-10-20):** la usa solo
+`verificar-calendario.mjs`, y subirla destapó B-2222.
+
 **TypeScript 7, bloqueado:** `@astrojs/check` 0.9 acepta TypeScript 5 o 6, y sin
 él los `.astro` vuelven a quedar sin chequear (B-2198). Se retoma cuando Astro lo
 soporte.
 
 **Falta, cada una en su ítem cuando se encare:** `firebase` 12→13 cuando tenga
 parches y `zod` 3→4 (cambia la API de los schemas).
+
+### B-2223 · El deploy de Hosting se cae si npm corta la descarga de `firebase-tools` · P3 — vigilado (2026-10-20)
+
+El 2026-10-20 (`a4e5533`), `action-hosting-deploy` hizo `npx firebase-tools`, npm
+cortó con `ECONNRESET`, y el reintento con `--debug` que trae la acción **publicó
+el sitio** pero dejó el job en rojo, salteando reglas, Functions y tags.
+`gh run rerun --failed` lo dejó en verde. Es un corte de red del runner, no del
+repo. **Por ahora no se toca:** cachear o fijar `firebase-tools` cambia el paso que
+publica, y esto pasó una vez. Si se repite, instalar `firebase-tools` con
+`setup-node` y la caché de npm antes de la acción.
 
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
 

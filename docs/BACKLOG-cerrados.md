@@ -18584,6 +18584,18 @@ hash del último evento enviado por sesión (el mismo campo de B-2186).
 propia del trigger y, si cambió desde la foto del evento, corta antes de planificar:
 viene otra invocación con lo último. Una reentrega no corta (mismo `updateTime`).
 
+### B-2222 · `verificar-calendario` le pedía a Calendar sin credencial · P2 — ✅ hecho (2026-10-20)
+
+Desde google-auth-library 10, `getRequestHeaders()` devuelve un `Headers`, y el
+script lo copiaba con `{ ...headers }`, que da `{}`: todo pedido a Calendar salía
+sin `Authorization` y volvía 401. Nadie lo notó porque el script se corre a
+mano y de a ratos. **Arreglo:** `new Headers(...)` más `set('Content-Type')`.
+`tests/headers-de-google-auth.test.ts` afirma que la librería devuelve un
+`Headers` y que ningún script ni Function desarma el resultado con un spread
+(mutación probada). **No se probó contra Calendar de verdad:** la cuenta local no
+tiene `roles/iam.serviceAccountTokenCreator` sobre `calendar-sync@` (es el paso 2
+del encabezado del script), y otorgarlo es del dueño.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

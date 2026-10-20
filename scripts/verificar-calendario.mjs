@@ -189,10 +189,13 @@ const clienteCalendar = async () => {
     const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
       CALENDAR_ID,
     )}/events${eventId ? `/${encodeURIComponent(eventId)}` : ''}`;
-    const headers = await impersonado.getRequestHeaders();
+    // Desde google-auth-library 10 esto es un `Headers`, no un objeto: con un
+    // spread el `Authorization` se perdía y Calendar contestaba 401 (B-2222).
+    const headers = new Headers(await impersonado.getRequestHeaders());
+    headers.set('Content-Type', 'application/json');
     const r = await fetch(url, {
       method: metodo,
-      headers: { ...headers, 'Content-Type': 'application/json' },
+      headers,
       body: body ? JSON.stringify(body) : undefined,
     });
     if (r.ok) return { ok: true, data: await r.json() };

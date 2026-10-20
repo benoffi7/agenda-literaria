@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **El verificador de Calendar vuelve a autenticarse** (B-2222). Con la librería de Google
+  actualizada mandaba los pedidos sin credencial; solo afecta al script de mantenimiento.
+
 - **zod 4 en las validaciones del panel y de los formularios públicos** (B-2208).
 
 - **Vitest 5** (B-2208), con los tests de integración otra vez en un solo worker.
