@@ -44,7 +44,7 @@
     "organizadores:unir:prod": "node scripts/unir-organizadores.mjs"
   },
   "dependencies": {
-    "@astrojs/react": "^6.0.5",
+    "@astrojs/react": "~7.0.1",
     "@tailwindcss/vite": "^4.2.2",
     "astro": "^7.3.1",
     "firebase": "^12.19.0",

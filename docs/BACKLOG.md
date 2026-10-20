@@ -199,9 +199,13 @@ gate en verde.
 panel. Suite con emuladores y gate en verde; el login lo confirma el dueño después
 del deploy. Las 4 altas de `@grpc/grpc-js` se van con la 13.
 
+**`@astrojs/react` 6→7.0.1, hecho (2026-10-20):** `~7.0.1` y no la 7.1.0, que tenía
+cinco días; `oxc-transform-react` es un par opcional. Build, suite con emuladores y
+gate en verde.
+
 **Falta, cada una en su ítem cuando se encare:** `firebase` 12→13 cuando tenga
 parches, `vitest` 3→5, `zod` 3→4
-(cambia la API de los schemas), `typescript` 5.9→7 y `@astrojs/react` 6→7.
+(cambia la API de los schemas) y `typescript` 5.9→7.
 
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
 

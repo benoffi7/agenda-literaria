@@ -2,6 +2,8 @@
 
 ## Sin publicar
 
+- **`@astrojs/react` 7** (B-2208).
+
 - **El SDK de Firebase del navegador, de la 11 a la 12** (B-2208).
 
 - **`firebase-admin` 14 en el build y en las Functions** (B-2208).
