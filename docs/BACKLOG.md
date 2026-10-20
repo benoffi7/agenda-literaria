@@ -209,6 +209,15 @@ corrían en paralelo sobre el mismo emulador y daban 95 rojos; ahora el proyecto
 `integracion` usa `maxWorkers: 1`. La suite con emuladores, la de Tokio y `tsc`
 pasan.
 
+**`zod` 3→4.6, hecho (2026-10-20):** tres cosas pegaron. El camino de un error
+puede traer símbolos, y `faltaParaPublicar` e `issuesDelDocumento` ahora los
+descartan. El valor fuera de la lista cambió de código (`invalid_enum_value` →
+`invalid_value`), y el historial lo traduce igual que antes. Y el test que recorre
+el schema leía los internos de zod 3. Los mensajes por defecto de zod siguen en
+inglés, como en la 3: los obligatorios tienen mensaje propio. Pesa ~11 KB gzip más
+(24 contra 13) en el panel y en los formularios públicos «Sumar…»; el listado y
+el detalle no lo cargan. La suite con emuladores y el gate dan verde.
+
 **TypeScript 7, bloqueado:** `@astrojs/check` 0.9 acepta TypeScript 5 o 6, y sin
 él los `.astro` vuelven a quedar sin chequear (B-2198). Se retoma cuando Astro lo
 soporte.

@@ -14,16 +14,22 @@ import { CAMPOS_VALIDABLES } from '@/lib/analytics-eventos';
  * la derivación en runtime, pero sin costo para quien usa el panel.
  */
 
+/*
+ * Recorre la forma del schema **por dentro**, que es lo único que cambia entre
+ * versiones de zod. Desde zod 4 (B-2208) el tipo está en `_def.type`
+ * (`'object'`, `'array'`, …) y no en `_def.typeName`; los envoltorios
+ * (`optional`, `nullable`, `default`…) guardan el interior en `innerType`, un
+ * `transform` en `in`, y un `superRefine` ya no envuelve: agrega un chequeo al
+ * mismo schema.
+ */
 const desenvolverYRecorrer = () => {
   const desenvolver = (esquema: unknown): any => {
     let n: any = esquema;
     for (let i = 0; i < 12; i++) {
       const def = n?._def;
       if (!def) break;
-      // ZodEffects (refine/superRefine/transform) guarda el interior en `schema`;
-      // Optional / Nullable / Default lo guardan en `innerType`.
-      if (def.schema) n = def.schema;
-      else if (def.innerType) n = def.innerType;
+      if (def.innerType) n = def.innerType;
+      else if (def.type === 'pipe' && def.in) n = def.in;
       else break;
     }
     return n;
@@ -37,17 +43,17 @@ const desenvolverYRecorrer = () => {
   ): void => {
     if (profundidad > 6) return;
     const n = desenvolver(esquema);
-    const tipo = n?._def?.typeName;
-    if (tipo === 'ZodObject') {
+    const tipo = n?._def?.type;
+    if (tipo === 'object') {
       for (const [clave, hijo] of Object.entries(n.shape as Record<string, unknown>)) {
         const ruta = prefijo ? `${prefijo}.${clave}` : clave;
         salida.add(ruta);
         recorrerSchema(hijo, ruta, salida, profundidad + 1);
       }
-    } else if (tipo === 'ZodArray' && prefijo) {
+    } else if (tipo === 'array' && prefijo) {
       const ruta = `${prefijo}.N`;
       salida.add(ruta);
-      recorrerSchema(n._def.type, ruta, salida, profundidad + 1);
+      recorrerSchema(n._def.element, ruta, salida, profundidad + 1);
     }
   };
 

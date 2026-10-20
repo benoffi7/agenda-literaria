@@ -1048,5 +1048,11 @@ export const faltaParaPublicar = (form: unknown): IssueDeSchema[] => {
   const r = actividadFormSchema.safeParse(
     typeof form === 'object' && form !== null ? { ...form, estado: 'publicado' } : form,
   );
-  return r.success ? [] : r.error.issues.map((i) => ({ path: [...i.path], message: i.message }));
+  return r.success
+    ? []
+    : r.error.issues.map((i) => ({
+        // Desde zod 4 `path` puede traer símbolos; el schema no los usa.
+        path: i.path.filter((p): p is string | number => typeof p !== 'symbol'),
+        message: i.message,
+      }));
 };

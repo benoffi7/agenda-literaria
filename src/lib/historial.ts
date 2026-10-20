@@ -660,8 +660,10 @@ const issuesDelDocumento = (a: Actividad): IssueDeSchema[] | null => {
   const r = actividadFormSchema.safeParse(form);
   if (r.success) return [];
   return r.error.issues.map((i) => ({
-    path: [...i.path],
-    message: i.code === 'invalid_enum_value' ? MENSAJE_DE_VALOR_INVALIDO : i.message,
+    // Desde zod 4 `path` puede traer símbolos; el schema no los usa.
+    path: i.path.filter((p): p is string | number => typeof p !== 'symbol'),
+    // B-2208 — en zod 4 el código es `invalid_value` (era `invalid_enum_value`).
+    message: i.code === 'invalid_value' ? MENSAJE_DE_VALOR_INVALIDO : i.message,
   }));
 };
 
