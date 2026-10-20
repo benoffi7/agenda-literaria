@@ -1117,7 +1117,7 @@ el subconjunto ya filtrado.
   >
   > **Desde B-900 sugiere también las secciones de la Guía** —el § 2.1 del
   > inventario lo pedía: «el 404 sugiere secciones; hay tres más»—, como un último
-  > grupo de la tira, «En la Guía». Entra cada sección que **existe**
+  > grupo de la tira, «En Espacios» (antes «En la Guía»; D-1274). Entra cada sección que **existe**
   > (`disponible`) y cuyo **listado no está vacío**, el mismo recorte con el que
   > la tira deja afuera los hubs vacíos. Lo que la página recibe para decidirlo
   > son cuatro números (`fichasPorDirectorio`), no las fichas, y ninguno se

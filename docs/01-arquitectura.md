@@ -63,7 +63,7 @@ Dentro de `/admin`, el bundle está partido en dos por el login (B-09, D-51):
 |---|---|---|
 | Al entrar a `/admin` | React + `firebase/app` + `firebase/auth` + `AdminApp` | ~353 kB · gzip ~95 kB |
 | Recién después del login | Firestore + `ListaActividades` | ~323 kB · gzip ~83 kB |
-| Al abrir el formulario | `ActividadFormulario` + zod + vista previa | ~93 kB · gzip ~25 kB |
+| Al abrir el formulario | `ActividadFormulario` + vista previa, más zod en su propio chunk (compartido con los formularios públicos) | ~85 kB · gzip ~23 kB, y zod ~86 kB · gzip ~24 kB (zod 4, B-2208; medido el 2026-10-20) |
 
 La pantalla de login pesa la mitad que antes (~750 kB) porque **no baja
 Firestore**: `db()` vive en `src/lib/firestore-client.ts`, aparte de
@@ -142,7 +142,9 @@ src/
     opciones.ts             taxonomías autogestionadas (§4)
     opciones-base.json      opciones fijas, compartidas con los scripts
     toPublic.ts             proyección pública (§5.2)
-    eventsJson.ts           el índice de /events.json — recorta la ActividadPublica
+    eventsJson.ts           el índice de /events.json — recorta la ActividadPublica;
+                            separarIndice lo parte con /pasadas.json (D-1276)
+    indiceEntero.ts         baja los dos archivos y los une (/pasadas, favoritos)
     vistaPreviaEvento.ts    form → evento de Calendar, reusando @calendario
     coordenadas.ts          parseo de links de Google Maps a lat/lng
     version.ts              versión del bundle y decisión de recargar
@@ -204,6 +206,7 @@ src/
     admin.astro             island client:only
     version.json.ts         /version.json — qué versión está publicada
     events.json.ts          /events.json — serializa lo que lee contenidoDelSitio
+    pasadas.json.ts         /pasadas.json — la otra mitad del índice (D-1276)
     index.astro             la home: listado en HTML + island de filtros (B-227)
     actividad/[slug].astro  el detalle, SSG y con CERO JavaScript. No ve el
                             documento: recibe un view-model (D-140)
@@ -218,7 +221,9 @@ src/
 functions/                  puro arriba, pegamento en el medio, *-trigger.js abajo
   calendario.js             diff y armado del evento — lógica pura
                             COMPARTIDA: el panel la importa como @calendario
-  sincronizacion.js         id del evento, write-back, resync por etiqueta — pura
+  sincronizacion.js         id del evento, write-back, resync por etiqueta, la
+                            escritura que llegó tarde y los reintentos — pura
+                            (la huella del evento vive en calendario.js, D-1277)
   rebuild.js                backoff y corte por intentos — lógica pura (§8)
   historial.js              cuándo se guarda una versión (§12) — lógica pura
                             COMPARTIDA: el panel la importa como @historial
@@ -229,8 +234,10 @@ functions/                  puro arriba, pegamento en el medio, *-trigger.js aba
   despliegue.js             región, cuenta de servicio y opciones comunes (D-35)
   github.js                 el repository_dispatch, con el `fetch` inyectable
   etiquetas.js              /opciones/* → { slug: label }, con su caché
-  calendario-api.js         auth de Calendar y creación de eventos (googleapis)
+  calendario-api.js         auth de Calendar y creación de eventos (@googleapis/calendar)
   marca-de-rebuild.js       sube `sistema/rebuild.pendiente` (§8)
+  latidos.js                cuándo un barrido diario dejó de correr (B-2220) — pura
+  latidos-firestore.js      anota el latido en `sistema/latidos`
   calendario-trigger.js     syncCalendar — el onDocumentWritten de actividades
   opciones-trigger.js       rebuildPorOpciones — el de /opciones/*
   rebuild-trigger.js        dispararRebuild — el schedule del §8

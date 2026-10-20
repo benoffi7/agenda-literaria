@@ -65,6 +65,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'encuentro-de-mas-de-una-semana',
+    fecha: '2026-10-19',
+    version: '1.11.0',
+    titulo: 'El formulario avisa si un encuentro dura más de una semana',
+    detalle:
+      'Casi siempre es un año mal escrito en la fecha de fin, y en el calendario público ' +
+      'quedaba un evento que no termina nunca. Si de verdad dura varios días, cargalo como ' +
+      'un encuentro por día.',
+    donde: 'En el formulario, al cargar el horario de un encuentro.',
+  },
+  {
     id: 'la-guia-se-llama-espacios',
     fecha: '2026-10-19',
     version: '1.11.0',

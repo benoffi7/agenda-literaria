@@ -14,7 +14,8 @@ Este documento no la repite: explica cómo se usa y dónde están las trampas.
 | `/opciones/{campo}` | taxonomías autogestionadas (§4) | panel y scripts |
 | `/sistema/audiencia-del-mes` | la audiencia del último mes cerrado: `{ mes: 'AAAA-MM', personas, vistas, actualizado }` y nada más (roadmap 3.3, B-771). Documento aparte de `sistema/analitica-sitio` porque es lo único de la analítica que va a una página pública (`/anunciar`); el build lo **proyecta** (`audienciaProyectada`) | `traerAnaliticaDelSitio`, en transacción; marca el rebuild cuando cambia el mes |
 | `/sistema/rebuild` | flag de rebuild pendiente y estado de los reintentos (§8) | `syncCalendar`, `rebuildPorOpciones`, `dispararRebuild` |
-| `/reportes/{id}` | bugs y sugerencias cargados desde el panel | panel (crea) y `reporteAIssue` (mueve el estado) |
+| `/reportes/{id}` | bugs y sugerencias cargados desde el panel | panel (crea), `reporteAIssue` (mueve el estado) y `borrarPropuestasVencidas` (borra los resueltos a los 180 días, B-2213) |
+| `/sistema/latidos` | cuándo terminó bien cada barrido diario: un campo por barrido (B-2220) | cada barrido, al terminar; lo lee `verificarFrescuraDelSitio` |
 | `/propuestas/{id}` | actividades que propone alguien de afuera, antes de existir como actividad (B-830) | **va a ser** el formulario público de `/proponer` (crea) y el panel (revisa). **Hoy el `create` sigue cerrado a admin** hasta que App Check exija — B-836a |
 | `/usuarios/{uid}` | el mail de cada cuenta del panel: `{ email, actualizadoEn }` y nada más (B-888) | cada cuenta el suyo, **al entrar**, con el mail de su propio ID token (`AdminApp` lo llama desde el observador de auth) |
 | `/fotosDelCatalogo/{mes}` | la foto mensual del tablero: los conteos de `estadoDelCatalogo`, sin ninguna actividad nombrada (B-378) | el panel de un **admin**, la primera vez que carga el catálogo en el mes; nadie la reescribe ni la borra |
@@ -361,9 +362,11 @@ cargadas a mano.
 explícito hacia Calendar (`America/Argentina/Buenos_Aires`). Es el bug clásico
 de eventos corridos tres horas.
 
-En el formulario las fechas son strings de `datetime-local` en hora local del
-navegador. La conversión de ida y vuelta está en `sesiones.ts`
-(`aDatetimeLocal` / `deDatetimeLocal`) y testeada para que no corra la hora.
+En el formulario las fechas son strings de `datetime-local` **interpretados en
+hora argentina** —offset fijo `-03:00`, sin horario de verano—, no en la zona del
+navegador (B-2209). La conversión de ida y vuelta está en `sesiones.ts`
+(`aDatetimeLocal` / `deDatetimeLocal`) y testeada en varias zonas para que no
+corra la hora.
 
 ## `tipo` único + `tags` array no es redundante
 

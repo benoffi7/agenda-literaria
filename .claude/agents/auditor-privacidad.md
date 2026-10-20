@@ -409,6 +409,8 @@ nueva o una puerta nueva se agrega acá**, una ruta por línea. Vivía en el
 - `src/lib/toPublic.ts`
 - `src/lib/eventsJson.ts`
 - `src/pages/events.json.ts`
+- `src/pages/pasadas.json.ts`
+- `src/lib/indiceEntero.ts`
 - `src/pages/index.astro`
 - `src/lib/detallePublico.ts`
 - `src/lib/cartelera.ts`

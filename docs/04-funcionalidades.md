@@ -2129,7 +2129,7 @@ una pantalla vacía.
 | Control | Qué hace |
 |---|---|
 | **Buscar** | contra `searchText`, con el `normalize` del §6: acentos y mayúsculas dan igual. Dos palabras se exigen **las dos** |
-| **Cuándo** | Próximas (default) · Este mes · Próximos 3 meses · cada mes con actividad |
+| **Cuándo** | Próximas (default) · Este mes · Próximos 3 meses · cada mes con actividad **desde el mes pasado**; lo anterior vive en «Lo que ya pasó» (D-1276) |
 | **Filtros** (colapsados, con el número de puestos al lado) | tipo, **arancel**, cómo se cursa, **provincia** y —según cuál se elija— **barrio** (CABA) o **ciudad** (el resto), y temas; más «solo con inscripción abierta» y «solo ciclos / solo encuentros únicos». **La geografía es una cascada de dos niveles desde B-950** (D-710) y no una lista plana: sin provincia elegida no se ofrece ninguna de las dos, porque con los treinta y pico de barrios cargados un riel de chips deja de servir. La excepción: un eje con valores puestos se muestra igual aunque la cascada no lo abra, para que un enlace compartido (`?barrio=boedo`) no deje un filtro aplicado sin control para sacarlo |
 | **Ordenar por** | Próximas primero (default) · Recién agregadas · Título (**D-137**) |
 
@@ -2538,6 +2538,11 @@ de `robots.txt` que no protege nada es una línea que hay que mantener.
 
 El índice que la island filtra (B-106). El build lo arma leyendo Firestore con el
 Admin SDK y sale como archivo estático.
+
+**Desde D-1276 va en dos archivos:** `/events.json` (lo que termina desde el mes
+pasado, o no tiene fechas) y `/pasadas.json` (el resto), con la misma forma y las
+mismas opciones; los parte `separarIndice` en `eventsJson.ts`. La home baja solo el
+primero; `/pasadas` y los favoritos, los dos (`src/lib/indiceEntero.ts`).
 
 Desde B-227 los tres artefactos del build —el índice, el HTML de la home y cada
 página de detalle— salen de **una sola lectura**, en

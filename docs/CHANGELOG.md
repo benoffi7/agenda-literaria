@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **Novedad del panel: el aviso del encuentro de más de una semana** (B-2221).
+
+- **La documentación, al día con los cambios de estos dos días**: el índice partido en
+  dos, las huellas de Calendar, los latidos de los barridos, la hora argentina del
+  panel y las dependencias nuevas.
+
 - **El verificador de Calendar vuelve a autenticarse** (B-2222). Con la librería de Google
   actualizada mandaba los pedidos sin credencial; solo afecta al script de mantenimiento.
 

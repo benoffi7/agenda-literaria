@@ -1609,6 +1609,11 @@ Lo demás atrasado, para que quede el número (`npm outdated`): `astro` 7.3.1 �
 `google-auth-library` 10.9.1 → 11.0.2, `react` y `react-dom` 19.2.8 → 19.3.0.
 Ninguno urgente, y ninguno bloquea a otro — que era lo que pasaba antes.
 
+> **Actualizado el 2026-10-20 (B-2208):** `firebase` 12.19, `firebase-admin` 14,
+> `vitest` 5, `zod` 4, `google-auth-library` 11, `@astrojs/react` 7 y los parches
+> de `astro` y `react` ya están subidos. Quedan `firebase` 13 (sin parches todavía)
+> y TypeScript 7 (bloqueado por `@astrojs/check`).
+
 ### 6.3 Lo que la pasada anterior dejó cerrado, reverificado
 
 - **Los worktrees:** `git worktree list` devuelve **uno** (el principal) y

@@ -14,7 +14,7 @@ const fuentes = (dir: string) =>
     .filter((f) => /\.(m?js|ts)$/.test(f))
     .map((f) => join(dir, f));
 
-describe('los headers de google-auth-library (B-2222)', () => {
+describe('clase de B-2222 · los headers de google-auth-library no se desarman con un spread', () => {
   it('getRequestHeaders devuelve un Headers, que un spread vacía', async () => {
     const cliente = new OAuth2Client();
     cliente.setCredentials({ access_token: 'tok', expiry_date: Date.now() + 3_600_000 });

@@ -18595,7 +18595,7 @@ Desde google-auth-library 10, `getRequestHeaders()` devuelve un `Headers`, y el
 script lo copiaba con `{ ...headers }`, que da `{}`: todo pedido a Calendar salía
 sin `Authorization` y volvía 401. Nadie lo notó porque el script se corre a
 mano y de a ratos. **Arreglo:** `new Headers(...)` más `set('Content-Type')`.
-`tests/headers-de-google-auth.test.ts` afirma que la librería devuelve un
+`tests/clases/b-2222-headers-sin-spread.test.ts` afirma que la librería devuelve un
 `Headers` y que ningún script ni Function desarma el resultado con un spread
 (mutación probada). **No se probó contra Calendar de verdad:** la cuenta local no
 tiene `roles/iam.serviceAccountTokenCreator` sobre `calendar-sync@` (es el paso 2

@@ -171,9 +171,9 @@ releer; ahorrar ahí pide rediseñar cómo el panel decide qué está viejo, sob
 pantalla que más se usa, y a los precios de Firestore son centavos por mes. No
 vale el riesgo hasta que el costo o la espera molesten.
 
-### B-2208 · Dependencias mayores atrasadas · P2 — 🟡 parches y audit fix hechos (2026-10-19), faltan las mayores
+### B-2208 · Dependencias mayores atrasadas · P2 — 🟡 casi todo hecho (2026-10-20), faltan firebase 13 y TypeScript 7
 
-Raíz: `firebase` 11→13, `vitest` 3→5, `@astrojs/react` 6→7, `zod` 3→4,
+**La foto del 2026-10-19** (lo que sigue ya está casi todo hecho; ver abajo). Raíz: `firebase` 11→13, `vitest` 3→5, `@astrojs/react` 6→7, `zod` 3→4,
 `typescript` 5.9→7, `firebase-admin` 13→14; patches de `astro` (7.3.8) y `react`
 (19.3). `functions/`: `firebase-functions` 6→7, `googleapis` 144→186,
 `google-auth-library` 9→11. La raíz tiene `google-auth-library` en
@@ -236,18 +236,8 @@ punta contra el calendario real.
 él los `.astro` vuelven a quedar sin chequear (B-2198). Se retoma cuando Astro lo
 soporte.
 
-**Falta, cada una en su ítem cuando se encare:** `firebase` 12→13 cuando tenga
-parches y `zod` 3→4 (cambia la API de los schemas).
-
-### B-2223 · El deploy de Hosting se cae si npm corta la descarga de `firebase-tools` · P3 — vigilado (2026-10-20)
-
-El 2026-10-20 (`a4e5533`), `action-hosting-deploy` hizo `npx firebase-tools`, npm
-cortó con `ECONNRESET`, y el reintento con `--debug` que trae la acción **publicó
-el sitio** pero dejó el job en rojo, salteando reglas, Functions y tags.
-`gh run rerun --failed` lo dejó en verde. Es un corte de red del runner, no del
-repo. **Por ahora no se toca:** cachear o fijar `firebase-tools` cambia el paso que
-publica, y esto pasó una vez. Si se repite, instalar `firebase-tools` con
-`setup-node` y la caché de npm antes de la acción.
+**Falta:** `firebase` 12→13 cuando tenga parches (las 4 altas de `@grpc/grpc-js`
+se van con ella) y TypeScript 7, bloqueado por `@astrojs/check`.
 
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
 
@@ -571,6 +561,17 @@ tiene arreglo en el repo:
 - **No se emite nunca**: `validFrom` en `offers`, 24 — **B-812**.
 
 ## Vigilado — sin trabajo hasta que se cumpla su condición
+
+### B-2223 · El deploy de Hosting se cae si npm corta la descarga de `firebase-tools` · P3 — vigilado (2026-10-20)
+
+El 2026-10-20 (`a4e5533`), `action-hosting-deploy` hizo `npx firebase-tools`, npm
+cortó con `ECONNRESET`, y el reintento con `--debug` que trae la acción **publicó
+el sitio** pero dejó el job en rojo, salteando reglas, Functions y tags.
+`gh run rerun --failed` lo dejó en verde. Es un corte de red del runner, no del
+repo. **Por ahora no se toca:** cachear o fijar `firebase-tools` cambia el paso que
+publica, y esto pasó una vez. Si se repite, instalar `firebase-tools` con
+`setup-node` y la caché de npm antes de la acción.
+
 
 **Estos no son pendientes.** Son decisiones ya tomadas o limitaciones aceptadas que
 llevan escrita la condición que las reabriría. Los juntó acá el triage del
