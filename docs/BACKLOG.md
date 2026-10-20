@@ -194,8 +194,13 @@ verde.
 está en `code`—, y `set-admin-claim.mjs` lo leía de ahí. Suite con emuladores y
 gate en verde.
 
-**Falta, cada una en su ítem cuando se encare:** `firebase` 11→13 (el SDK del
-panel), `vitest` 3→5, `zod` 3→4
+**`firebase` 11→12.19, hecho (2026-10-20):** a la 12 y no a la 13, a propósito: la
+13.0.0 salió el 2026-10-07 y no tenía ningún parche, y es el SDK del login del
+panel. Suite con emuladores y gate en verde; el login lo confirma el dueño después
+del deploy. Las 4 altas de `@grpc/grpc-js` se van con la 13.
+
+**Falta, cada una en su ítem cuando se encare:** `firebase` 12→13 cuando tenga
+parches, `vitest` 3→5, `zod` 3→4
 (cambia la API de los schemas), `typescript` 5.9→7 y `@astrojs/react` 6→7.
 
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
