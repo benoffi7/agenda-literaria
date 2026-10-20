@@ -60,7 +60,7 @@
     "@testing-library/user-event": "^14.6.7",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "firebase-admin": "^13.1.0",
+    "firebase-admin": "^14.5.0",
     "firebase-tools": "^15.28.1",
     "google-auth-library": "^10.9.1",
     "jsdom": "^29.1.1",

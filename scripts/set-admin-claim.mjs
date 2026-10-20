@@ -212,7 +212,9 @@ const auth = getAuth();
  *    intuitivo y es la mitad que más se olvida.
  */
 const explicarSiNoExiste = (e) => {
-  if (e?.errorInfo?.code !== 'auth/user-not-found') throw e;
+  // `firebase-admin` 14 dejó de poner `errorInfo` en el error: el código está en
+  // `code`. Se leen los dos, para que el script ande con cualquiera (B-2208).
+  if ((e?.code ?? e?.errorInfo?.code) !== 'auth/user-not-found') throw e;
   console.error(
     `\nNo existe «${objetivo}» en ${enEmulador ? 'el EMULADOR' : `PRODUCCIÓN (${projectId})`}.\n\n` +
       (enEmulador

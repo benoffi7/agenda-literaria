@@ -2,6 +2,8 @@
 
 ## Sin publicar
 
+- **`firebase-admin` 14 en el build y en las Functions** (B-2208).
+
 - **Las Functions con `firebase-functions` 7** (B-2208).
 
 - **El panel guarda la hora de Argentina aunque se cargue desde otro país** (B-2209).

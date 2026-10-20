@@ -189,8 +189,13 @@ Firestore no usa gRPC, así que no hay superficie, y se van con firebase 13.
 `functions.config()`; tipos, las 22 Functions cargan y la suite con emuladores en
 verde.
 
-**Falta, cada una en su ítem cuando se encare:** `firebase` 11→13 y
-`firebase-admin` 13→14 (el SDK del panel y del build), `vitest` 3→5, `zod` 3→4
+**`firebase-admin` 13→14, hecho (2026-10-20)** en la raíz y en `functions/`: el
+único cambio que pegó fue que el error de Auth ya no trae `errorInfo` —el código
+está en `code`—, y `set-admin-claim.mjs` lo leía de ahí. Suite con emuladores y
+gate en verde.
+
+**Falta, cada una en su ítem cuando se encare:** `firebase` 11→13 (el SDK del
+panel), `vitest` 3→5, `zod` 3→4
 (cambia la API de los schemas), `typescript` 5.9→7 y `@astrojs/react` 6→7.
 
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
