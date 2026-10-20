@@ -157,16 +157,15 @@ export const slugCopia = (slug: string, tomados: readonly string[] = []): string
 };
 
 /**
- * Suma días conservando la hora local. `+ n * MS_DIA` sobre el timestamp corre
- * el horario del encuentro si en el medio hay un cambio de horario de verano
- * (Argentina hoy no lo tiene, pero el navegador que carga puede estar en otro
- * huso). Con componentes locales, "los martes a las 19" sigue siendo a las 19.
+ * Suma días conservando **la hora argentina** — B-2209.
+ *
+ * Hasta B-2209 sumaba con componentes locales (`setDate`) para conservar la hora
+ * del navegador. Desde que el formulario lee y escribe en hora argentina, lo que
+ * hay que conservar es la de acá, y como Argentina no tiene horario de verano
+ * desde 2009, sumar días en milisegundos la conserva exacta: «los martes a las
+ * 19» sigue siendo a las 19 aunque el navegador cruce un cambio de horario.
  */
-const sumarDias = (d: Date, dias: number): Date => {
-  const r = new Date(d);
-  r.setDate(r.getDate() + dias);
-  return r;
-};
+const sumarDias = (d: Date, dias: number): Date => new Date(d.getTime() + dias * MS_DIA);
 
 const fechas = (sesiones: readonly SesionForm[]): Date[] =>
   sesiones

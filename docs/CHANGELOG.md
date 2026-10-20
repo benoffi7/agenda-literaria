@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **El panel guarda la hora de Argentina aunque se cargue desde otro país** (B-2209).
+  Antes, un navegador en otra zona horaria guardaba los encuentros corridos. Para quien
+  carga desde acá no cambia nada.
+
 - **CI instala las dependencias de las Functions antes de chequear sus tipos** (B-2198).
   Sin eso, los dos deploys anteriores salieron rojos y no publicaron.
 

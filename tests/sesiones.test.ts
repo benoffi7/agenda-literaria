@@ -428,7 +428,8 @@ describe('B-957 · sesionVacia no inventa una fecha', () => {
    * ahorro sino de dónde sale la fecha.
    */
   it('con `inicio`, precarga las dos como siempre', () => {
-    const s = sesionVacia(new Date('2026-10-01T19:00:00'), 90 * 60_000);
+    // B-2209 — el instante, con su offset: el campo se escribe en hora argentina.
+    const s = sesionVacia(new Date('2026-10-01T19:00:00-03:00'), 90 * 60_000);
     expect(s.inicio).toBe('2026-10-01T19:00');
     expect(s.fin).toBe('2026-10-01T20:30');
   });

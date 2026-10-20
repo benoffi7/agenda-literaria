@@ -8,6 +8,7 @@ import {
   claseTintaApagada,
 } from '@/components/campos/Campo';
 import { FilasEditor } from '@/components/campos/FilasEditor';
+import { ZONA } from '@/lib/fechasPublicas';
 import { medirFuncion } from '@/lib/analytics';
 import { type PreferenciaDeHora } from '@/lib/formatoDeHora';
 import { CampoDeFechaYHora } from '@/components/campos/CampoDeFechaYHora';
@@ -184,12 +185,13 @@ export const resumirSesion = (s: SesionForm): ResumenSesion => {
   const fin = deDatetimeLocal(s.fin);
   const minutos = fin ? Math.round((fin.getTime() - inicio.getTime()) / 60_000) : 0;
   return {
-    // Sin `timeZone`: el `datetime-local` ya está en la hora del navegador, y
-    // mostrarlo en otra zona sería mentir sobre lo que se cargó (trampa 1).
+    // En la zona de acá: desde B-2209 `deDatetimeLocal` lee el campo como hora
+    // argentina, así que mostrarlo en la del navegador correría el día (trampa 1).
     dia: new Intl.DateTimeFormat('es-AR', {
       weekday: 'long',
       day: 'numeric',
       month: 'long',
+      timeZone: ZONA,
     }).format(inicio),
     duracion: minutos > 0 ? duracionLegible(minutos) : null,
     finAntesDelInicio: Boolean(fin) && minutos <= 0,

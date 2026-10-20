@@ -31,7 +31,7 @@ import { datosEstructurados, detalleDeActividad } from '@/lib/detallePublico';
 import { construirIndice } from '@/lib/eventsJson';
 import { estadoDe, mapaDeEtiquetas } from '@/lib/listadoPublico';
 import { actividadFormSchema } from '@/lib/schema';
-import {
+import { enHoraArgentina,
   conHorarioAConfirmar,
   duplicarSesion,
   generarSesiones,
@@ -93,7 +93,7 @@ const indiceDe = (a: Actividad, generadoEn: string) =>
 describe('horario a confirmar por el organizador — B-2175', () => {
   describe('el formulario', () => {
     it('tildar la casilla conserva el día y pone el día entero', () => {
-      const fila = { ...sesionVacia(new Date('2026-10-03T19:00:00')) };
+      const fila = { ...sesionVacia(new Date('2026-10-03T19:00:00-03:00')) };
       const tildada = conHorarioAConfirmar(fila, true);
       expect(tildada.horarioAConfirmar).toBe(true);
       expect(tildada.inicio).toBe('2026-10-03T00:00');
@@ -101,7 +101,7 @@ describe('horario a confirmar por el organizador — B-2175', () => {
     });
 
     it('destildarla deja el fin vacío: no se inventa una hora (B-957)', () => {
-      const tildada = conHorarioAConfirmar(sesionVacia(new Date('2026-10-03T19:00:00')), true);
+      const tildada = conHorarioAConfirmar(sesionVacia(new Date('2026-10-03T19:00:00-03:00')), true);
       const destildada = conHorarioAConfirmar(tildada, false);
       expect(destildada.horarioAConfirmar).toBe(false);
       expect(destildada.inicio).toBe('2026-10-03T00:00');
@@ -112,7 +112,7 @@ describe('horario a confirmar por el organizador — B-2175', () => {
       const conDia = formGuardable({
         titulo: 'Feria del barrio',
         slug: 'feria-del-barrio',
-        sesiones: [conHorarioAConfirmar(sesionVacia(new Date('2026-10-03T19:00:00')), true)],
+        sesiones: [conHorarioAConfirmar(sesionVacia(new Date('2026-10-03T19:00:00-03:00')), true)],
       });
       expect(actividadFormSchema.safeParse(conDia).success).toBe(true);
 
@@ -128,20 +128,21 @@ describe('horario a confirmar por el organizador — B-2175', () => {
 
     it('guardar escribe Timestamps del día entero aunque la fila traiga horas viejas (trampa 1)', () => {
       const fila = {
-        ...sesionVacia(new Date('2026-10-03T19:00:00')),
+        ...sesionVacia(new Date('2026-10-03T19:00:00-03:00')),
         horarioAConfirmar: true,
       };
       const doc = formADocumento(formGuardable({ sesiones: [fila] }), 'uid_1', true) as unknown as Actividad;
       const s = doc.sesiones[0]!;
       expect(s.horarioAConfirmar).toBe(true);
       expect(typeof s.inicio.toDate).toBe('function');
-      expect(s.inicio.toDate().getHours()).toBe(0);
-      expect(s.fin.toDate().getHours()).toBe(23);
-      expect(s.fin.toDate().getMinutes()).toBe(59);
+      // B-2209 — la hora del día entero, leída en hora argentina.
+      expect(enHoraArgentina(s.inicio.toDate()).getUTCHours()).toBe(0);
+      expect(enHoraArgentina(s.fin.toDate()).getUTCHours()).toBe(23);
+      expect(enHoraArgentina(s.fin.toDate()).getUTCMinutes()).toBe(59);
     });
 
     it('ida y vuelta form ⇄ documento sin perder el flag ni el id de sesión', () => {
-      const fila = conHorarioAConfirmar(sesionVacia(new Date('2026-10-03T19:00:00')), true);
+      const fila = conHorarioAConfirmar(sesionVacia(new Date('2026-10-03T19:00:00-03:00')), true);
       const doc = formADocumento(formGuardable({ sesiones: [fila] }), 'uid_1', true) as unknown as Actividad;
       const vuelta = documentoAForm(doc).sesiones[0]!;
       expect(vuelta.id).toBe(fila.id);
@@ -158,7 +159,7 @@ describe('horario a confirmar por el organizador — B-2175', () => {
     });
 
     it('duplicar la fila y generar N encuentros copian el flag del encuentro base', () => {
-      const base = conHorarioAConfirmar(sesionVacia(new Date('2026-10-03T19:00:00')), true);
+      const base = conHorarioAConfirmar(sesionVacia(new Date('2026-10-03T19:00:00-03:00')), true);
       const copia = duplicarSesion(base, 1);
       expect(copia.horarioAConfirmar).toBe(true);
       expect(copia.inicio).toBe('2026-10-04T00:00');

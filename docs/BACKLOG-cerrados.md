@@ -23150,6 +23150,33 @@ queda afuera de su hoja nueva; y el índice inmutable por versión ahorra un 304
 visita a cambio de un segundo archivo que mantener alineado con `/events.json`.
 Ninguno compensa hoy.
 
+### B-2209 · El panel interpreta los `datetime-local` en la zona del navegador · P3 — ✅ hecho (2026-10-20)
+
+`aDatetimeLocal`/`deDatetimeLocal` (`src/lib/sesiones.ts:25`) usan los getters
+locales de `Date`: desde un navegador fuera de ART se guardan instantes corridos,
+y un día sin hora (B-2175) puede caer en el día anterior. Ninguna config de
+vitest fija `TZ`. Hoy no pasa (un solo operador en Argentina). **Arreglo:** offset
+fijo `-03:00`, y como mínimo `TZ` distinta de ART en `vitest.config.ts`.
+
+**Probado y vuelto atrás (2026-10-19):** pasar solo `aDatetimeLocal` y
+`deDatetimeLocal` a hora argentina (offset fijo `-03:00`, sin horario de verano
+desde 2009) deja en rojo 7 casos con `TZ=Asia/Tokyo` —antes ninguno—: el resto del
+panel también calcula en hora local (`resumirSesion` en `correr-fecha`,
+`formatoDeHora`, el día entero del horario a confirmar, las fechas de las
+modalidades). A medias, el panel en otra zona pasa de consistente a mezclado. El
+arreglo es todo junto: esos módulos más las dos conversiones, con la suite en dos
+zonas como red (el gate ya corre la de Tokio). La red de `TZ` que pedía el ítem ya
+existe: `verificar-todo.sh` corre `unidad` y `render` con `TZ=Asia/Tokyo`.
+
+**Hecho, todo junto (2026-10-20):** `aDatetimeLocal` y `deDatetimeLocal` leen y
+escriben en hora argentina (offset fijo, con `enHoraArgentina` para los getters);
+el día de `resumirSesion` y la ventana de `resumirVentana` se formatean con
+`timeZone: ZONA`; `duplicar.ts` corre fechas sumando milisegundos, que conserva la
+hora de acá aunque el navegador cruce un horario de verano. Los tests que
+calculaban lo esperado con la hora de la máquina pasaron a offset explícito. La
+suite pasa en Buenos Aires, Tokio, Madrid y UTC; la red de Tokio ya estaba en
+`verificar-todo.sh`. Para quien carga desde acá no cambia nada.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

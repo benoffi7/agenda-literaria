@@ -225,8 +225,10 @@ describe('las fechas de una modalidad no salen a ninguna salida pública (§5.1)
   it('el documento sí las guarda, como `Timestamp` (trampa 1)', () => {
     // Control positivo: sin esto, todo lo de abajo pasaría porque el dato no
     // existe, y el día que empiece a existir nadie se enteraría.
-    expect(doc.modalidades[0]!.inicio?.toMillis()).toBe(new Date(VENTANA.inicio).getTime());
-    expect(doc.modalidades[0]!.fin?.toMillis()).toBe(new Date(VENTANA.fin).getTime());
+    // B-2209 — el campo se lee en hora argentina, sea cual sea la zona del
+    // navegador (o de la máquina que corre el test).
+    expect(doc.modalidades[0]!.inicio?.toMillis()).toBe(new Date(`${VENTANA.inicio}-03:00`).getTime());
+    expect(doc.modalidades[0]!.fin?.toMillis()).toBe(new Date(`${VENTANA.fin}-03:00`).getTime());
   });
 
   it('no salen al events.json', () => {

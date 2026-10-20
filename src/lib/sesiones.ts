@@ -18,19 +18,44 @@ export const nuevaSesionId = (): string => {
 
 const DOS_HORAS_MS = 2 * 60 * 60 * 1000;
 
-/** `Date` → string apto para `<input type="datetime-local">`, en hora local. */
+/*
+ * B-2209 — el `datetime-local` del formulario se lee y se escribe **en hora
+ * argentina**, no en la del navegador. Antes usaba los getters locales de `Date`:
+ * quien cargaba desde un navegador en otra zona guardaba instantes corridos, y
+ * Calendar los recibía con `timeZone` de Buenos Aires pero con la hora mal.
+ *
+ * Argentina no tiene horario de verano desde 2009: el offset es fijo. Todo lo del
+ * panel que pasa entre un instante y la hora de pared pasa por estas dos
+ * funciones (o por `enHoraArgentina`), y la suite corre también con
+ * `TZ=Asia/Tokyo` (`verificar-todo.sh`) para que no vuelva a colarse la zona del
+ * navegador.
+ */
+export const OFFSET_ARGENTINA = '-03:00';
+const OFFSET_ARGENTINA_MS = -3 * 60 * 60 * 1000;
+
+/**
+ * El instante corrido a la hora de pared de acá, para leerlo con los getters
+ * `getUTC*`: así no interviene la zona del navegador.
+ */
+export const enHoraArgentina = (d: Date): Date => new Date(d.getTime() + OFFSET_ARGENTINA_MS);
+
+/** `Date` → string apto para `<input type="datetime-local">`, en hora argentina. */
 export const aDatetimeLocal = (d: Date): string => {
   const pad = (n: number) => String(n).padStart(2, '0');
+  const a = enHoraArgentina(d);
   return (
-    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
-    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+    `${a.getUTCFullYear()}-${pad(a.getUTCMonth() + 1)}-${pad(a.getUTCDate())}` +
+    `T${pad(a.getUTCHours())}:${pad(a.getUTCMinutes())}`
   );
 };
 
-/** String de `datetime-local` → `Date` en hora local del navegador. */
+/** String de `datetime-local` → `Date`, leyéndolo como hora argentina. */
 export const deDatetimeLocal = (s: string): Date | null => {
   if (!s) return null;
-  const d = new Date(s);
+  // `2026-09-25T19:00` (o con segundos) gana el offset; algo que ya lo trae se lee
+  // tal cual.
+  const conOffset = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(s) ? `${s}${OFFSET_ARGENTINA}` : s;
+  const d = new Date(conOffset);
   return Number.isNaN(d.getTime()) ? null : d;
 };
 

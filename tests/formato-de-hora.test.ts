@@ -12,7 +12,7 @@
  * la ida y vuelta se verifica sobre las 24 horas del día, no sobre una muestra.
  */
 import { describe, expect, it } from 'vitest';
-import { deDatetimeLocal } from '@/lib/sesiones';
+import { deDatetimeLocal, enHoraArgentina } from '@/lib/sesiones';
 import {
   CLAVE_FORMATO_DE_HORA,
   ETIQUETA_FORMATO_DE_HORA,
@@ -261,8 +261,9 @@ describe('un solo parser del string, y la red que lo mantiene así — D-88', ()
       expect(partes, v).not.toBeNull();
       const d = deDatetimeLocal(v);
       expect(d, v).not.toBeNull();
-      expect(partes!.hora24, `la hora de ${v}`).toBe(d!.getHours());
-      expect(Number(partes!.minutos), `los minutos de ${v}`).toBe(d!.getMinutes());
+      // B-2209 — el instante se lee en hora argentina, no en la de la máquina.
+      expect(partes!.hora24, `la hora de ${v}`).toBe(enHoraArgentina(d!).getUTCHours());
+      expect(Number(partes!.minutos), `los minutos de ${v}`).toBe(enHoraArgentina(d!).getUTCMinutes());
     }
   });
 

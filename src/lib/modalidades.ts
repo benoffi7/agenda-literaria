@@ -23,7 +23,7 @@
  */
 import * as derivados from '../../functions/derivados.js';
 import { deDatetimeLocal } from '@/lib/sesiones';
-import { claveDeDia } from '@/lib/fechasPublicas';
+import { ZONA, claveDeDia } from '@/lib/fechasPublicas';
 import type { Modalidad, ModalidadFila, ModalidadFilaForm, Online, Sede } from '@/types/actividad';
 
 /**
@@ -165,7 +165,8 @@ export const resumirVentana = (f: { inicio: string; fin: string }): string => {
   const legible = (s: string): string => {
     const d = deDatetimeLocal(s);
     return d
-      ? new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short' }).format(d)
+      ? // B-2209 — en la zona de acá, como la lee `deDatetimeLocal`.
+        new Intl.DateTimeFormat('es-AR', { dateStyle: 'short', timeStyle: 'short', timeZone: ZONA }).format(d)
       : '';
   };
   const desde = legible(f.inicio);
