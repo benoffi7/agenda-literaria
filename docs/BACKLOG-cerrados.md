@@ -23177,6 +23177,11 @@ calculaban lo esperado con la hora de la máquina pasaron a offset explícito. L
 suite pasa en Buenos Aires, Tokio, Madrid y UTC; la red de Tokio ya estaba en
 `verificar-todo.sh`. Para quien carga desde acá no cambia nada.
 
+**El primer deploy salió rojo** (`1cf6614`): un test de integración leía la hora
+con `getHours()`, y CI corre en UTC. Corregido en `36c574a`, y desde entonces el
+hook corre la suite con emuladores en `TZ=UTC`, como CI: el barrido de Tokio no
+la cubría porque excluye la integración.
+
 ## Pendiente de acción manual del dueño
 
 ### B-836a · App Check: registrado y cableado, **falta publicar, verificar y exigir** — ✅ hecho (cerrado el 2026-09-23) · P1

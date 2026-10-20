@@ -109,7 +109,7 @@ if [ "$EMU_ARRIBA" = true ]; then
   FIRESTORE_EMULATOR_HOST="$HOST_FIRESTORE" \
     FIREBASE_AUTH_EMULATOR_HOST="$HOST_AUTH" \
     FIREBASE_STORAGE_EMULATOR_HOST="$HOST_STORAGE" \
-    EXIGIR_EMULADOR=1 npm test \
+    TZ=UTC EXIGIR_EMULADOR=1 npm test \
     || fallo 'la suite no pasa con los emuladores arriba'
 elif [ -n "$EMU_A_MEDIAS" ]; then
   # B-1661 — hay una parte de la tanda escuchando, y el `exec` de abajo va a
@@ -128,7 +128,9 @@ else
   # exportar tres líneas arriba. Con otro, el emulador de Auth busca la cuenta en
   # el suyo y el token sale sin los claims de `setCustomUserClaims` — y entonces
   # todo lo que la regla NIEGA sigue verde y se cae solo lo que OTORGA.
-  EXIGIR_EMULADOR=1 npx firebase emulators:exec --only auth,firestore,storage \
+  # B-2209 — `TZ=UTC`, la zona de CI: con la de esta máquina (Argentina) un test de
+  # integración que leía la hora con `getHours()` pasaba acá y salía rojo allá.
+  TZ=UTC EXIGIR_EMULADOR=1 npx firebase emulators:exec --only auth,firestore,storage \
     --project "$PROJECT_ID_EMU" 'npm test' \
     || fallo 'la suite no pasa con los emuladores arriba'
 fi
