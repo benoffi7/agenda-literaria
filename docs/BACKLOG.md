@@ -374,17 +374,6 @@ publicada tiene página. La defensa es borrar la opción desde el panel (ayuda d
 Opciones) o corregir antes la actividad, no un filtro de código. Un
 `/organiza/a-conf` indexado es peor que no tener la página.
 
-### B-2170 · El resumen diario lee con la key que más puede · P3
-
-El resumen de la bandeja (roadmap 2.1) lee `/propuestas` y las fichas con
-`FIREBASE_SERVICE_ACCOUNT`, que es `deploy-ci@`: además de leer, despliega reglas,
-Hosting y Functions (02-infraestructura § Roles). Se eligió así para no crear una
-credencial nueva, y la key vive en el `env` de un solo paso. Lo señaló el
-`auditor-privacidad`: una **cuenta aparte con solo `datastore.viewer`** achicaría lo
-que expone un job diario y desatendido. Costo: una service account más, su key en un
-secret de Actions y una fila en 02-infraestructura. Decidirlo si el resumen crece o
-si aparece otro job programado con la misma key.
-
 ### B-2167 · Once pares de actividades publicadas que parecen duplicadas · P2 — pendiente del dueño
 
 > **2026-10-06 — el filtro puede mostrar más pares desde la 2.7**: la regla suma «el
@@ -546,6 +535,21 @@ tiene arreglo en el repo:
 llevan escrita la condición que las reabriría. Los juntó acá el triage del
 2026-09-24 para que no se lean como trabajo en la lista de prioridades: si la
 condición se cumple, el ítem vuelve a su P.
+
+### B-2170 · El resumen diario lee con la key que más puede · P3 — vigilado (2026-10-20)
+
+El resumen de la bandeja (roadmap 2.1) lee `/propuestas` y las fichas con
+`FIREBASE_SERVICE_ACCOUNT`, que es `deploy-ci@`: además de leer, despliega reglas,
+Hosting y Functions (02-infraestructura § Roles). Se eligió así para no crear una
+credencial nueva, y la key vive en el `env` de un solo paso. Lo señaló el
+`auditor-privacidad`: una **cuenta aparte con solo `datastore.viewer`** achicaría lo
+que expone un job diario y desatendido. Costo: una service account más, su key en un
+secret de Actions y una fila en 02-infraestructura. Decidirlo si el resumen crece o
+si aparece otro job programado con la misma key.
+
+**Vigilado (2026-10-20):** ninguna de las dos condiciones se cumplió —el resumen
+no creció y no hay otro job programado con esa key—. Crear la cuenta es un
+cambio de credenciales en GCP y en los secrets; se hace cuando se cumpla una.
 
 ### B-846 · La URL de descarga de un flyer privado es una capability, y eso no es «nadie puede leerlo» · P3
 
