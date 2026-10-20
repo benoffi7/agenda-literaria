@@ -160,6 +160,12 @@ lista anterior hasta que llega la nueva, porque el estado inicial de la vista se
 arma antes de la limpieza del formulario. Y el badge de propuestas sigue leyendo
 hasta 50 documentos en vivo (`getCountFromServer`).
 
+**El badge de propuestas queda como está (2026-10-20):** el listener filtra por
+`estado in [nueva, en-revision]`, así que lee solo las pendientes, no 50. Hoy hay 3
+propuestas y ninguna pendiente: lee cero. `getCountFromServer` le sacaría la
+actualización en vivo entre dos admins (por eso es `onSnapshot`) sin ahorrar nada.
+Se revisa solo si alguna vez se juntan decenas sin decidir.
+
 **Bajada de prioridad (2026-10-19):** guardar sube la versión y eso ya obliga a
 releer; ahorrar ahí pide rediseñar cómo el panel decide qué está viejo, sobre la
 pantalla que más se usa, y a los precios de Firestore son centavos por mes. No
@@ -220,6 +226,11 @@ el detalle no lo cargan. La suite con emuladores y el gate dan verde.
 
 **`google-auth-library` 10→11 en la raíz, hecho (2026-10-20):** la usa solo
 `verificar-calendario.mjs`, y subirla destapó B-2222.
+
+**El login y el guardado con firebase 12.19, confirmados por el dueño
+(2026-10-20).** La misma edición dejó escrita en producción la huella de Calendar
+(`sincronizacion/calendar`) de la actividad: el sync de B-2218 anda de punta a
+punta contra el calendario real.
 
 **TypeScript 7, bloqueado:** `@astrojs/check` 0.9 acepta TypeScript 5 o 6, y sin
 él los `.astro` vuelven a quedar sin chequear (B-2198). Se retoma cuando Astro lo

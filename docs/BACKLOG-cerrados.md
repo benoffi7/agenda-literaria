@@ -18574,6 +18574,11 @@ fecha ilegible que frena a las demás no se hizo: sigue avisando con `calendar-f
 en sesiones sin ella, la escritura con `merge`, las huellas del re-sync por
 etiquetas y el borrado del documento al borrar la actividad (ver D-1277).
 
+**Verificado en producción (2026-10-20):** la primera edición después del deploy
+(«Club de Lectura - Penélope…») escribió `sincronizacion/calendar` con la huella de
+su sesión. Las que no se editaron desde el deploy todavía no tienen doc, que es lo
+esperado: lo siembra la próxima escritura.
+
 ### B-2194 · Dos guardados seguidos procesados fuera de orden dejan Calendar con el contenido anterior · P2 — ✅ hecho (2026-10-19)
 
 El evento se arma con `event.data.after` de cada invocación, y Firestore no
