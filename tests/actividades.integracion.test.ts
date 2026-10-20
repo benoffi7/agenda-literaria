@@ -27,7 +27,7 @@ import {
 } from '@/lib/actividades';
 import { duplicarActividadForm } from '@/lib/duplicar';
 import { toPublic } from '@/lib/toPublic';
-import { sesionVacia } from '@/lib/sesiones';
+import { enHoraArgentina, sesionVacia } from '@/lib/sesiones';
 import type { ActividadForm } from '@/types/actividad';
 import {
   HOST_FIRESTORE,
@@ -141,7 +141,9 @@ describe.skipIf(!vivo)('guardado de actividades contra el emulador', () => {
     const a = await leerActividad(id);
     const s = a!.sesiones[0]!;
     expect(typeof s.inicio.toDate).toBe('function');
-    expect(s.inicio.toDate().getHours()).toBe(19);
+    // B-2209 — la hora del encuentro es la de acá, sea cual sea la zona de la
+    // máquina que corre el test (CI corre en UTC).
+    expect(enHoraArgentina(s.inicio.toDate()).getUTCHours()).toBe(19);
   });
 
   it('conserva los ids de sesión generados en el cliente (trampa 2)', async () => {
