@@ -2,6 +2,8 @@
 
 ## Sin publicar
 
+- **Las Functions con `firebase-functions` 7** (B-2208).
+
 - **El panel guarda la hora de Argentina aunque se cargue desde otro país** (B-2209).
   Antes, un navegador en otra zona horaria guardaba los encuentros corridos. Para quien
   carga desde acá no cambia nada.

@@ -185,10 +185,13 @@ la 11). Verificado con `tsc`, `astro check`, la suite y el gate de build. Quedan
 altas en la raíz, todas `@grpc/grpc-js` dentro de `firebase` 11: en el navegador
 Firestore no usa gRPC, así que no hay superficie, y se van con firebase 13.
 
+**`firebase-functions` 6→7, hecho (2026-10-20):** sin uso de la API v1 ni de
+`functions.config()`; tipos, las 22 Functions cargan y la suite con emuladores en
+verde.
+
 **Falta, cada una en su ítem cuando se encare:** `firebase` 11→13 y
 `firebase-admin` 13→14 (el SDK del panel y del build), `vitest` 3→5, `zod` 3→4
-(cambia la API de los schemas), `typescript` 5.9→7, `@astrojs/react` 6→7 y
-`firebase-functions` 6→7.
+(cambia la API de los schemas), `typescript` 5.9→7 y `@astrojs/react` 6→7.
 
 ### B-770 a B-773 · La sección comercial `/anunciar` · P2
 
