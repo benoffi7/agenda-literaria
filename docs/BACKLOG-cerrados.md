@@ -18638,6 +18638,27 @@ entrar; la historia la lleva y el texto del posteo también.
 - **El importador ahora avisa** de una nueva que cae el mismo día y año que una
   existente con otro slug (`auditor-trampas`).
 
+### B-2224 · Importar las efemérides del relevamiento del dueño · P2 — ✅ hecho (2026-10-21)
+
+El dueño tenía 321 efemérides relevadas en `efemerides.csv` (con PDF), y el panel
+solo las cargaba de a una. Pidió cargarlas sacando las que no tienen fecha completa.
+
+**Hecho:** `scripts/datos/efemerides-literarias.json` (las 296 con día y mes) y
+`scripts/importar-efemerides.mjs`, idempotente y con la guarda de los dos flags.
+Títulos en la forma del formulario («Nace …», «Muere …», «Se publica «…», de …»);
+las notas de investigación de las 296 reescritas como el dato, sin agregar nada
+que la nota no dijera; las 22 discutidas como borrador, con su nota en el PDF (el
+`auditor-privacidad` vio que dejarla en la descripción la ponía a un «Publicar» de
+una página indexada). Tests: `efemerides-a-importar.test.ts` (cada entrada contra el schema del
+formulario) y un caso nuevo en `efemerides.integracion.test.ts` (el panel edita una
+importada). Probado contra el emulador: 296 escritas, la segunda corrida cero.
+
+**Corrido en producción el 2026-10-21** por el dueño: 296 escritas (274 publicadas,
+22 borradores), ninguna existente ni parecida.
+El tipo de hecho y el grupo del CSV (Argentina / Latinoamérica / Internacional) no
+entraron al modelo: el tipo ya está en el título, y el grupo no tiene hoy dónde
+mostrarse.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

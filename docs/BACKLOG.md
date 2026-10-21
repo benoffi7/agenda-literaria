@@ -41,11 +41,6 @@ proyecto · **P2** mejora real · **P3** cuando sobre tiempo.
 
 ## Pendiente de acción manual del dueño
 
-- **B-2224** — correr la importación de las efemérides en producción:
-  `npm run efemerides:importar:prod -- --aplicar` (sin `--aplicar` primero, para ver
-  qué escribe). Entran 274 publicadas y 22 borradores de fecha discutida; esos se
-  revisan y se publican desde la pantalla «Efemérides» del panel. El permiso de esta
-  sesión no deja escribir producción desde Claude.
 - **B-2221** — corregir en el panel la fecha de fin del encuentro del 25/09 de
   **Tertulias Fanzineras**: dice el año **4050**. En el calendario público es un
   evento de dos mil años. Desde B-2221 el formulario no deja guardarla así, así que
@@ -140,26 +135,6 @@ sale, lo que queda es una actividad sin flyer y un original huérfano que nadie
 barre (`propuestas/` no lo recorre `limpiarImagenesHuerfanas`).
 
 ## P2 — mejoras reales
-
-### B-2224 · Importar las efemérides del relevamiento del dueño · P2 — 🟡 listo, falta correrlo en producción (2026-10-21)
-
-El dueño tenía 321 efemérides relevadas en `efemerides.csv` (con PDF), y el panel
-solo las cargaba de a una. Pidió cargarlas sacando las que no tienen fecha completa.
-
-**Hecho:** `scripts/datos/efemerides-literarias.json` (las 296 con día y mes) y
-`scripts/importar-efemerides.mjs`, idempotente y con la guarda de los dos flags.
-Títulos en la forma del formulario («Nace …», «Muere …», «Se publica «…», de …»);
-las notas de investigación de las 296 reescritas como el dato, sin agregar nada
-que la nota no dijera; las 22 discutidas como borrador, con su nota en el PDF (el
-`auditor-privacidad` vio que dejarla en la descripción la ponía a un «Publicar» de
-una página indexada). Tests: `efemerides-a-importar.test.ts` (cada entrada contra el schema del
-formulario) y un caso nuevo en `efemerides.integracion.test.ts` (el panel edita una
-importada). Probado contra el emulador: 296 escritas, la segunda corrida cero.
-
-**Falta:** correrlo en producción — está en «Pendiente de acción manual del dueño».
-El tipo de hecho y el grupo del CSV (Argentina / Latinoamérica / Internacional) no
-entraron al modelo: el tipo ya está en el título, y el grupo no tiene hoy dónde
-mostrarse.
 
 ### B-2203 · El panel relee la colección entera de `/actividades` cada vez que se vuelve al listado · P2 — 🟡 entre vistas resuelto (2026-10-19), falta la vuelta del formulario
 
