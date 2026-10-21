@@ -879,6 +879,7 @@ campos que había».
 | `agenda:vista-del-panel` | con qué forma se dibuja el formulario, `pc` o `celular` (B-814) | `lib/vistaDelPanel.ts` |
 | `agenda:formato-de-hora` | en qué formato se tipean las horas, `24` o `12` (B-889, D-720) | `lib/formatoDeHora.ts` |
 | `agenda:grafico:` | con qué vista se pinta un reparto del tablero (B-701) | `lib/vistaDeGrafico.ts` |
+| `agenda:campos-de-la-placa` | qué filas lleva la placa de una actividad: una lista de `CAMPOS_DE_LA_PLACA`, sin nada tipeado (B-2227) | `lib/placas.ts` |
 | `agenda:seccion:` | qué acordeón del formulario quedó abierto | `components/campos/Seccion.tsx` |
 | `agenda:version-recargada` | qué versión del bundle ya se recargó, para no recargar en loop | `components/admin/useVersionPublicada.ts` |
 | `agenda:analitica:perfil` | el perfil de medición del panel | `lib/analytics.ts` |
@@ -888,9 +889,9 @@ campos que había».
 | `agenda-literaria:borrador:` | **contenido** — el formulario a medio cargar (D-122) | `lib/formulario/borradoresDelNavegador.ts` |
 | `agenda:busquedas` | **contenido del visitante** — sus búsquedas guardadas: `{ v, nombre, url, guardadoEn }`, y el `nombre` lo escribe él (B-848) | `lib/guardadosDelSitio.ts` |
 
-Las siete primeras son marcas: clave fija —o un prefijo cerrado, con el sufijo
+Las ocho primeras son marcas: clave fija —o un prefijo cerrado, con el sufijo
 saliendo de un vocabulario del propio módulo— y valor de un enum o un contador.
-`agenda:favoritos` es la octava y también es una marca, aunque no lo parezca: lo
+`agenda:favoritos` es la novena y también es una marca, aunque no lo parezca: lo
 que guarda son **slugs de actividades publicadas**, o sea identificadores que ya
 son públicos, más un tipo de una lista cerrada y una fecha. Nada de eso lo tipeó
 nadie.

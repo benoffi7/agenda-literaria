@@ -65,6 +65,17 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'placa-configurable',
+    fecha: '2026-10-21',
+    version: '1.11.0',
+    titulo: 'Elegís qué lleva la placa de una actividad',
+    detalle:
+      'Arriba de la vista previa hay una casilla por fila —la foto, quién lo da, cuándo, ' +
+      'dónde, el arancel, la inscripción y la dirección— para sacar lo que no quieras. Tu ' +
+      'elección queda para las próximas placas.',
+    donde: 'En el formulario de la actividad, sección «Texto para publicar», al armar la placa.',
+  },
+  {
     id: 'placa-de-actividad',
     fecha: '2026-10-21',
     version: '1.11.0',

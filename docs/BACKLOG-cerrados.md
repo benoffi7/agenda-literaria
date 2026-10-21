@@ -18659,6 +18659,16 @@ El tipo de hecho y el grupo del CSV (Argentina / Latinoamérica / Internacional)
 entraron al modelo: el tipo ya está en el título, y el grupo no tiene hoy dónde
 mostrarse.
 
+### B-2227 · Elegir qué lleva la placa de una actividad · P2 — ✅ hecho (2026-10-21)
+
+Pedido del dueño después de B-2226. **Hecho:** casillas «Qué lleva la placa» arriba
+de la vista previa (foto, quién lo da, cuándo, dónde, arancel, inscripción,
+dirección); el tipo y el título van siempre. Se recuerda en el navegador con la
+marca `agenda:campos-de-la-placa`, declarada en 07-seguridad. Elegir solo saca: no
+hay casilla para nada que la tabla de privacidad de `placas.ts` deja afuera.
+`tests/placas.test.ts` (`conLosCampos`, la lectura robusta de lo guardado) y
+`tests/placa-de-actividad.render.test.tsx`.
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

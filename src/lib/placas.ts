@@ -293,3 +293,91 @@ export const placaDeActividad = (
     },
   };
 };
+
+// ─────────────────────────────────────────────────────────────────
+// Qué filas lleva la placa de una actividad — B-2227
+// ─────────────────────────────────────────────────────────────────
+
+/**
+ * Lo que se puede sacar de la placa. El tipo y el título van siempre: sin ellos
+ * no es la placa de nada. El orden es el de la placa.
+ */
+export const CAMPOS_DE_LA_PLACA = [
+  'foto',
+  'conQuien',
+  'cuando',
+  'donde',
+  'arancel',
+  'inscripcion',
+  'enlace',
+] as const;
+export type CampoDeLaPlaca = (typeof CAMPOS_DE_LA_PLACA)[number];
+
+export const ETIQUETA_CAMPO_DE_LA_PLACA: Record<CampoDeLaPlaca, string> = {
+  foto: 'La foto',
+  conQuien: 'Quién lo da',
+  cuando: 'Cuándo',
+  donde: 'Dónde',
+  arancel: 'Arancel',
+  inscripcion: 'Inscripción',
+  enlace: 'La dirección de la página',
+};
+
+/** La placa con solo lo elegido: lo que no está, sale vacío y no se dibuja. */
+export const conLosCampos = (
+  p: PlacaDeActividad,
+  elegidos: ReadonlySet<CampoDeLaPlaca>,
+): PlacaDeActividad => ({
+  ...p,
+  imagen: elegidos.has('foto') ? p.imagen : null,
+  conQuien: elegidos.has('conQuien') ? p.conQuien : null,
+  cuando: elegidos.has('cuando') ? p.cuando : [],
+  donde: elegidos.has('donde') ? p.donde : [],
+  arancel: elegidos.has('arancel') ? p.arancel : null,
+  inscripcion: elegidos.has('inscripcion') ? p.inscripcion : null,
+  enlace: elegidos.has('enlace') ? p.enlace : null,
+});
+
+/**
+ * La elección se recuerda **en el navegador de quien carga**, como la vista del
+ * panel: es una preferencia de cómo arma sus placas, no un dato de la actividad.
+ * Es una **marca** (07-seguridad § marcas del navegador): clave fija y un valor
+ * que sale de `CAMPOS_DE_LA_PLACA`, nunca algo tipeado.
+ */
+export const CLAVE_CAMPOS_DE_LA_PLACA = 'agenda:campos-de-la-placa';
+
+export interface AlmacenDeCamposDeLaPlaca {
+  getItem(clave: string): string | null;
+  setItem(clave: string, valor: string): void;
+}
+
+const esCampoDeLaPlaca = (v: unknown): v is CampoDeLaPlaca =>
+  typeof v === 'string' && (CAMPOS_DE_LA_PLACA as readonly string[]).includes(v);
+
+/** Lo guardado, o todos si no hay nada, no se puede leer o está roto. */
+export const leerCamposDeLaPlaca = (
+  almacen: AlmacenDeCamposDeLaPlaca | null,
+): Set<CampoDeLaPlaca> => {
+  const todos = new Set(CAMPOS_DE_LA_PLACA);
+  if (!almacen) return todos;
+  try {
+    const crudo: unknown = JSON.parse(almacen.getItem(CLAVE_CAMPOS_DE_LA_PLACA) ?? 'null');
+    return Array.isArray(crudo) ? new Set(crudo.filter(esCampoDeLaPlaca)) : todos;
+  } catch {
+    return todos;
+  }
+};
+
+export const recordarCamposDeLaPlaca = (
+  almacen: AlmacenDeCamposDeLaPlaca | null,
+  campos: ReadonlySet<CampoDeLaPlaca>,
+): void => {
+  try {
+    almacen?.setItem(
+      CLAVE_CAMPOS_DE_LA_PLACA,
+      JSON.stringify(CAMPOS_DE_LA_PLACA.filter((c) => campos.has(c))),
+    );
+  } catch {
+    // Sin almacén (modo privado, cuota llena) la elección dura lo que la pantalla.
+  }
+};

@@ -1779,6 +1779,11 @@ subirlas a mano: **nada se publica solo**. Lo compartido vive en
   fechas más»; con opciones para sumarse, las opciones. Las canceladas no se
   anuncian. Una fila que no entra entera no se dibuja, y las que siguen tampoco
   (en el feed con foto suele quedar afuera la inscripción; en la historia entra).
+- **Qué filas lleva se elige** (B-2227): casillas para la foto, quién lo da,
+  cuándo, dónde, arancel, inscripción y la dirección de la página; el tipo y el
+  título van siempre. La elección se recuerda en el navegador de quien carga
+  (`agenda:campos-de-la-placa`, una marca: solo nombres de la lista cerrada). Elegir
+  solo saca: lo que la tabla de privacidad deja afuera no tiene casilla.
 - **La foto es la portada, solo si es propia.** El bucket tiene el CORS del sitio;
   una externa no se puede leer del canvas, y si la foto no carga la placa sale sin
   ella.

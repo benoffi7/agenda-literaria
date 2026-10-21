@@ -2583,6 +2583,19 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'Con las casillas de «Qué lleva la placa» sacás las filas que no querés —la foto, ' +
+          'quién lo da, cuándo, dónde, el arancel, la inscripción o la dirección de la página—. ' +
+          'El tipo y el título van siempre. Tu elección queda guardada en este navegador para ' +
+          'las próximas placas.',
+        atadoA: [
+          {
+            archivo: 'tests/placa-de-actividad.render.test.tsx',
+            it: 'arranca con todas tildadas, y sacar una queda recordado',
+          },
+        ],
+      },
+      {
+        texto:
           'La placa no lleva el número, el mail ni la cuenta de inscripción —dice solo por dónde—, ' +
           'ni la dirección exacta, ni las notas del arancel: una imagen se comparte sin el texto ' +
           'y no se despublica. Esos datos van en el texto de arriba.',

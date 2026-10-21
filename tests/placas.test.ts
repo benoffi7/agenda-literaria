@@ -11,7 +11,12 @@ import { describe, expect, it } from 'vitest';
 import { formADocumento } from '@/lib/actividades';
 import { filtrarEfemerides } from '@/lib/efemeride-schema';
 import {
+  CAMPOS_DE_LA_PLACA,
+  CLAVE_CAMPOS_DE_LA_PLACA,
   FECHAS_SUELTAS,
+  conLosCampos,
+  leerCamposDeLaPlaca,
+  recordarCamposDeLaPlaca,
   placaDeActividad,
   placaDeEfemeride,
   type ActividadParaPlaca,
@@ -297,5 +302,48 @@ describe('lo que una placa no dice nunca — §5.1', () => {
   it('no lleva el destino de la inscripción ni la dirección, aunque el texto sí', () => {
     expect(salida).not.toContain(CENTINELAS.mailInscripcion);
     expect(salida).not.toContain(CENTINELAS.direccion);
+  });
+});
+
+describe('qué filas lleva la placa — B-2227', () => {
+  const almacen = (inicial: Record<string, string> = {}) => {
+    const datos = { ...inicial };
+    return {
+      getItem: (k: string) => datos[k] ?? null,
+      setItem: (k: string, v: string) => {
+        datos[k] = v;
+      },
+      datos,
+    };
+  };
+
+  it('lo que no se eligió sale vacío, y el tipo y el título quedan', () => {
+    const p = conLosCampos(placa({ imagenes: [] }), new Set(['cuando'] as const));
+    expect(p.titulo).toBe('Taller de crónica');
+    expect(p.antetitulo).toBe('Taller · 4 encuentros');
+    expect(p.cuando).toHaveLength(2);
+    expect(p).toMatchObject({ conQuien: null, donde: [], arancel: null, inscripcion: null, enlace: null, imagen: null });
+  });
+
+  it('sin nada guardado van todas', () => {
+    expect([...leerCamposDeLaPlaca(almacen())]).toEqual([...CAMPOS_DE_LA_PLACA]);
+    expect([...leerCamposDeLaPlaca(null)]).toEqual([...CAMPOS_DE_LA_PLACA]);
+  });
+
+  it('recuerda la elección, y lo guardado es solo de la lista cerrada', () => {
+    const a = almacen();
+    recordarCamposDeLaPlaca(a, new Set(['donde', 'cuando'] as const));
+    // En el orden de la placa, no en el de los clics.
+    expect(a.datos[CLAVE_CAMPOS_DE_LA_PLACA]).toBe('["cuando","donde"]');
+    expect([...leerCamposDeLaPlaca(a)]).toEqual(['cuando', 'donde']);
+  });
+
+  it('un valor roto o ajeno no rompe nada: lo desconocido se ignora', () => {
+    expect([...leerCamposDeLaPlaca(almacen({ [CLAVE_CAMPOS_DE_LA_PLACA]: '{roto' }))]).toEqual([
+      ...CAMPOS_DE_LA_PLACA,
+    ]);
+    expect([
+      ...leerCamposDeLaPlaca(almacen({ [CLAVE_CAMPOS_DE_LA_PLACA]: '["donde","<script>"]' })),
+    ]).toEqual(['donde']);
   });
 });

@@ -11,6 +11,7 @@
 
 /** Lo más nuevo arriba, igual que `NOVEDADES`. */
 export const NOVEDADES_IDS: readonly string[] = [
+  'placa-configurable',
   'placa-de-actividad',
   'placa-de-efemeride',
   'encuentro-de-mas-de-una-semana',

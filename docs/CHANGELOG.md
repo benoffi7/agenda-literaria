@@ -2,6 +2,9 @@
 
 ## Sin publicar
 
+- **Se elige qué lleva la placa de una actividad** (B-2227): una casilla por fila, y la
+  elección queda para las próximas.
+
 - **La placa para Instagram de cada actividad** (B-2226, D-1278). En «Texto para
   publicar», un botón arma la imagen del posteo —fecha, lugar, arancel, cómo
   inscribirse y la portada propia— para el feed o la historia.
