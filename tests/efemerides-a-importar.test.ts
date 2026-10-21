@@ -10,7 +10,7 @@
  */
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { aImportar, conSlug } from '../scripts/efemerides-a-importar.mjs';
+import { aImportar, conSlug, parecidas } from '../scripts/efemerides-a-importar.mjs';
 import { RE_SLUG_EFEMERIDE, efemerideFormSchema, formAEfemeride } from '@/lib/efemeride-schema';
 import type { Efemeride, EfemerideForm } from '@/types/efemeride';
 
@@ -59,7 +59,7 @@ describe('el archivo del relevamiento — B-2224', () => {
   });
 
   it('ningún slug se repite, y todos tienen la forma de la regla', () => {
-    const slugs = conSlug(ENTRADAS).map((e) => e.slug);
+    const slugs = conSlug(ENTRADAS).map((e: { slug: string }) => e.slug);
     expect(new Set(slugs).size).toBe(slugs.length);
     for (const s of slugs) expect(s).toMatch(new RegExp(RE_SLUG_EFEMERIDE));
   });
@@ -69,17 +69,17 @@ describe('el archivo del relevamiento — B-2224', () => {
     expect(ENTRADAS.filter((e) => e.estado === 'publicado')).toHaveLength(274);
   });
 
-  it('lo publicado no lleva notas de investigación', () => {
+  it('ninguna lleva notas de investigación, ni las de borrador', () => {
     /*
      * El CSV traía la nota del relevamiento como descripción —citas en inglés,
      * «según Wikipedia», «verificado en otra sesión»— y la descripción sale en
-     * una página indexada. Las publicadas se reescribieron; las de borrador
-     * conservan la nota a propósito, porque es lo que hay que leer antes de
-     * publicarlas.
+     * una página indexada. **Las de borrador también**: un clic en «Publicar»
+     * desde la fila la manda tal cual, sin abrir el formulario. La nota de las
+     * discutidas se lee en el PDF del relevamiento.
      */
     const nota =
-      /\b(was published|published on|published in)\b|según Wikipedia|infobox|nota preexistente|otra sesión|por el usuario|Fuentes varían/i;
-    for (const e of ENTRADAS.filter((x) => x.estado === 'publicado')) {
+      /\b(was published|published on|published in|exact date)\b|Wikipedia|infobox|nota preexistente|otra sesión|por el usuario|Fuentes varían|fuente única|segunda fuente|se optó/i;
+    for (const e of ENTRADAS) {
       expect(e.descripcion, e.titulo).not.toMatch(nota);
     }
   });
@@ -93,6 +93,15 @@ describe('aImportar — B-2224', () => {
     expect(r.nuevas.map((e) => e.slug)).toEqual(['nace-umberto-eco']);
     expect(r.yaEstan.map((e) => e.slug)).toEqual(['muere-albert-camus']);
     expect(r.repetidas.map((e) => e.slug)).toEqual(['nace-umberto-eco']);
+  });
+
+  it('avisa de las que caen el mismo día y año que una existente con otro slug', () => {
+    const nuevas = [
+      { titulo: 'Nace Umberto Eco', slug: 'nace-umberto-eco', dia: 5, mes: 1, anio: 1932 },
+      { titulo: 'Muere Albert Camus', slug: 'muere-albert-camus', dia: 4, mes: 1, anio: 1960 },
+    ];
+    const ya = [{ titulo: 'Nacimiento de Umberto Eco', dia: 5, mes: 1, anio: 1932 }];
+    expect(parecidas(nuevas, ya)).toEqual([{ nueva: nuevas[0], ya: ya[0] }]);
   });
 
   it('es idempotente: con todo ya escrito, no escribe nada', () => {

@@ -11,10 +11,11 @@
  * `efemerides.csv` del dueño (2026-10-21): solo las 296 con **día y mes**
  * —las 25 que tenían solo el mes quedaron afuera, a pedido—, con el título en la
  * forma del formulario («Nace Umberto Eco», «Se publica «Rayuela», de Julio
- * Cortázar») y las notas de investigación que iban a salir al público
- * reescritas como el dato. Las 22 de fecha discutida (≈ en el PDF) entran como
- * **borrador**: el PDF dice «leé la nota antes de publicar», y su nota queda
- * entera para eso.
+ * Cortázar») y **todas** las notas de investigación reescritas como el dato.
+ * Las 22 de fecha discutida (≈ en el PDF) entran como **borrador**: el PDF dice
+ * «leé la nota antes de publicar», y la nota se lee **en el PDF**. Dejarla en la
+ * descripción la ponía a un clic —«Publicar» desde la fila— de una página
+ * indexada (lo encontró el `auditor-privacidad`).
  *
  * **Idempotente**: una efeméride cuyo slug ya está en la base no se toca, así que
  * correrlo dos veces no duplica nada ni pisa lo editado en el panel.
@@ -28,7 +29,7 @@
 import { readFileSync } from 'node:fs';
 import { initializeApp, applicationDefault } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
-import { AUTOR_DE_LA_IMPORTACION, aImportar } from './efemerides-a-importar.mjs';
+import { AUTOR_DE_LA_IMPORTACION, aImportar, parecidas } from './efemerides-a-importar.mjs';
 
 const aplicar = process.argv.includes('--aplicar');
 const produccion = process.argv.includes('--produccion');
@@ -62,7 +63,7 @@ const entradas = JSON.parse(
 console.log(enEmulador ? `Objetivo: EMULADOR (${process.env.FIRESTORE_EMULATOR_HOST})` : `Objetivo: PRODUCCIÓN (${projectId})`);
 console.log(aplicar ? 'Modo: escribe\n' : 'Modo: informar (no escribe)\n');
 
-const existentes = await db.collection('efemerides').select('slug').get();
+const existentes = await db.collection('efemerides').select('slug', 'titulo', 'dia', 'mes', 'anio').get();
 const { nuevas, yaEstan, repetidas } = aImportar(
   entradas,
   existentes.docs.map((d) => d.get('slug')),
@@ -76,6 +77,12 @@ console.log(
     `${nuevas.filter((e) => e.estado === 'borrador').length} borradores`,
 );
 for (const e of repetidas) console.warn(`  ⚠️  repetida: ${e.slug}`);
+const dudosas = parecidas(nuevas, existentes.docs.map((d) => d.data()));
+if (dudosas.length) {
+  console.warn(`\n⚠️  ${dudosas.length} caen el mismo día y año que una que ya está (¿el mismo hecho?):`);
+  for (const { nueva, ya } of dudosas) console.warn(`   «${nueva.titulo}» ↔ ya está «${ya.titulo}»`);
+  console.warn('   Si alguna es la misma, borrala de una de las dos antes de --aplicar.');
+}
 
 if (!aplicar) {
   console.log('\nCorré de nuevo con --aplicar para escribirlo de verdad.');

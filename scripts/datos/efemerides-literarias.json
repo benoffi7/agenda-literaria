@@ -157,7 +157,7 @@
   },
   {
     "titulo": "Se publica «Don Quijote de la Mancha», de Miguel de Cervantes",
-    "descripcion": "Primera parte. La licencia de impresión es de septiembre de 1604 y la impresión terminó en diciembre de 1604; la Wikipedia en inglés cita el 16 de enero de 1605 como fecha de aparición del libro. La Wikipedia en español, en cambio, da la tasa (aprobación) del 20 de diciembre de 1604 y sitúa la disponibilidad en Valladolid a fines de diciembre de 1604 y en Madrid a comienzos de 1605, sin día puntual — de ahí la discrepancia. La segunda parte se publicó a fines de 1615 (dedicatoria fechada el 31 de octubre de 1615), sin día exacto documentado en las fuentes consultadas.",
+    "descripcion": "La primera parte. La impresión terminó en diciembre de 1604 y el libro empezó a circular a comienzos de 1605; el 16 de enero es la fecha que dan algunas fuentes, sin consenso sobre el día. La segunda parte salió a fines de 1615.",
     "dia": 16,
     "mes": 1,
     "anio": 1605,
@@ -541,7 +541,7 @@
   },
   {
     "titulo": "Se publica «Residencia en la tierra (primer volumen)», de Pablo Neruda",
-    "descripcion": "Editorial Nascimento, edición de lujo de 100 ejemplares. Las fuentes discrepan entre el 16 de febrero y el 10 de abril de 1933 como fecha exacta, sin consenso pleno (nota preexistente). Se optó por el 16 de febrero por estar respaldado también, de forma independiente, por la biografía de Adam Feinstein, 'Pablo Neruda: A Passion for Life' (Bloomsbury, 2004), que da tirada de 100 ejemplares en esa fecha.",
+    "descripcion": "Editorial Nascimento, en una edición de lujo de 100 ejemplares. Las fuentes no coinciden en el día: algunas dan el 10 de abril de 1933.",
     "dia": 16,
     "mes": 2,
     "anio": 1933,
@@ -661,7 +661,7 @@
   },
   {
     "titulo": "Se publica «La vuelta de Martín Fierro», de José Hernández",
-    "descripcion": "Segunda parte del poema, publicada por la Librería del Plata, Buenos Aires",
+    "descripcion": "La segunda parte del poema, publicada por la Librería del Plata, en Buenos Aires.",
     "dia": 1,
     "mes": 3,
     "anio": 1879,
@@ -673,7 +673,7 @@
   },
   {
     "titulo": "Se publica «La peregrinación de Childe Harold (cantos I y II)», de Lord Byron",
-    "descripcion": "Wikipedia da el 3 de marzo de 1812 (agotado en tres días); otras fuentes de época (Moore, Dallas) citan el 29 de febrero o el 10 de marzo. No hay consenso absoluto sobre el día exacto",
+    "descripcion": "Se agotó en tres días. Otras fuentes de la época dan el 29 de febrero o el 10 de marzo.",
     "dia": 3,
     "mes": 3,
     "anio": 1812,
@@ -889,7 +889,7 @@
   },
   {
     "titulo": "Día del Traductor Público",
-    "descripcion": "Origen impreciso y con versiones contradictorias entre fuentes: distintas notas ubican el hito fundacional en 1897, 1943 o 1964, y hay desacuerdo sobre si la fecha correcta debía ser el 19 o el 21 de abril (se atribuye a un error de caligrafía al labrar actas). No se encontró el decreto/resolución exacto. Vinculado a la primera entrega de diplomas periciales de traductores públicos.",
+    "descripcion": "Recuerda la primera entrega de diplomas de traductores públicos. Su origen es discutido: las fuentes no coinciden en el año ni en si el día es el 19 o el 21 de abril.",
     "dia": 1,
     "mes": 4,
     "anio": null,
@@ -1093,7 +1093,7 @@
   },
   {
     "titulo": "Se publica «Alcools», de Guillaume Apollinaire",
-    "descripcion": "Fecha de colofón. 'L'achevé d'imprimer d'Alcools portera la date du 20 avril 1913' (revista literaria L'Éléphant, número dedicado al centenario). Otras fuentes institucionales (BnF/FranceArchives) confirman 'avril 1913' sin precisar el día.",
+    "descripcion": "Es la fecha del colofón; otras fuentes dicen solo abril de 1913.",
     "dia": 20,
     "mes": 4,
     "anio": 1913,
@@ -1237,7 +1237,7 @@
   },
   {
     "titulo": "Día del Librero",
-    "descripcion": "Fecha difundida por medios y por el sector librero (Argentina.gob.ar la reconoce), pero no se encontró la ley, decreto o resolución que la instituya, ni la institución que la estableció originalmente.",
+    "descripcion": "Una fecha que celebra el sector librero, sin una norma conocida que la instituya.",
     "dia": 26,
     "mes": 4,
     "anio": null,
@@ -1477,7 +1477,7 @@
   },
   {
     "titulo": "Se publica «Libertinagem», de Manuel Bandeira",
-    "descripcion": "Fecha de colofón. Colofón citado por un blog especializado en primeras ediciones de Drummond/Bandeira: 'impressos nas oficinas gráficas de Paulo, Pongetti & C em 20 de Maio de 1930', tirada de 500 ejemplares costeados por el autor.",
+    "descripcion": "Es la fecha del colofón: se imprimió en los talleres de Pongetti, en una tirada de 500 ejemplares que pagó el autor.",
     "dia": 20,
     "mes": 5,
     "anio": 1930,
@@ -1513,7 +1513,7 @@
   },
   {
     "titulo": "Se publica «Poeta en Nueva York», de Federico García Lorca",
-    "descripcion": "Edición póstuma simultánea: original en español por Editorial Séneca (México) y edición bilingüe por Norton (EE.UU.); fecha basada en una sola fuente periodística, sin segunda fuente que la confirme",
+    "descripcion": "Edición póstuma: salió a la vez en español, por Editorial Séneca en México, y en edición bilingüe por Norton en Estados Unidos.",
     "dia": 24,
     "mes": 5,
     "anio": 1940,
@@ -1549,7 +1549,7 @@
   },
   {
     "titulo": "Se publica «Drácula», de Bram Stoker",
-    "descripcion": "\"Uncertainty exists around the exact date of publication, but it was probably published on 26 May 1897\" — Stoker le había escrito a Gladstone anunciando esa fecha; otros estudiosos ubican la publicación real entre fines de mayo y junio de 1897.",
+    "descripcion": "La fecha exacta no es segura: es la que Stoker anunció, y otros estudiosos ubican la publicación entre fines de mayo y junio de 1897.",
     "dia": 26,
     "mes": 5,
     "anio": 1897,
@@ -1657,7 +1657,7 @@
   },
   {
     "titulo": "Se publica «La invención de Morel», de Adolfo Bioy Casares",
-    "descripcion": "Verificado por el usuario en otra sesión (2026-09-25). Editorial Losada. Dato de registro bibliográfico (Inventaire / OpenLibrary), sin segunda fuente.",
+    "descripcion": "La publicó la Editorial Losada.",
     "dia": 7,
     "mes": 6,
     "anio": 1940,
@@ -1789,7 +1789,7 @@
   },
   {
     "titulo": "Día del Editor",
-    "descripcion": "Conmemora el natalicio de Boris Spivacow (17 de junio de 1915), fundador de EUDEBA y del Centro Editor de América Latina. Es una tradición del sector editorial (universidades, editoriales) sin ley o decreto nacional identificado.",
+    "descripcion": "Recuerda el nacimiento de Boris Spivacow (17 de junio de 1915), fundador de EUDEBA y del Centro Editor de América Latina. Es una tradición del sector editorial.",
     "dia": 17,
     "mes": 6,
     "anio": null,
@@ -1969,7 +1969,7 @@
   },
   {
     "titulo": "Muere Delmira Agustini",
-    "descripcion": "Uruguay (Montevideo, 1886 – Montevideo, 1914). Discrepancia menor entre fuentes sobre el día exacto de su asesinato (6 o 7 de julio de 1914); fue asesinada por su exmarido, que luego se suicidó.",
+    "descripcion": "Uruguay (Montevideo, 1886 – Montevideo, 1914). La asesinó su exmarido. Algunas fuentes dan el 7 de julio.",
     "dia": 6,
     "mes": 7,
     "anio": 1914,
@@ -2113,7 +2113,7 @@
   },
   {
     "titulo": "Día Provincial del Libro Infantil y Juvenil (Mendoza)",
-    "descripcion": "Efeméride de calendario escolar de la provincia de Mendoza. No se encontró la norma provincial que la instituye ni una razón documentada para la fecha específica. Es provincial, no nacional.",
+    "descripcion": "Una fecha del calendario escolar de la provincia de Mendoza.",
     "dia": 21,
     "mes": 7,
     "anio": null,
@@ -2173,7 +2173,7 @@
   },
   {
     "titulo": "Se publica «Los heraldos negros», de César Vallejo",
-    "descripcion": "El libro lleva impreso el año 1918, pero la edición se retrasó por la muerte de Abraham Valdelomar (iba a prologarlo) y circuló recién el 23/7/1919; fuente única, no cruzada con una segunda",
+    "descripcion": "El libro lleva impreso el año 1918, pero la edición se demoró por la muerte de Abraham Valdelomar, que iba a prologarlo, y circuló recién en julio de 1919.",
     "dia": 23,
     "mes": 7,
     "anio": 1919,
@@ -2365,7 +2365,7 @@
   },
   {
     "titulo": "Muere Federico García Lorca",
-    "descripcion": "España (Fuente Vaqueros, Granada, 1898 – camino de Víznar a Alfacar, Granada, 1936). Fusilado al inicio de la Guerra Civil; las fuentes discrepan entre el 18 y el 19 de agosto de 1936 como fecha exacta del fusilamiento, y no se conoce con certeza el paradero de sus restos.",
+    "descripcion": "España (Fuente Vaqueros, Granada, 1898 – camino de Víznar a Alfacar, Granada, 1936). Lo fusilaron al comienzo de la Guerra Civil; algunas fuentes dan el 19 de agosto, y sus restos nunca se encontraron.",
     "dia": 18,
     "mes": 8,
     "anio": 1936,
@@ -2773,7 +2773,7 @@
   },
   {
     "titulo": "Nace Miguel de Cervantes (fecha tradicional)",
-    "descripcion": "España (Alcalá de Henares, 1547 – Madrid, 1616). Fecha de nacimiento estimada a partir de la fiesta de San Miguel; fue bautizado el 9/10/1547. Murió el 22/4/1616 y fue enterrado el 23/4 en el convento de las Trinitarias Descalzas de Madrid; España usaba ya el calendario gregoriano, por lo que su muerte no coincide en el tiempo real con la de Shakespeare pese a la fecha compartida en el santoral.",
+    "descripcion": "España (Alcalá de Henares, 1547 – Madrid, 1616). Es la fecha tradicional, por la fiesta de San Miguel: lo bautizaron el 9 de octubre de 1547.",
     "dia": 29,
     "mes": 9,
     "anio": 1547,
@@ -2821,7 +2821,7 @@
   },
   {
     "titulo": "Se publica «Baladas líricas», de William Wordsworth y Samuel Taylor Coleridge",
-    "descripcion": "Publicado anónimamente en Bristol por Joseph Cottle. El artículo principal de Wikipedia da el 4 de octubre; el artículo '1798 in literature' da el 18 de septiembre. Fecha exacta discutida entre fuentes",
+    "descripcion": "Se publicó sin firma en Bristol, editado por Joseph Cottle. Algunas fuentes dan el 18 de septiembre.",
     "dia": 4,
     "mes": 10,
     "anio": 1798,
@@ -3037,7 +3037,7 @@
   },
   {
     "titulo": "Día del Corrector de Textos",
-    "descripcion": "Instituido en 2006 por la Fundación Litterae (Argentina), en homenaje al natalicio de Erasmo de Rotterdam. Se difunde en medios como \"Día Internacional\", pero el origen identificado es una fundación argentina, no un organismo intergubernamental — por eso se lo clasifica acá como ámbito argentina.",
+    "descripcion": "Lo instituyó en 2006 la Fundación Litterae, de Argentina, en homenaje al nacimiento de Erasmo de Rotterdam.",
     "dia": 27,
     "mes": 10,
     "anio": null,
@@ -3073,7 +3073,7 @@
   },
   {
     "titulo": "Se publica «Aullido y otros poemas», de Allen Ginsberg",
-    "descripcion": "City Lights Pocket Poets Series n.º 4; varias fuentes solo confirman 'otoño de 1956' y no corroboran el día 1/11 con una segunda fuente sólida",
+    "descripcion": "El número 4 de la colección Pocket Poets de City Lights. Varias fuentes dicen solo «otoño de 1956».",
     "dia": 1,
     "mes": 11,
     "anio": 1956,
@@ -3169,7 +3169,7 @@
   },
   {
     "titulo": "Nace Sor Juana Inés de la Cruz (fecha tradicional)",
-    "descripcion": "México (San Miguel Nepantla, 1651 – Ciudad de México, 1695). Discrepancia clásica y no resuelta: la biografía tradicional (Diego Calleja) da el 12/11/1651, pero se halló una partida bautismal de 1648 (2/12/1648) que algunos historiadores creen que le corresponde, ligada a su condición de hija natural. Ambas fechas circulan como válidas.",
+    "descripcion": "México (San Miguel Nepantla, 1651 – Ciudad de México, 1695). Es la fecha de la biografía tradicional; una partida bautismal de 1648 podría ser la suya, y las dos fechas circulan.",
     "dia": 12,
     "mes": 11,
     "anio": 1651,
@@ -3361,7 +3361,7 @@
   },
   {
     "titulo": "Se publica «El gaucho Martín Fierro», de José Hernández",
-    "descripcion": "Verificado por el usuario en otra sesión (2026-09-25). Edición en libro el 6/12/1872; venía anunciándose desde el 28/11 en el diario La República. Una búsqueda anterior no halló fuente sólida para el día 6.",
+    "descripcion": "La edición en libro, que venía anunciándose desde el 28 de noviembre en el diario La República.",
     "dia": 6,
     "mes": 12,
     "anio": 1872,

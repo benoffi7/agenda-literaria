@@ -39,5 +39,21 @@ export const aImportar = (entradas, slugsExistentes) => {
   return { nuevas, yaEstan, repetidas };
 };
 
+/**
+ * Las nuevas que caen **el mismo día, mes y año** que una que ya está en la base
+ * con otro slug: probablemente el mismo hecho cargado a mano con otro título.
+ * No se frenan —dos hechos el mismo día existen—: se informan, para mirarlas
+ * antes del `--aplicar`, porque una vez publicada el slug queda fijo (trampa 10).
+ *
+ * @param {Array<{titulo: string, slug: string, dia: number, mes: number, anio: number | null}>} nuevas
+ * @param {Array<{titulo: string, dia: number, mes: number, anio: number | null}>} existentes
+ */
+export const parecidas = (nuevas, existentes) => {
+  const clave = (e) => `${e.dia}-${e.mes}-${e.anio ?? ''}`;
+  const porDia = new Map();
+  for (const e of existentes) porDia.set(clave(e), [...(porDia.get(clave(e)) ?? []), e]);
+  return nuevas.flatMap((e) => (porDia.get(clave(e)) ?? []).map((ya) => ({ nueva: e, ya })));
+};
+
 /** Quién figura como autor: no es un uid, y dice de dónde salió el documento. */
 export const AUTOR_DE_LA_IMPORTACION = 'importacion:efemerides-literarias';

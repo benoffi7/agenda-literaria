@@ -1094,9 +1094,10 @@ Las 296 efemérides con día y mes del relevamiento del dueño (`efemerides.csv`
 2026-09-25) están en `scripts/datos/efemerides-literarias.json`, ya en la forma del
 formulario: el título dice qué pasó («Nace Umberto Eco», «Se publica «Rayuela», de
 Julio Cortázar»), las 25 que tenían solo el mes quedaron afuera a pedido, y las
-notas de investigación de las publicadas se reescribieron como el dato. Las 22 de
-fecha discutida (≈ en el PDF) entran como **borrador**, con la nota entera, para
-leerla antes de publicarlas.
+notas de investigación se reescribieron como el dato. Las 22 de fecha discutida
+(≈ en el PDF) entran como **borrador**, para revisarlas antes de publicar: la nota
+de cada una se lee en el PDF del relevamiento, no en la descripción, que es la que
+publica «Publicar».
 
 ```bash
 npm run efemerides:importar                       # informa, en el emulador
@@ -1113,8 +1114,13 @@ npm run efemerides:importar:prod -- --aplicar     # lo escribe
 - **Escribe con el Admin SDK**, que no pasa por las reglas: por eso cada entrada del
   archivo se valida en `tests/efemerides-a-importar.test.ts` contra el schema del
   formulario y contra lo que `formAEfemeride` armaría.
-- Las publicadas disparan `rebuildPorEfemerides` una vez cada una; el debounce del §8
-  las junta en un solo build.
+- **Avisa de las parecidas**: una nueva que cae el mismo día, mes y año que una que
+  ya está con otro slug sale en el informe (¿el mismo hecho cargado a mano?). No la
+  frena; mirala antes de `--aplicar`, porque publicada su link queda fijo.
+- Las publicadas disparan `rebuildPorEfemerides` una vez cada una —y otra al marcar
+  `publicadaAlgunaVez`—, unas 570 invocaciones sobre `sistema/rebuild`. Algunos
+  reintentos o errores de contención en el log de `marcarRebuild` son esperables: con
+  que una deje la marca alcanza, y el debounce del §8 las junta en un solo build.
 
 ## Entornos
 
