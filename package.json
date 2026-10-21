@@ -41,7 +41,9 @@
     "vocabulario": "FIRESTORE_EMULATOR_HOST=${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080} node scripts/vocabulario-desde-actividades.mjs",
     "vocabulario:prod": "node scripts/vocabulario-desde-actividades.mjs --produccion",
     "organizadores:unir": "FIRESTORE_EMULATOR_HOST=${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080} node scripts/unir-organizadores.mjs",
-    "organizadores:unir:prod": "node scripts/unir-organizadores.mjs"
+    "organizadores:unir:prod": "node scripts/unir-organizadores.mjs",
+    "efemerides:importar": "FIRESTORE_EMULATOR_HOST=${FIRESTORE_EMULATOR_HOST:-127.0.0.1:8080} node scripts/importar-efemerides.mjs",
+    "efemerides:importar:prod": "node scripts/importar-efemerides.mjs --produccion"
   },
   "dependencies": {
     "@astrojs/react": "~7.0.1",

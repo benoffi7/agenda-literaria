@@ -1740,6 +1740,11 @@ efemérides. El modelo está en [`03-modelo-de-datos.md`](03-modelo-de-datos.md)
 borrar una publicada—: un borrador se guarda muchas veces mientras se escribe, y
 ninguna de esas escrituras cambia el sitio (D-1174).
 
+**La carga inicial** (B-2224): las 296 efemérides con día y mes del relevamiento
+del dueño entran de una con `npm run efemerides:importar:prod` (ver
+[`08-operacion.md`](08-operacion.md#importar-las-efemérides-del-relevamiento-b-2224)).
+Las de fecha discutida llegan como borrador.
+
 **El link repetido** (B-1943): el formulario y el botón «Publicar» consultan antes
 de escribir que ninguna otra efeméride publicada use el mismo link, pero la
 consulta no es transaccional, así que dos admins que publican **en el mismo

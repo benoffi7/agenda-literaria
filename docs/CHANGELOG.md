@@ -2,6 +2,10 @@
 
 ## Sin publicar
 
+- **Las 296 efemérides del relevamiento, listas para cargar** (B-2224). Un comando las
+  importa de una vez: 274 publicadas y 22 de fecha discutida como borrador para
+  revisar. Las que tenían solo el mes quedaron afuera.
+
 - **Novedad del panel: el aviso del encuentro de más de una semana** (B-2221).
 
 - **La documentación, al día con los cambios de estos dos días**: el índice partido en

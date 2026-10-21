@@ -29,6 +29,7 @@ import {
 import { auth } from '@/lib/firebase-client';
 import { db } from '@/lib/firestore-client';
 import { efemerideVacia, formAEfemeride } from '@/lib/efemeride-schema';
+import { AUTOR_DE_LA_IMPORTACION } from '../scripts/efemerides-a-importar.mjs';
 import type { EfemerideForm, EstadoEfemeride } from '@/types/efemeride';
 import {
   PROJECT_ID,
@@ -136,6 +137,32 @@ describe.skipIf(!vivo)('efemérides contra el emulador — B-959', () => {
       const d = (await getDoc(ref)).data()!;
       expect(d.slug).toBe('cortazar-nace');
       expect(d.estado).toBe('publicado');
+    });
+
+    it('edita desde el panel una que entró por la importación (B-2224)', async () => {
+      /*
+       * `importar-efemerides.mjs` firma con `AUTOR_DE_LA_IMPORTACION`, que no es
+       * el uid de nadie. La edición no reenvía `createdBy`, así que la regla lo
+       * compara contra sí mismo y pasa: si dejara de pasar, las 296 importadas
+       * quedarían sin poder editarse.
+       */
+      const ref = nuevaRef();
+      await conAdminSdk((a) =>
+        a
+          .doc(ref.path)
+          .set({
+            ...formAEfemeride(form(), 'publicado'),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            createdBy: AUTOR_DE_LA_IMPORTACION,
+            updatedBy: AUTOR_DE_LA_IMPORTACION,
+          })
+          .then(() => {}),
+      );
+      await updateDoc(ref, edicion(form({ descripcion: 'Corregida en el panel.' }), 'publicado'));
+      const d = (await getDoc(ref)).data()!;
+      expect(d.descripcion).toBe('Corregida en el panel.');
+      expect(d.createdBy).toBe(AUTOR_DE_LA_IMPORTACION);
     });
 
     it('borra una efeméride', async () => {

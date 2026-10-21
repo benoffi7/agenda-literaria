@@ -1,0 +1,3554 @@
+[
+  {
+    "titulo": "Se publica «Frankenstein», de Mary Shelley",
+    "descripcion": "La novela de Mary Shelley. Su título completo es «Frankenstein o el moderno Prometeo».",
+    "dia": 1,
+    "mes": 1,
+    "anio": 1818,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Frankenstein"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día Mundial del Braille",
+    "descripcion": "ONU, resolución A/RES/73/161 (aprobada por la Asamblea General en noviembre de 2018), primera celebración en 2019. Fecha elegida por el natalicio de Louis Braille, creador del sistema de lectoescritura táctil.",
+    "dia": 4,
+    "mes": 1,
+    "anio": null,
+    "fuente": {
+      "texto": "Naciones Unidas",
+      "url": "https://www.un.org/es/observances/braille-day"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Albert Camus",
+    "descripcion": "Francia (Argelia) (Mondovi, Argelia, 1913 – Villeblevin, Francia, 1960). Murió en un accidente automovilístico.",
+    "dia": 4,
+    "mes": 1,
+    "anio": 1960,
+    "fuente": {
+      "texto": "dialogoexistencial.com",
+      "url": "https://www.dialogoexistencial.com/camus1/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Umberto Eco",
+    "descripcion": "Italia (Alessandria, 1932 – Milán, 2016).",
+    "dia": 5,
+    "mes": 1,
+    "anio": 1932,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Umberto_Eco"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Ricardo Piglia",
+    "descripcion": "Argentina (Adrogué, Buenos Aires, 1941 – Buenos Aires, 2017).",
+    "dia": 6,
+    "mes": 1,
+    "anio": 2017,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Ricardo_Piglia"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Osvaldo Soriano",
+    "descripcion": "Argentina (Mar del Plata, 1943 – Buenos Aires, 1997).",
+    "dia": 6,
+    "mes": 1,
+    "anio": 1943,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Osvaldo_Soriano"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Juan Rulfo",
+    "descripcion": "México (Apulco, Jalisco, 1917 – Ciudad de México, 1986).",
+    "dia": 7,
+    "mes": 1,
+    "anio": 1986,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Juan_Rulfo"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Rodolfo Walsh",
+    "descripcion": "Argentina (Lamarque, Río Negro, 1927 – Buenos Aires, 1977).",
+    "dia": 9,
+    "mes": 1,
+    "anio": 1927,
+    "fuente": {
+      "texto": "actores.org.ar",
+      "url": "https://actores.org.ar/rodolfo-walsh-49/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Gabriela Mistral",
+    "descripcion": "Chile (Vicuña, 1889 – Nueva York, EE.UU., 1957).",
+    "dia": 10,
+    "mes": 1,
+    "anio": 1957,
+    "fuente": {
+      "texto": "Memoria Chilena",
+      "url": "https://www.memoriachilena.gob.cl/602/w3-article-3429.html"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere María Elena Walsh",
+    "descripcion": "Argentina (Ramos Mejía, Buenos Aires, 1930 – Buenos Aires, 2011).",
+    "dia": 10,
+    "mes": 1,
+    "anio": 2011,
+    "fuente": {
+      "texto": "ambito.com",
+      "url": "https://www.ambito.com/informacion-general/cultura/se-cumplen-91-anos-del-nacimiento-maria-elena-walsh-icono-la-argentina-n5166699"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere James Joyce",
+    "descripcion": "Irlanda (Dublín, 1882 – Zúrich, Suiza, 1941).",
+    "dia": 13,
+    "mes": 1,
+    "anio": 1941,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/James_Joyce"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Juan Gelman",
+    "descripcion": "Argentina (Buenos Aires, 1930 – Ciudad de México, 2014). Murió exiliado, nacionalizado mexicano.",
+    "dia": 14,
+    "mes": 1,
+    "anio": 2014,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Juan_Gelman"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Lewis Carroll",
+    "descripcion": "Inglaterra (Daresbury, Cheshire, 1832 – Guildford, Surrey, 1898). Nombre real Charles Lutwidge Dodgson.",
+    "dia": 14,
+    "mes": 1,
+    "anio": 1898,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Lewis_Carroll"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Don Quijote de la Mancha», de Miguel de Cervantes",
+    "descripcion": "Primera parte. La licencia de impresión es de septiembre de 1604 y la impresión terminó en diciembre de 1604; la Wikipedia en inglés cita el 16 de enero de 1605 como fecha de aparición del libro. La Wikipedia en español, en cambio, da la tasa (aprobación) del 20 de diciembre de 1604 y sitúa la disponibilidad en Valladolid a fines de diciembre de 1604 y en Madrid a comienzos de 1605, sin día puntual — de ahí la discrepancia. La segunda parte se publicó a fines de 1615 (dedicatoria fechada el 31 de octubre de 1615), sin día exacto documentado en las fuentes consultadas.",
+    "dia": 16,
+    "mes": 1,
+    "anio": 1605,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Don_Quixote"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Nace José María Arguedas",
+    "descripcion": "Perú (Andahuaylas, 1911 – Lima, 1969).",
+    "dia": 18,
+    "mes": 1,
+    "anio": 1911,
+    "fuente": {
+      "texto": "rpp.pe",
+      "url": "https://rpp.pe/cultura/literatura/jose-maria-arguedas-a-42-anos-de-su-muerte-noticia-427853"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Rubén Darío",
+    "descripcion": "Nicaragua (Metapa (hoy Ciudad Darío), 1867 – León, 1916).",
+    "dia": 18,
+    "mes": 1,
+    "anio": 1867,
+    "fuente": {
+      "texto": "iilionline.org",
+      "url": "https://www.iilionline.org/archive/dario-ruben-metapa-nicaragua-1867-leon-1916/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Esteban Echeverría",
+    "descripcion": "Argentina (Buenos Aires, 1805 – Montevideo, Uruguay, 1851). Murió en el exilio.",
+    "dia": 19,
+    "mes": 1,
+    "anio": 1851,
+    "fuente": {
+      "texto": "Britannica",
+      "url": "https://www.britannica.com/biography/Esteban-Echeverria-Argentine-writer"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Edgar Allan Poe",
+    "descripcion": "Estados Unidos (Boston, 1809 – Baltimore, 1849).",
+    "dia": 19,
+    "mes": 1,
+    "anio": 1809,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Edgar_Allan_Poe"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere George Orwell",
+    "descripcion": "Inglaterra (Motihari, India británica, 1903 – Londres, 1950). Nombre real Eric Arthur Blair.",
+    "dia": 21,
+    "mes": 1,
+    "anio": 1950,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/George_Orwell"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Nicanor Parra",
+    "descripcion": "Chile (San Fabián de Alico, 1914 – La Reina, Santiago, 2018). Hermano de la cantautora Violeta Parra.",
+    "dia": 23,
+    "mes": 1,
+    "anio": 2018,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Nicanor_Parra"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Oliverio Girondo",
+    "descripcion": "Argentina (Buenos Aires, 1891 – Buenos Aires, 1967).",
+    "dia": 24,
+    "mes": 1,
+    "anio": 1967,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Oliverio_Girondo"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Virginia Woolf",
+    "descripcion": "Inglaterra (Londres, 1882 – Rodmell (río Ouse), 1941).",
+    "dia": 25,
+    "mes": 1,
+    "anio": 1882,
+    "fuente": {
+      "texto": "encyclopedia.com",
+      "url": "https://www.encyclopedia.com/women/encyclopedias-almanacs-transcripts-and-maps/woolf-virginia-1882-1941"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Victoria Ocampo",
+    "descripcion": "Argentina (Buenos Aires, 1890 – Buenos Aires, 1979).",
+    "dia": 27,
+    "mes": 1,
+    "anio": 1979,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Victoria_Ocampo"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Lewis Carroll",
+    "descripcion": "Inglaterra (Daresbury, Cheshire, 1832 – Guildford, Surrey, 1898).",
+    "dia": 27,
+    "mes": 1,
+    "anio": 1832,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Lewis_Carroll"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Miguel Cané",
+    "descripcion": "Argentina (Montevideo, Uruguay, 1851 – Buenos Aires, 1905).",
+    "dia": 27,
+    "mes": 1,
+    "anio": 1851,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Miguel_Can%C3%A9"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace José Martí",
+    "descripcion": "Cuba (La Habana, 1853 – Dos Ríos, 1895).",
+    "dia": 28,
+    "mes": 1,
+    "anio": 1853,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Jos%C3%A9_Mart%C3%AD"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Orgullo y prejuicio», de Jane Austen",
+    "descripcion": "El editor Thomas Egerton publicó la primera edición en tres tomos de tapa dura.",
+    "dia": 28,
+    "mes": 1,
+    "anio": 1813,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Pride_and_Prejudice"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Osvaldo Soriano",
+    "descripcion": "Argentina (Mar del Plata, 1943 – Buenos Aires, 1997).",
+    "dia": 29,
+    "mes": 1,
+    "anio": 1997,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Osvaldo_Soriano"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Tomás Eloy Martínez",
+    "descripcion": "Argentina (San Miguel de Tucumán, 1934 – Buenos Aires, 2010).",
+    "dia": 31,
+    "mes": 1,
+    "anio": 2010,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Tom%C3%A1s_Eloy_Mart%C3%ADnez"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Mary Shelley",
+    "descripcion": "Inglaterra (Londres, 1797 – Londres, 1851).",
+    "dia": 1,
+    "mes": 2,
+    "anio": 1851,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Mary_Shelley"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Wisława Szymborska",
+    "descripcion": "Polonia (Prowent (hoy Kórnik), 1923 – Cracovia, 2012).",
+    "dia": 1,
+    "mes": 2,
+    "anio": 2012,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Wis%C5%82awa_Szymborska"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace María Elena Walsh",
+    "descripcion": "Argentina (Ramos Mejía, Buenos Aires, 1930 – Buenos Aires, 2011).",
+    "dia": 1,
+    "mes": 2,
+    "anio": 1930,
+    "fuente": {
+      "texto": "ambito.com",
+      "url": "https://www.ambito.com/informacion-general/cultura/se-cumplen-91-anos-del-nacimiento-maria-elena-walsh-icono-la-argentina-n5166699"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace James Joyce",
+    "descripcion": "Irlanda (Dublín, 1882 – Zúrich, Suiza, 1941).",
+    "dia": 2,
+    "mes": 2,
+    "anio": 1882,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/James_Joyce"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Ulises», de James Joyce",
+    "descripcion": "La obra completa se publicó en París, editada por Sylvia Beach, el día en que Joyce cumplía cuarenta años.",
+    "dia": 2,
+    "mes": 2,
+    "anio": 1922,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Ulysses_(novel)"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Rubén Darío",
+    "descripcion": "Nicaragua (Metapa (hoy Ciudad Darío), 1867 – León, 1916).",
+    "dia": 6,
+    "mes": 2,
+    "anio": 1916,
+    "fuente": {
+      "texto": "iilionline.org",
+      "url": "https://www.iilionline.org/archive/dario-ruben-metapa-nicaragua-1867-leon-1916/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Jules Verne",
+    "descripcion": "Francia (Nantes, 1828 – Amiens, 1905).",
+    "dia": 8,
+    "mes": 2,
+    "anio": 1828,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Julio_Verne"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Fiódor Dostoyevski",
+    "descripcion": "Rusia (Moscú, 1821 – San Petersburgo, 1881). Fechas en calendario gregoriano. En calendario juliano (vigente en la Rusia de la época): nació el 30/10/1821 y murió el 28/1/1881.",
+    "dia": 9,
+    "mes": 2,
+    "anio": 1881,
+    "fuente": {
+      "texto": "rferl.org",
+      "url": "https://www.rferl.org/a/fyodor-dostoyevsky-200th-anniversary/31556540.html"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Liliana Heker",
+    "descripcion": "Argentina (Buenos Aires, 1943 · vive).",
+    "dia": 9,
+    "mes": 2,
+    "anio": 1943,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Liliana_Heker"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Macedonio Fernández",
+    "descripcion": "Argentina (Buenos Aires, 1874 – Buenos Aires, 1952).",
+    "dia": 10,
+    "mes": 2,
+    "anio": 1952,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Macedonio_Fern%C3%A1ndez"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Sylvia Plath",
+    "descripcion": "Estados Unidos (Boston, 1932 – Londres, 1963). Suicidio.",
+    "dia": 11,
+    "mes": 2,
+    "anio": 1963,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Sylvia_Plath"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Julio Cortázar",
+    "descripcion": "Argentina (Bruselas, Bélgica, 1914 – París, Francia, 1984).",
+    "dia": 12,
+    "mes": 2,
+    "anio": 1984,
+    "fuente": {
+      "texto": "lecturalia.com",
+      "url": "https://www.lecturalia.com/autor/936/julio-cortazar"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Ricardo Güiraldes",
+    "descripcion": "Argentina (Buenos Aires, 1886 – París, Francia, 1927).",
+    "dia": 13,
+    "mes": 2,
+    "anio": 1886,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Ricardo_G%C3%BCiraldes"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «The Tower», de William Butler Yeats",
+    "descripcion": "Primera edición de 2000 ejemplares, publicada por Macmillan en Londres.",
+    "dia": 14,
+    "mes": 2,
+    "anio": 1928,
+    "fuente": {
+      "texto": "Bibliografía de Allan Wade",
+      "url": "https://vdoc.pub/documents/the-tower-1928-a-facsimile-edition"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Domingo Faustino Sarmiento",
+    "descripcion": "Argentina (San Juan, 1811 – Asunción, Paraguay, 1888).",
+    "dia": 15,
+    "mes": 2,
+    "anio": 1811,
+    "fuente": {
+      "texto": "casarosada.gob.ar",
+      "url": "https://www.casarosada.gob.ar/la-casa-rosada/bustos-presidenciales/50507-domingo-faustino-sarmiento-1811-1888"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Doña Bárbara», de Rómulo Gallegos",
+    "descripcion": "Ese día se publicó la novela de Rómulo Gallegos.",
+    "dia": 15,
+    "mes": 2,
+    "anio": 1929,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Do%C3%B1a_B%C3%A1rbara"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Residencia en la tierra (primer volumen)», de Pablo Neruda",
+    "descripcion": "Editorial Nascimento, edición de lujo de 100 ejemplares. Las fuentes discrepan entre el 16 de febrero y el 10 de abril de 1933 como fecha exacta, sin consenso pleno (nota preexistente). Se optó por el 16 de febrero por estar respaldado también, de forma independiente, por la biografía de Adam Feinstein, 'Pablo Neruda: A Passion for Life' (Bloomsbury, 2004), que da tirada de 100 ejemplares en esa fecha.",
+    "dia": 16,
+    "mes": 2,
+    "anio": 1933,
+    "fuente": {
+      "texto": "cultura.fundacionneruda.org",
+      "url": "https://cultura.fundacionneruda.org/2023/02/neruda-1933-el-ano-de-residencia-en-la-tierra/"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Muere Leopoldo Lugones",
+    "descripcion": "Argentina (Villa María del Río Seco, Córdoba, 1874 – Tigre, Buenos Aires, 1938). Suicidio (cianuro).",
+    "dia": 18,
+    "mes": 2,
+    "anio": 1938,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Leopoldo_Lugones"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Toni Morrison",
+    "descripcion": "Estados Unidos (Lorain, Ohio, 1931 – Nueva York, 2019).",
+    "dia": 18,
+    "mes": 2,
+    "anio": 1931,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Toni_Morrison"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Horacio Quiroga",
+    "descripcion": "Uruguay (Salto, 1878 – Buenos Aires, Argentina, 1937). Suicidio con cianuro tras un diagnóstico de cáncer de próstata.",
+    "dia": 19,
+    "mes": 2,
+    "anio": 1937,
+    "fuente": {
+      "texto": "Biblioteca Nacional",
+      "url": "https://www.bn.gov.ar/noticias/31-de-diciembre-de-1878-nace-horacio-quiroga"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Umberto Eco",
+    "descripcion": "Italia (Alessandria, 1932 – Milán, 2016).",
+    "dia": 19,
+    "mes": 2,
+    "anio": 2016,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Umberto_Eco"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «La canción de Buenos Aires, tango, blues», de Leónidas Lamborghini",
+    "descripcion": "Es la fecha del colofón: el libro se terminó de imprimir ese día en los talleres A.G.8., en Buenos Aires.",
+    "dia": 19,
+    "mes": 2,
+    "anio": 1968,
+    "fuente": {
+      "texto": "Internet Archive",
+      "url": "https://archive.org/details/leonidas-c-lamborghini-la-cancion-de-buenos-aires-tango-blues-1968"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Elsa Bornemann",
+    "descripcion": "Argentina (Buenos Aires, 1952 – Buenos Aires, 2013).",
+    "dia": 20,
+    "mes": 2,
+    "anio": 1952,
+    "fuente": {
+      "texto": "lanacion.com.ar",
+      "url": "https://www.lanacion.com.ar/sociedad/murio-la-escritora-elsa-bornemann-nid1585185/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día Internacional de la Lengua Materna",
+    "descripcion": "UNESCO, proclamado en su 30ª Conferencia General (17 de noviembre de 1999) por iniciativa de Bangladesh, en conmemoración del movimiento lingüístico bengalí de 1952. Se celebra desde el año 2000.",
+    "dia": 21,
+    "mes": 2,
+    "anio": null,
+    "fuente": {
+      "texto": "UNESCO",
+      "url": "https://www.unesco.org/en/days/mother-language"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Antonio Machado",
+    "descripcion": "España (Sevilla, 1875 – Collioure, Francia, 1939). Murió en el exilio, tres días antes que su madre.",
+    "dia": 22,
+    "mes": 2,
+    "anio": 1939,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Antonio_Machado"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Victor Hugo",
+    "descripcion": "Francia (Besanzón, 1802 – París, 1885).",
+    "dia": 26,
+    "mes": 2,
+    "anio": 1802,
+    "fuente": {
+      "texto": "catacultural.com",
+      "url": "https://www.catacultural.com/victor-hugo-besanzon-26-de-febrero-de-1802-paris-22-de-mayo-de-1885/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «La vuelta de Martín Fierro», de José Hernández",
+    "descripcion": "Segunda parte del poema, publicada por la Librería del Plata, Buenos Aires",
+    "dia": 1,
+    "mes": 3,
+    "anio": 1879,
+    "fuente": {
+      "texto": "Biblioteca Virtual Miguel de Cervantes",
+      "url": "https://www.cervantesvirtual.com/obra/la-vuelta-de-martin-fierro--0/"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Se publica «La peregrinación de Childe Harold (cantos I y II)», de Lord Byron",
+    "descripcion": "Wikipedia da el 3 de marzo de 1812 (agotado en tres días); otras fuentes de época (Moore, Dallas) citan el 29 de febrero o el 10 de marzo. No hay consenso absoluto sobre el día exacto",
+    "dia": 3,
+    "mes": 3,
+    "anio": 1812,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Childe_Harold%27s_Pilgrimage"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Nace Gabriel García Márquez",
+    "descripcion": "Colombia (Aracataca, 1927 – Ciudad de México, 2014).",
+    "dia": 6,
+    "mes": 3,
+    "anio": 1927,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Gabriel_Garc%C3%ADa_M%C3%A1rquez"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Adolfo Bioy Casares",
+    "descripcion": "Argentina (Buenos Aires, 1914 – Buenos Aires, 1999).",
+    "dia": 8,
+    "mes": 3,
+    "anio": 1999,
+    "fuente": {
+      "texto": "infobae.com",
+      "url": "https://www.infobae.com/cultura/2019/03/08/la-invencion-de-bioy-casares-un-repaso-por-su-vida-y-sus-libros-a-20-anos-de-su-muerte/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Juana de Ibarbourou",
+    "descripcion": "Uruguay (Melo, 1892 – Montevideo, 1979). Durante mucho tiempo se dio 1895 como año de nacimiento; el registro civil confirma que es 1892.",
+    "dia": 8,
+    "mes": 3,
+    "anio": 1892,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Juana_de_Ibarbourou"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Le Bestiaire ou Cortège d'Orphée», de Guillaume Apollinaire",
+    "descripcion": "Publicado por la editorial Deplanche, con ilustraciones de Raoul Dufy.",
+    "dia": 15,
+    "mes": 3,
+    "anio": 1911,
+    "fuente": {
+      "texto": "metmuseum.org",
+      "url": "https://www.metmuseum.org/art/collection/search/345021"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace César Vallejo",
+    "descripcion": "Perú (Santiago de Chuco, 1892 – París, Francia, 1938).",
+    "dia": 16,
+    "mes": 3,
+    "anio": 1892,
+    "fuente": {
+      "texto": "akal.com",
+      "url": "https://www.akal.com/autor/cesar-vallejo/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Olga Orozco",
+    "descripcion": "Argentina (Toay, La Pampa, 1920 – Buenos Aires, 1999).",
+    "dia": 17,
+    "mes": 3,
+    "anio": 1920,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Olga_Orozco"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día Mundial de la Poesía",
+    "descripcion": "UNESCO, proclamado en su 30ª Conferencia General en París (16 de noviembre de 1999). Primera celebración en el año 2000.",
+    "dia": 21,
+    "mes": 3,
+    "anio": null,
+    "fuente": {
+      "texto": "UNESCO",
+      "url": "https://www.unesco.org/en/days/poetry"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Johann Wolfgang von Goethe",
+    "descripcion": "Alemania (Fráncfort del Meno, 1749 – Weimar, 1832).",
+    "dia": 22,
+    "mes": 3,
+    "anio": 1832,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Johann_Wolfgang_von_Goethe"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Jules Verne",
+    "descripcion": "Francia (Nantes, 1828 – Amiens, 1905).",
+    "dia": 24,
+    "mes": 3,
+    "anio": 1905,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Julio_Verne"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Rodolfo Walsh",
+    "descripcion": "Argentina (Lamarque, Río Negro, 1927 – Buenos Aires, 1977). Asesinado por un grupo de tareas de la dictadura tras distribuir su Carta abierta de un escritor a la Junta Militar; su cuerpo nunca fue hallado.",
+    "dia": 25,
+    "mes": 3,
+    "anio": 1977,
+    "fuente": {
+      "texto": "actores.org.ar",
+      "url": "https://actores.org.ar/rodolfo-walsh-49/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Walt Whitman",
+    "descripcion": "Estados Unidos (West Hills, Long Island, 1819 – Camden, Nueva Jersey, 1892).",
+    "dia": 26,
+    "mes": 3,
+    "anio": 1892,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Walt_Whitman"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Abelardo Castillo",
+    "descripcion": "Argentina (San Pedro, Buenos Aires, 1935 – Buenos Aires, 2017).",
+    "dia": 27,
+    "mes": 3,
+    "anio": 1935,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Abelardo_Castillo"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Virginia Woolf",
+    "descripcion": "Inglaterra (Londres, 1882 – Rodmell (río Ouse), 1941). Suicidio: se ahogó en el río Ouse tras llenarse los bolsillos del abrigo con piedras.",
+    "dia": 28,
+    "mes": 3,
+    "anio": 1941,
+    "fuente": {
+      "texto": "encyclopedia.com",
+      "url": "https://www.encyclopedia.com/women/encyclopedias-almanacs-transcripts-and-maps/woolf-virginia-1882-1941"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Mario Vargas Llosa",
+    "descripcion": "Perú (Arequipa, 1936 – Lima, 2025).",
+    "dia": 28,
+    "mes": 3,
+    "anio": 1936,
+    "fuente": {
+      "texto": "nationalgeographicla.com",
+      "url": "https://www.nationalgeographicla.com/historia/2025/04/quien-fue-mario-vargas-llosa-un-breve-recorrido-por-su-biografia-a-traves-de-5-datos"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Roberto Juarroz",
+    "descripcion": "Argentina (Coronel Dorrego, Buenos Aires, 1925 – Temperley, Buenos Aires, 1995).",
+    "dia": 31,
+    "mes": 3,
+    "anio": 1995,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Roberto_Juarroz"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Octavio Paz",
+    "descripcion": "México (Ciudad de México, 1914 – Ciudad de México, 1998).",
+    "dia": 31,
+    "mes": 3,
+    "anio": 1914,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Octavio_Paz"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Los miserables», de Victor Hugo",
+    "descripcion": "La primera publicación fue en Bruselas; la edición de París salió el 3 de abril de 1862.",
+    "dia": 31,
+    "mes": 3,
+    "anio": 1862,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Les_Mis%C3%A9rables"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día del Traductor Público",
+    "descripcion": "Origen impreciso y con versiones contradictorias entre fuentes: distintas notas ubican el hito fundacional en 1897, 1943 o 1964, y hay desacuerdo sobre si la fecha correcta debía ser el 19 o el 21 de abril (se atribuye a un error de caligrafía al labrar actas). No se encontró el decreto/resolución exacto. Vinculado a la primera entrega de diplomas periciales de traductores públicos.",
+    "dia": 1,
+    "mes": 4,
+    "anio": null,
+    "fuente": {
+      "texto": "extension.uncoma.edu.ar",
+      "url": "https://extension.uncoma.edu.ar/index.php/observatorio-de-graduados/dia-de-los-profesionales-de-traductorado-publico-en-argentina/"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Día Internacional del Libro Infantil y Juvenil",
+    "descripcion": "Instituido por IBBY (International Board on Books for Young People) en 1967. La fecha conmemora el natalicio de Hans Christian Andersen (2 de abril de 1805). No es un día UNESCO; UNESCO lo reconoce y difunde pero el origen institucional es IBBY.",
+    "dia": 2,
+    "mes": 4,
+    "anio": null,
+    "fuente": {
+      "texto": "ibby.org",
+      "url": "https://www.ibby.org/es/awards-activities/activities/dia-internacional-del-libro-infantil"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Hans Christian Andersen",
+    "descripcion": "Dinamarca (Odense, 1805 – Copenhague, 1875).",
+    "dia": 2,
+    "mes": 4,
+    "anio": 1805,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Hans_Christian_Andersen"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «El principito», de Antoine de Saint-Exupéry",
+    "descripcion": "Lo publicó Reynal & Hitchcock en Nueva York, en inglés y en francés a la vez.",
+    "dia": 6,
+    "mes": 4,
+    "anio": 1943,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/The_Little_Prince"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Gabriela Mistral",
+    "descripcion": "Chile (Vicuña, 1889 – Nueva York, EE.UU., 1957).",
+    "dia": 7,
+    "mes": 4,
+    "anio": 1889,
+    "fuente": {
+      "texto": "Memoria Chilena",
+      "url": "https://www.memoriachilena.gob.cl/602/w3-article-3429.html"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Victoria Ocampo",
+    "descripcion": "Argentina (Buenos Aires, 1890 – Buenos Aires, 1979).",
+    "dia": 7,
+    "mes": 4,
+    "anio": 1890,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Victoria_Ocampo"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Charles Baudelaire",
+    "descripcion": "Francia (París, 1821 – París, 1867).",
+    "dia": 9,
+    "mes": 4,
+    "anio": 1821,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Charles_Baudelaire"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «El gran Gatsby», de F. Scott Fitzgerald",
+    "descripcion": "Se publicó con el título «The Great Gatsby».",
+    "dia": 10,
+    "mes": 4,
+    "anio": 1925,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/The_Great_Gatsby"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Madame Bovary», de Gustave Flaubert",
+    "descripcion": "Publicación en libro: 12 de abril de 1857. La entrega por partes en la Revue de Paris fue anterior, del 1 de octubre al 15 de diciembre de 1856.",
+    "dia": 12,
+    "mes": 4,
+    "anio": 1857,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Madame_Bovary"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Eduardo Galeano",
+    "descripcion": "Uruguay (Montevideo, 1940 – Montevideo, 2015).",
+    "dia": 13,
+    "mes": 4,
+    "anio": 2015,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Eduardo_Galeano"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Mario Vargas Llosa",
+    "descripcion": "Perú (Arequipa, 1936 – Lima, 2025).",
+    "dia": 13,
+    "mes": 4,
+    "anio": 2025,
+    "fuente": {
+      "texto": "nationalgeographicla.com",
+      "url": "https://www.nationalgeographicla.com/historia/2025/04/quien-fue-mario-vargas-llosa-un-breve-recorrido-por-su-biografia-a-traves-de-5-datos"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere César Vallejo",
+    "descripcion": "Perú (Santiago de Chuco, 1892 – París, Francia, 1938).",
+    "dia": 15,
+    "mes": 4,
+    "anio": 1938,
+    "fuente": {
+      "texto": "akal.com",
+      "url": "https://www.akal.com/autor/cesar-vallejo/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Calligrammes», de Guillaume Apollinaire",
+    "descripcion": "Es la fecha del colofón: la impresión terminó ese día, en la editorial Mercure de France.",
+    "dia": 15,
+    "mes": 4,
+    "anio": 1918,
+    "fuente": {
+      "texto": "vincent.giverne.free.fr",
+      "url": "http://vincent.giverne.free.fr/pdf/calligrammes.pdf"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Personae», de Ezra Pound",
+    "descripcion": "Lo publicó Elkin Mathews en Londres, impreso por Chiswick Press, con una tirada de mil ejemplares.",
+    "dia": 16,
+    "mes": 4,
+    "anio": 1909,
+    "fuente": {
+      "texto": "poundian.com",
+      "url": "https://poundian.com/library/item/A3"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Gabriel García Márquez",
+    "descripcion": "Colombia (Aracataca, 1927 – Ciudad de México, 2014).",
+    "dia": 17,
+    "mes": 4,
+    "anio": 2014,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Gabriel_Garc%C3%ADa_M%C3%A1rquez"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Sor Juana Inés de la Cruz",
+    "descripcion": "México (San Miguel Nepantla, 1651 – Ciudad de México, 1695). El año de nacimiento se discute: una partida bautismal de 1648 podría ser la suya.",
+    "dia": 17,
+    "mes": 4,
+    "anio": 1695,
+    "fuente": {
+      "texto": "Britannica",
+      "url": "https://www.britannica.com/biography/Sor-Juana-Ines-de-la-Cruz"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Octavio Paz",
+    "descripcion": "México (Ciudad de México, 1914 – Ciudad de México, 1998).",
+    "dia": 19,
+    "mes": 4,
+    "anio": 1998,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Octavio_Paz"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Alcools», de Guillaume Apollinaire",
+    "descripcion": "Fecha de colofón. 'L'achevé d'imprimer d'Alcools portera la date du 20 avril 1913' (revista literaria L'Éléphant, número dedicado al centenario). Otras fuentes institucionales (BnF/FranceArchives) confirman 'avril 1913' sin precisar el día.",
+    "dia": 20,
+    "mes": 4,
+    "anio": 1913,
+    "fuente": {
+      "texto": "lelephant-larevue.fr",
+      "url": "https://lelephant-larevue.fr/formats/alcools-son-centenaire-et-sa-petite-histoire/"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Se publica «Motivos de son», de Nicolás Guillén",
+    "descripcion": "Salió en la página «Ideales de una Raza» del Diario de la Marina.",
+    "dia": 20,
+    "mes": 4,
+    "anio": 1930,
+    "fuente": {
+      "texto": "Fundación Nicolás Guillén",
+      "url": "http://www.fguillen.cult.cu/biografia/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Manuel Mujica Láinez",
+    "descripcion": "Argentina (Buenos Aires, 1910 – Cruz Chica, Córdoba, 1984).",
+    "dia": 21,
+    "mes": 4,
+    "anio": 1984,
+    "fuente": {
+      "texto": "Ministerio de Cultura",
+      "url": "https://www.cultura.gob.ar/manuel-mujica-lainez-un-escritor-olvidado-9482/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Miguel de Cervantes",
+    "descripcion": "España (Alcalá de Henares, 1547 – Madrid, 1616). Fecha de nacimiento estimada a partir de la fiesta de San Miguel; fue bautizado el 9/10/1547. Murió el 22/4/1616 y fue enterrado el 23/4 en el convento de las Trinitarias Descalzas de Madrid; España usaba ya el calendario gregoriano, por lo que su muerte no coincide en el tiempo real con la de Shakespeare pese a la fecha compartida en el santoral.",
+    "dia": 22,
+    "mes": 4,
+    "anio": 1616,
+    "fuente": {
+      "texto": "blog.oup.com",
+      "url": "https://blog.oup.com/2012/04/shakespeare-cervantes-die-april-23-1616/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día Mundial del Libro y del Derecho de Autor",
+    "descripcion": "UNESCO, proclamado en su Conferencia General de 1995 a propuesta de España (impulsada por la Unión Internacional de Editores). Fecha simbólica: coincide con la muerte de Cervantes, Shakespeare y el Inca Garcilaso de la Vega (23 de abril de 1616, con matices de calendario).",
+    "dia": 23,
+    "mes": 4,
+    "anio": null,
+    "fuente": {
+      "texto": "Argentina.gob.ar",
+      "url": "https://www.argentina.gob.ar/noticias/23-de-abril-dia-mundial-del-libro-y-del-derecho-de-autor"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día del Idioma Español (Naciones Unidas)",
+    "descripcion": "Establecido por el Departamento de Información Pública de la ONU en 2010, dentro de los \"días de las lenguas\" de la organización. Comparte fecha con el Día del Libro en homenaje a Cervantes.",
+    "dia": 23,
+    "mes": 4,
+    "anio": null,
+    "fuente": {
+      "texto": "Naciones Unidas",
+      "url": "https://www.un.org/es/observances/spanish-language-day"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere William Shakespeare",
+    "descripcion": "Inglaterra (Stratford-upon-Avon, 1564 – Stratford-upon-Avon, 1616). 26/4/1564 es la fecha de su bautismo, no de nacimiento (desconocida con certeza; tradicionalmente se asume el 23/4/1564). Su muerte (23/4/1616) está registrada en calendario juliano, vigente en Inglaterra en esa fecha; España ya usaba el gregoriano, por lo que pese a la coincidencia de fecha con Cervantes, no murieron el mismo día real.",
+    "dia": 23,
+    "mes": 4,
+    "anio": 1616,
+    "fuente": {
+      "texto": "shakespeare.org.uk",
+      "url": "https://www.shakespeare.org.uk/explore-shakespeare/shakespedia/william-shakespeare/when-was-shakespeare-born/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «A Witness Tree», de Robert Frost",
+    "descripcion": "Lo publicó Henry Holt and Company, con una edición firmada de 735 ejemplares.",
+    "dia": 23,
+    "mes": 4,
+    "anio": 1942,
+    "fuente": {
+      "texto": "Barron Rare Books",
+      "url": ""
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Alejo Carpentier",
+    "descripcion": "Cuba (Lausana, Suiza, 1904 – París, Francia, 1980). Siempre dijo haber nacido en La Habana; documentos hallados tras su muerte muestran que nació en Lausana y que su familia emigró a Cuba poco después.",
+    "dia": 24,
+    "mes": 4,
+    "anio": 1980,
+    "fuente": {
+      "texto": "literatura.us",
+      "url": "https://www.literatura.us/alejo/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Robinson Crusoe», de Daniel Defoe",
+    "descripcion": "Ese día se publicó la novela de Daniel Defoe.",
+    "dia": 25,
+    "mes": 4,
+    "anio": 1719,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Robinson_Crusoe"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Bautizan a William Shakespeare",
+    "descripcion": "Inglaterra (Stratford-upon-Avon, 1564 – Stratford-upon-Avon, 1616). 26/4/1564 es la fecha de su bautismo, no de nacimiento (desconocida con certeza; tradicionalmente se asume el 23/4/1564). Su muerte (23/4/1616) está registrada en calendario juliano, vigente en Inglaterra en esa fecha; España ya usaba el gregoriano, por lo que pese a la coincidencia de fecha con Cervantes, no murieron el mismo día real.",
+    "dia": 26,
+    "mes": 4,
+    "anio": 1564,
+    "fuente": {
+      "texto": "shakespeare.org.uk",
+      "url": "https://www.shakespeare.org.uk/explore-shakespeare/shakespedia/william-shakespeare/when-was-shakespeare-born/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día Mundial de la Propiedad Intelectual",
+    "descripcion": "OMPI/WIPO, elegido por los Estados miembro en 2000. La fecha coincide con la entrada en vigor del Convenio que establece la OMPI (26 de abril de 1970). Cubre derecho de autor, aunque no es exclusivo de libros/literatura.",
+    "dia": 26,
+    "mes": 4,
+    "anio": null,
+    "fuente": {
+      "texto": "wipo.int",
+      "url": "https://www.wipo.int/ip-outreach/es/ipday"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día del Librero",
+    "descripcion": "Fecha difundida por medios y por el sector librero (Argentina.gob.ar la reconoce), pero no se encontró la ley, decreto o resolución que la instituya, ni la institución que la estableció originalmente.",
+    "dia": 26,
+    "mes": 4,
+    "anio": null,
+    "fuente": {
+      "texto": "Argentina.gob.ar",
+      "url": "https://www.argentina.gob.ar/noticias/dia-del-librero-reconocimiento-un-actor-clave-en-la-promocion-de-la-lectura"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Nace Roberto Arlt",
+    "descripcion": "Argentina (Buenos Aires, 1900 – Buenos Aires, 1942).",
+    "dia": 26,
+    "mes": 4,
+    "anio": 1900,
+    "fuente": {
+      "texto": "Biblioteca Virtual Miguel de Cervantes",
+      "url": "https://www.cervantesvirtual.com/portales/roberto_arlt/autor_cronologia/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Secuestran a Héctor Germán Oesterheld",
+    "descripcion": "Lo secuestró la última dictadura militar y sigue desaparecido. Argentina (Buenos Aires, 1919).",
+    "dia": 27,
+    "mes": 4,
+    "anio": 1977,
+    "fuente": {
+      "texto": "perfil.com",
+      "url": "https://www.perfil.com/noticias/actualidad/una-historieta-una-familia-una-ausencia-la-memoria-del-creador-de-el-eternauta.phtml"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Idea Vilariño",
+    "descripcion": "Uruguay (Montevideo, 1920 – Montevideo, 2009).",
+    "dia": 28,
+    "mes": 4,
+    "anio": 2009,
+    "fuente": {
+      "texto": "escritores.org",
+      "url": "https://www.escritores.org/biografias/117-idea-vilarino"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Roberto Bolaño",
+    "descripcion": "Chile (Santiago, 1953 – Barcelona, España, 2003).",
+    "dia": 28,
+    "mes": 4,
+    "anio": 1953,
+    "fuente": {
+      "texto": "Memoria Chilena",
+      "url": "https://www.memoriachilena.gob.cl/602/w3-article-3688.html"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Alejandra Pizarnik",
+    "descripcion": "Argentina (Buenos Aires, 1936 – Buenos Aires, 1972).",
+    "dia": 29,
+    "mes": 4,
+    "anio": 1936,
+    "fuente": {
+      "texto": "Biblioteca Nacional",
+      "url": "https://www.bn.gov.ar/noticias/25-de-septiembre-de-1972-muere-alejandra-pizarnik"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Ernesto Sabato",
+    "descripcion": "Argentina (Rojas, Buenos Aires, 1911 – Santos Lugares, Buenos Aires, 2011).",
+    "dia": 30,
+    "mes": 4,
+    "anio": 2011,
+    "fuente": {
+      "texto": "archiletras.com",
+      "url": "https://www.archiletras.com/efemerides/muere-ernesto-sabato/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Abelardo Castillo",
+    "descripcion": "Argentina (San Pedro, Buenos Aires, 1935 – Buenos Aires, 2017).",
+    "dia": 2,
+    "mes": 5,
+    "anio": 2017,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Abelardo_Castillo"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Facundo», de Domingo F. Sarmiento",
+    "descripcion": "Ese día empezó a salir en el folletín del diario chileno El Progreso, en la primera de 25 entregas. La edición en libro llegó meses después, el mismo año.",
+    "dia": 2,
+    "mes": 5,
+    "anio": 1845,
+    "fuente": {
+      "texto": "Ministerio de Cultura",
+      "url": "https://museosarmiento.cultura.gob.ar/noticia/2-de-mayo-de-1845/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Juan Gelman",
+    "descripcion": "Argentina (Buenos Aires, 1930 – Ciudad de México, 2014).",
+    "dia": 3,
+    "mes": 5,
+    "anio": 1930,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Juan_Gelman"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Secuestran a Haroldo Conti",
+    "descripcion": "Lo secuestró la última dictadura militar y sigue desaparecido. Argentina (Chacabuco, Buenos Aires, 1925).",
+    "dia": 5,
+    "mes": 5,
+    "anio": 1976,
+    "fuente": {
+      "texto": "Ministerio de Cultura",
+      "url": "https://www.cultura.gob.ar/se-cumplen-45-anos-de-la-desaparicion-de-haroldo-conti-10476/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Marco Denevi",
+    "descripcion": "Argentina (Sáenz Peña, Buenos Aires, 1922 – Buenos Aires, 1998). El año de nacimiento se discute: pudo haber sido 1920.",
+    "dia": 12,
+    "mes": 5,
+    "anio": 1922,
+    "fuente": {
+      "texto": "sepaargentina.com",
+      "url": "https://sepaargentina.com/2020/05/26/marco-denevi-1922-1998/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «La señora Dalloway», de Virginia Woolf",
+    "descripcion": "Ese día se publicó la novela de Virginia Woolf.",
+    "dia": 14,
+    "mes": 5,
+    "anio": 1925,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Mrs_Dalloway"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Carlos Fuentes",
+    "descripcion": "México (Panamá, 1928 – Ciudad de México, 2012).",
+    "dia": 15,
+    "mes": 5,
+    "anio": 2012,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Carlos_Fuentes"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Emily Dickinson",
+    "descripcion": "Estados Unidos (Amherst, Massachusetts, 1830 – Amherst, Massachusetts, 1886).",
+    "dia": 15,
+    "mes": 5,
+    "anio": 1886,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Emily_Dickinson"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Juan Rulfo",
+    "descripcion": "México (Apulco, Jalisco, 1917 – Ciudad de México, 1986).",
+    "dia": 16,
+    "mes": 5,
+    "anio": 1917,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Juan_Rulfo"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Mario Benedetti",
+    "descripcion": "Uruguay (Paso de los Toros, 1920 – Montevideo, 2009).",
+    "dia": 17,
+    "mes": 5,
+    "anio": 2009,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Mario_Benedetti"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere José Martí",
+    "descripcion": "Cuba (La Habana, 1853 – Dos Ríos, 1895). Murió en combate por la independencia de Cuba.",
+    "dia": 19,
+    "mes": 5,
+    "anio": 1895,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Jos%C3%A9_Mart%C3%AD"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Elena Poniatowska",
+    "descripcion": "México (París, Francia, 1932 · vive).",
+    "dia": 19,
+    "mes": 5,
+    "anio": 1932,
+    "fuente": {
+      "texto": "mascultura.mx",
+      "url": "https://mascultura.mx/elena-poniatowska-biografia-nacimiento-obra/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «El extranjero», de Albert Camus",
+    "descripcion": "Lo publicó Gallimard en París, con el título original «L’Étranger».",
+    "dia": 19,
+    "mes": 5,
+    "anio": 1942,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/The_Stranger_(Camus_novel)"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Libertinagem», de Manuel Bandeira",
+    "descripcion": "Fecha de colofón. Colofón citado por un blog especializado en primeras ediciones de Drummond/Bandeira: 'impressos nas oficinas gráficas de Paulo, Pongetti & C em 20 de Maio de 1930', tirada de 500 ejemplares costeados por el autor.",
+    "dia": 20,
+    "mes": 5,
+    "anio": 1930,
+    "fuente": {
+      "texto": "colecaodrummondbandeira.blogspot.com",
+      "url": "https://colecaodrummondbandeira.blogspot.com/2016/02/libertinagem-manuel-bandeira-1930.html"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Muere Victor Hugo",
+    "descripcion": "Francia (Besanzón, 1802 – París, 1885).",
+    "dia": 22,
+    "mes": 5,
+    "anio": 1885,
+    "fuente": {
+      "texto": "catacultural.com",
+      "url": "https://www.catacultural.com/victor-hugo-besanzon-26-de-febrero-de-1802-paris-22-de-mayo-de-1885/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Elsa Bornemann",
+    "descripcion": "Argentina (Buenos Aires, 1952 – Buenos Aires, 2013).",
+    "dia": 24,
+    "mes": 5,
+    "anio": 2013,
+    "fuente": {
+      "texto": "lanacion.com.ar",
+      "url": "https://www.lanacion.com.ar/sociedad/murio-la-escritora-elsa-bornemann-nid1585185/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Poeta en Nueva York», de Federico García Lorca",
+    "descripcion": "Edición póstuma simultánea: original en español por Editorial Séneca (México) y edición bilingüe por Norton (EE.UU.); fecha basada en una sola fuente periodística, sin segunda fuente que la confirme",
+    "dia": 24,
+    "mes": 5,
+    "anio": 1940,
+    "fuente": {
+      "texto": "elespanol.com",
+      "url": "https://www.elespanol.com/el-cultural/letras/poesia/20200522/lorca-nueva-york-anos-viaje-cambio-poesia/491952358_0.html"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Nace Haroldo Conti",
+    "descripcion": "Lo secuestró la última dictadura militar y sigue desaparecido. Argentina (Chacabuco, Buenos Aires, 1925).",
+    "dia": 25,
+    "mes": 5,
+    "anio": 1925,
+    "fuente": {
+      "texto": "Ministerio de Cultura",
+      "url": "https://www.cultura.gob.ar/se-cumplen-45-anos-de-la-desaparicion-de-haroldo-conti-10476/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Rosario Castellanos",
+    "descripcion": "México (Ciudad de México, 1925 – Tel Aviv, Israel, 1974).",
+    "dia": 25,
+    "mes": 5,
+    "anio": 1925,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Rosario_Castellanos"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Drácula», de Bram Stoker",
+    "descripcion": "\"Uncertainty exists around the exact date of publication, but it was probably published on 26 May 1897\" — Stoker le había escrito a Gladstone anunciando esa fecha; otros estudiosos ubican la publicación real entre fines de mayo y junio de 1897.",
+    "dia": 26,
+    "mes": 5,
+    "anio": 1897,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Dracula"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Nace Alfonsina Storni",
+    "descripcion": "Argentina (Sala Capriasca, Suiza, 1892 – Mar del Plata, Argentina, 1938).",
+    "dia": 29,
+    "mes": 5,
+    "anio": 1892,
+    "fuente": {
+      "texto": "Biblioteca Nacional",
+      "url": "https://www.bn.gov.ar/noticias/25-de-octubre-de-1938-muere-alfonsina-storni"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Juan Carlos Onetti",
+    "descripcion": "Uruguay (Montevideo, 1909 – Madrid, España, 1994).",
+    "dia": 30,
+    "mes": 5,
+    "anio": 1994,
+    "fuente": {
+      "texto": "literatura.us",
+      "url": "https://www.literatura.us/onetti/cronologia.html"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Walt Whitman",
+    "descripcion": "Estados Unidos (West Hills, Long Island, 1819 – Camden, Nueva Jersey, 1892).",
+    "dia": 31,
+    "mes": 5,
+    "anio": 1819,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Walt_Whitman"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Macedonio Fernández",
+    "descripcion": "Argentina (Buenos Aires, 1874 – Buenos Aires, 1952).",
+    "dia": 1,
+    "mes": 6,
+    "anio": 1874,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Macedonio_Fern%C3%A1ndez"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Franz Kafka",
+    "descripcion": "Imperio austrohúngaro (Praga) (Praga, 1883 – Kierling, Austria, 1924). Murió de tuberculosis en un sanatorio cercano a Viena.",
+    "dia": 3,
+    "mes": 6,
+    "anio": 1924,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Franz_Kafka"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Federico García Lorca",
+    "descripcion": "España (Fuente Vaqueros, Granada, 1898 – camino de Víznar a Alfacar, Granada, 1936).",
+    "dia": 5,
+    "mes": 6,
+    "anio": 1898,
+    "fuente": {
+      "texto": "catacultural.com",
+      "url": "https://www.catacultural.com/federico-garcia-lorca-murio-fusilado-el-18-de-agosto-de-1936/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Cien años de soledad», de Gabriel García Márquez",
+    "descripcion": "La primera edición la publicó la editorial Sudamericana, en Buenos Aires.",
+    "dia": 5,
+    "mes": 6,
+    "anio": 1967,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Cien_a%C3%B1os_de_soledad"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día del Periodista",
+    "descripcion": "Conmemora la fundación de La Gazeta de Buenos Ayres por Mariano Moreno el 7 de junio de 1810, primer periódico de la etapa independentista. Se celebra en Argentina desde 1938. No se identificó una ley nacional puntual, sino una tradición gremial (Círculo/entidades de la prensa) sostenida por el Estado.",
+    "dia": 7,
+    "mes": 6,
+    "anio": null,
+    "fuente": {
+      "texto": "Ministerio de Cultura",
+      "url": "https://www.cultura.gob.ar/por-que-el-7-de-junio-se-celebra-el-dia-del-periodista-en-argentina_7760/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «La invención de Morel», de Adolfo Bioy Casares",
+    "descripcion": "Verificado por el usuario en otra sesión (2026-09-25). Editorial Losada. Dato de registro bibliográfico (Inventaire / OpenLibrary), sin segunda fuente.",
+    "dia": 7,
+    "mes": 6,
+    "anio": 1940,
+    "fuente": {
+      "texto": "openlibrary.org",
+      "url": "https://openlibrary.org/search?q=la+invencion+de+morel"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Se publica «1984», de George Orwell",
+    "descripcion": "La novela de George Orwell se publicó en el Reino Unido en 1949.",
+    "dia": 8,
+    "mes": 6,
+    "anio": 1949,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Nineteen_Eighty-Four"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Miguel Ángel Asturias",
+    "descripcion": "Guatemala (Ciudad de Guatemala, 1899 – Madrid, España, 1974).",
+    "dia": 9,
+    "mes": 6,
+    "anio": 1974,
+    "fuente": {
+      "texto": "sicultura.gob.gt",
+      "url": "https://www.sicultura.gob.gt/miguel-angel-asturias/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Juan José Saer",
+    "descripcion": "Argentina (Serodino, Santa Fe, 1937 – París, Francia, 2005).",
+    "dia": 11,
+    "mes": 6,
+    "anio": 2005,
+    "fuente": {
+      "texto": "sepaargentina.com",
+      "url": "https://sepaargentina.com/2020/06/09/juan-jose-saer-28-06-1937-11-06-2005/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Leopoldo Marechal",
+    "descripcion": "Argentina (Buenos Aires, 1900 – Buenos Aires, 1970).",
+    "dia": 11,
+    "mes": 6,
+    "anio": 1900,
+    "fuente": {
+      "texto": "Ministerio de Cultura",
+      "url": "https://www.cultura.gob.ar/el-26-de-junio-de-1970-fallece-leopoldo-marechal-9171/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día del Escritor y de la Escritora",
+    "descripcion": "Instituido por la Sociedad Argentina de Escritores (SADE) en 1938, tras la muerte de Leopoldo Lugones, en homenaje a su natalicio (13 de junio de 1874). SADE fue fundada por el propio Lugones en 1928.",
+    "dia": 13,
+    "mes": 6,
+    "anio": null,
+    "fuente": {
+      "texto": "Ministerio de Cultura",
+      "url": "https://www.cultura.gob.ar/13-de-junio-dia-del-escritor-10624/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Fernando Pessoa",
+    "descripcion": "Portugal (Lisboa, 1888 – Lisboa, 1935).",
+    "dia": 13,
+    "mes": 6,
+    "anio": 1888,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Fernando_Pessoa"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Leopoldo Lugones",
+    "descripcion": "Argentina (Villa María del Río Seco, Córdoba, 1874 – Tigre, Buenos Aires, 1938).",
+    "dia": 13,
+    "mes": 6,
+    "anio": 1874,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Leopoldo_Lugones"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Jorge Luis Borges",
+    "descripcion": "Argentina (Buenos Aires, 1899 – Ginebra, Suiza, 1986).",
+    "dia": 14,
+    "mes": 6,
+    "anio": 1986,
+    "fuente": {
+      "texto": "radio.perfil.com",
+      "url": "https://radio.perfil.com/noticias/podcasts/el-14-de-junio-de-1986-murio-en-ginebra-jorge-luis-borges.phtml"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Sara Gallardo",
+    "descripcion": "Argentina (Buenos Aires, 1931 – Buenos Aires, 1988).",
+    "dia": 14,
+    "mes": 6,
+    "anio": 1988,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Sara_Gallardo"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día del Libro (Argentina)",
+    "descripcion": "El 15 de junio de 1908 se entregaron los premios de un concurso literario organizado por el Consejo Nacional de Mujeres. El Decreto Nacional N.º 1038 del 17 de junio de 1924 (gobierno de Marcelo T. de Alvear) declaró esa fecha \"Fiesta del Libro\"; una resolución del Ministerio de Educación del 11 de junio de 1941 la renombró \"Día del Libro\", nombre vigente.",
+    "dia": 15,
+    "mes": 6,
+    "anio": null,
+    "fuente": {
+      "texto": "Biblioteca Nacional",
+      "url": "https://www.bn.gov.ar/noticias/15-de-junio-dia-nacional-del-libro"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día del Editor",
+    "descripcion": "Conmemora el natalicio de Boris Spivacow (17 de junio de 1915), fundador de EUDEBA y del Centro Editor de América Latina. Es una tradición del sector editorial (universidades, editoriales) sin ley o decreto nacional identificado.",
+    "dia": 17,
+    "mes": 6,
+    "anio": null,
+    "fuente": {
+      "texto": "ediciones.unq.edu.ar",
+      "url": "https://ediciones.unq.edu.ar/prensa/post/17-de-junio-dia-del-editor/"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Muere José Saramago",
+    "descripcion": "Portugal (Azinhaga, 1922 – Tías, Lanzarote, España, 2010).",
+    "dia": 18,
+    "mes": 6,
+    "anio": 2010,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Jos%C3%A9_Saramago"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Machado de Assis",
+    "descripcion": "Brasil (Río de Janeiro, 1839 – Río de Janeiro, 1908).",
+    "dia": 21,
+    "mes": 6,
+    "anio": 1839,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Machado_de_Assis"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Ernesto Sabato",
+    "descripcion": "Argentina (Rojas, Buenos Aires, 1911 – Santos Lugares, Buenos Aires, 2011).",
+    "dia": 24,
+    "mes": 6,
+    "anio": 1911,
+    "fuente": {
+      "texto": "archiletras.com",
+      "url": "https://www.archiletras.com/efemerides/muere-ernesto-sabato/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace George Orwell",
+    "descripcion": "Inglaterra (Motihari, India británica, 1903 – Londres, 1950).",
+    "dia": 25,
+    "mes": 6,
+    "anio": 1903,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/George_Orwell"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Las flores del mal», de Charles Baudelaire",
+    "descripcion": "El 25 de junio es la fecha que dan las fuentes francesas para su puesta a la venta; algunas citan el 21.",
+    "dia": 25,
+    "mes": 6,
+    "anio": 1857,
+    "fuente": {
+      "texto": "essentiels.bnf.fr",
+      "url": "https://essentiels.bnf.fr/fr/article/e0e681e1-09a5-41e5-9800-beb77e313582-fleurs-mal"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Leopoldo Marechal",
+    "descripcion": "Argentina (Buenos Aires, 1900 – Buenos Aires, 1970).",
+    "dia": 26,
+    "mes": 6,
+    "anio": 1970,
+    "fuente": {
+      "texto": "Ministerio de Cultura",
+      "url": "https://www.cultura.gob.ar/el-26-de-junio-de-1970-fallece-leopoldo-marechal-9171/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Juan José Saer",
+    "descripcion": "Argentina (Serodino, Santa Fe, 1937 – París, Francia, 2005).",
+    "dia": 28,
+    "mes": 6,
+    "anio": 1937,
+    "fuente": {
+      "texto": "sepaargentina.com",
+      "url": "https://sepaargentina.com/2020/06/09/juan-jose-saer-28-06-1937-11-06-2005/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Rayuela», de Julio Cortázar",
+    "descripcion": "La primera edición la publicó la editorial Sudamericana.",
+    "dia": 28,
+    "mes": 6,
+    "anio": 1963,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Rayuela_(novela)"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Juan Carlos Onetti",
+    "descripcion": "Uruguay (Montevideo, 1909 – Madrid, España, 1994).",
+    "dia": 1,
+    "mes": 7,
+    "anio": 1909,
+    "fuente": {
+      "texto": "literatura.us",
+      "url": "https://www.literatura.us/onetti/cronologia.html"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Ernest Hemingway",
+    "descripcion": "Estados Unidos (Oak Park, Illinois, 1899 – Ketchum, Idaho, 1961). Suicidio con arma de fuego.",
+    "dia": 2,
+    "mes": 7,
+    "anio": 1961,
+    "fuente": {
+      "texto": "historia.nationalgeographic.com.es",
+      "url": "https://historia.nationalgeographic.com.es/a/ernest-hemingway-mito-literatura-mundial_14535"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Silvina Bullrich",
+    "descripcion": "Argentina (Buenos Aires, 1915 – Ginebra, Suiza, 1990).",
+    "dia": 2,
+    "mes": 7,
+    "anio": 1990,
+    "fuente": {
+      "texto": "Argentina.gob.ar",
+      "url": "https://www.argentina.gob.ar/noticias/silvina-bullrich-110-anos-de-su-nacimiento"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Wisława Szymborska",
+    "descripcion": "Polonia (Prowent (hoy Kórnik), 1923 – Cracovia, 2012).",
+    "dia": 2,
+    "mes": 7,
+    "anio": 1923,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Wis%C5%82awa_Szymborska"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Franz Kafka",
+    "descripcion": "Imperio austrohúngaro (Praga) (Praga, 1883 – Kierling, Austria, 1924).",
+    "dia": 3,
+    "mes": 7,
+    "anio": 1883,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Franz_Kafka"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Hojas de hierba», de Walt Whitman",
+    "descripcion": "Primera edición, autoeditada por Whitman en Brooklyn",
+    "dia": 4,
+    "mes": 7,
+    "anio": 1855,
+    "fuente": {
+      "texto": "history.com",
+      "url": "https://www.history.com/this-day-in-history/july-4/first-edition-of-walt-whitmans-leaves-of-grass-is-published"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Delmira Agustini",
+    "descripcion": "Uruguay (Montevideo, 1886 – Montevideo, 1914). Discrepancia menor entre fuentes sobre el día exacto de su asesinato (6 o 7 de julio de 1914); fue asesinada por su exmarido, que luego se suicidó.",
+    "dia": 6,
+    "mes": 7,
+    "anio": 1914,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Delmira_Agustini"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Nace Marcel Proust",
+    "descripcion": "Francia (Auteuil, París, 1871 – París, 1922).",
+    "dia": 10,
+    "mes": 7,
+    "anio": 1871,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Marcel_Proust"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Matar a un ruiseñor», de Harper Lee",
+    "descripcion": "Ese día se publicó la novela de Harper Lee.",
+    "dia": 11,
+    "mes": 7,
+    "anio": 1960,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/To_Kill_a_Mockingbird"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Pablo Neruda",
+    "descripcion": "Chile (Parral, 1904 – Santiago, 1973).",
+    "dia": 12,
+    "mes": 7,
+    "anio": 1904,
+    "fuente": {
+      "texto": "bcn.cl",
+      "url": "https://www.bcn.cl/historiapolitica/resenas_parlamentarias/wiki/Pablo_Neruda"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Adonais», de Percy Bysshe Shelley",
+    "descripcion": "Shelley lo escribió en Pisa a comienzos de junio de 1821, y para el 13 de julio ya estaba impreso.",
+    "dia": 13,
+    "mes": 7,
+    "anio": 1821,
+    "fuente": {
+      "texto": "en.wikisource.org",
+      "url": "https://en.wikisource.org/wiki/The_Complete_Poetical_Works_of_Percy_Bysshe_Shelley_(ed._Hutchinson,_1914)/Adonais"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Roberto Bolaño",
+    "descripcion": "Chile (Santiago, 1953 – Barcelona, España, 2003).",
+    "dia": 14,
+    "mes": 7,
+    "anio": 2003,
+    "fuente": {
+      "texto": "Memoria Chilena",
+      "url": "https://www.memoriachilena.gob.cl/602/w3-article-3688.html"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Juana de Ibarbourou",
+    "descripcion": "Uruguay (Melo, 1892 – Montevideo, 1979). Durante mucho tiempo se dio 1895 como año de nacimiento; el registro civil confirma que es 1892.",
+    "dia": 15,
+    "mes": 7,
+    "anio": 1979,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Juana_de_Ibarbourou"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Tomás Eloy Martínez",
+    "descripcion": "Argentina (San Miguel de Tucumán, 1934 – Buenos Aires, 2010).",
+    "dia": 16,
+    "mes": 7,
+    "anio": 1934,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Tom%C3%A1s_Eloy_Mart%C3%ADnez"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «El guardián entre el centeno», de J. D. Salinger",
+    "descripcion": "La fecha se fijó después de que el Book-of-the-Month Club la eligiera como su selección de mediados del verano.",
+    "dia": 16,
+    "mes": 7,
+    "anio": 1951,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/The_Catcher_in_the_Rye"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Quino (Joaquín Salvador Lavado)",
+    "descripcion": "Argentina (Mendoza, 1932 – Mendoza, 2020).",
+    "dia": 17,
+    "mes": 7,
+    "anio": 1932,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Quino"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Jane Austen",
+    "descripcion": "Inglaterra (Steventon, 1775 – Winchester, 1817).",
+    "dia": 18,
+    "mes": 7,
+    "anio": 1817,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Jane_Austen"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Roberto Fontanarrosa",
+    "descripcion": "Argentina (Rosario, Santa Fe, 1944 – Rosario, Santa Fe, 2007).",
+    "dia": 19,
+    "mes": 7,
+    "anio": 2007,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Roberto_Fontanarrosa"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día Provincial del Libro Infantil y Juvenil (Mendoza)",
+    "descripcion": "Efeméride de calendario escolar de la provincia de Mendoza. No se encontró la norma provincial que la instituye ni una razón documentada para la fecha específica. Es provincial, no nacional.",
+    "dia": 21,
+    "mes": 7,
+    "anio": null,
+    "fuente": {
+      "texto": "mendoza.edu.ar",
+      "url": "https://www.mendoza.edu.ar/dia-provincial-del-libro-infantil-y-juvenil/"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Nace Ernest Hemingway",
+    "descripcion": "Estados Unidos (Oak Park, Illinois, 1899 – Ketchum, Idaho, 1961).",
+    "dia": 21,
+    "mes": 7,
+    "anio": 1899,
+    "fuente": {
+      "texto": "historia.nationalgeographic.com.es",
+      "url": "https://historia.nationalgeographic.com.es/a/ernest-hemingway-mito-literatura-mundial_14535"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Manuel Puig",
+    "descripcion": "Argentina (General Villegas, Buenos Aires, 1932 – Cuernavaca, México, 1990).",
+    "dia": 22,
+    "mes": 7,
+    "anio": 1990,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Manuel_Puig"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día Nacional del Payador",
+    "descripcion": "Ley 24.120 (1992), impulsada por el senador Oraldo Britos. La fecha conmemora la payada histórica entre Gabino Ezeiza y el uruguayo Juan de Nava en Paysandú, el 23 de julio de 1884. Algunas fuentes indican que la primera conmemoración efectiva fue en 1996.",
+    "dia": 23,
+    "mes": 7,
+    "anio": null,
+    "fuente": {
+      "texto": "Argentina.gob.ar",
+      "url": "https://www.argentina.gob.ar/noticias/23-de-julio-dia-del-payador"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Héctor Germán Oesterheld",
+    "descripcion": "Lo secuestró la última dictadura militar y sigue desaparecido. Argentina (Buenos Aires, 1919).",
+    "dia": 23,
+    "mes": 7,
+    "anio": 1919,
+    "fuente": {
+      "texto": "perfil.com",
+      "url": "https://www.perfil.com/noticias/actualidad/una-historieta-una-familia-una-ausencia-la-memoria-del-creador-de-el-eternauta.phtml"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Los heraldos negros», de César Vallejo",
+    "descripcion": "El libro lleva impreso el año 1918, pero la edición se retrasó por la muerte de Abraham Valdelomar (iba a prologarlo) y circuló recién el 23/7/1919; fuente única, no cruzada con una segunda",
+    "dia": 23,
+    "mes": 7,
+    "anio": 1919,
+    "fuente": {
+      "texto": "rpp.pe",
+      "url": "https://rpp.pe/cultura/literatura/los-heraldos-negros-como-nacio-el-celebre-poema-de-cesar-vallejo-noticia-1230267"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Muere Roberto Arlt",
+    "descripcion": "Argentina (Buenos Aires, 1900 – Buenos Aires, 1942). El propio Arlt modificó en distintas ocasiones el día y mes de su nacimiento; la partida de nacimiento indica 26/4/1900.",
+    "dia": 26,
+    "mes": 7,
+    "anio": 1942,
+    "fuente": {
+      "texto": "Biblioteca Virtual Miguel de Cervantes",
+      "url": "https://www.cervantesvirtual.com/portales/roberto_arlt/autor_cronologia/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Antonio Machado",
+    "descripcion": "España (Sevilla, 1875 – Collioure, Francia, 1939).",
+    "dia": 26,
+    "mes": 7,
+    "anio": 1875,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Antonio_Machado"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Hamlet», de William Shakespeare",
+    "descripcion": "Es la fecha de su inscripción en el Stationers’ Register de Londres: la primera edición impresa, de 1603, no tiene día documentado.",
+    "dia": 26,
+    "mes": 7,
+    "anio": 1602,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Hamlet"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Silvina Ocampo",
+    "descripcion": "Argentina (Buenos Aires, 1903 – Buenos Aires, 1993).",
+    "dia": 28,
+    "mes": 7,
+    "anio": 1903,
+    "fuente": {
+      "texto": "radio.perfil.com",
+      "url": "https://radio.perfil.com/noticias/podcasts/el-14-de-diciembre-de-1993-murio-la-escritora-silvina-ocampo.phtml"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Azul...», de Rubén Darío",
+    "descripcion": "Publicado en Valparaíso, Chile, en una imprenta de calle Serrano",
+    "dia": 30,
+    "mes": 7,
+    "anio": 1888,
+    "fuente": {
+      "texto": "cultura.gob.cl",
+      "url": "https://www.cultura.gob.cl/eventos-actividades/ministro-de-cultura-conmemora-los-125-anos-de-la-publicacion-de-azul-de-ruben-dario-en-valparaiso/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Isabel Allende",
+    "descripcion": "Chile (Lima, Perú, 1942 · vive).",
+    "dia": 2,
+    "mes": 8,
+    "anio": 1942,
+    "fuente": {
+      "texto": "Memoria Chilena",
+      "url": "https://www.memoriachilena.gob.cl/602/w3-article-100654.html"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Hans Christian Andersen",
+    "descripcion": "Dinamarca (Odense, 1805 – Copenhague, 1875).",
+    "dia": 4,
+    "mes": 8,
+    "anio": 1875,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Hans_Christian_Andersen"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Toni Morrison",
+    "descripcion": "Estados Unidos (Lorain, Ohio, 1931 – Nueva York, 2019).",
+    "dia": 5,
+    "mes": 8,
+    "anio": 2019,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Toni_Morrison"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Jorge Amado",
+    "descripcion": "Brasil (Ferradas, Itabuna, Bahía, 1912 – Salvador de Bahía, 2001).",
+    "dia": 6,
+    "mes": 8,
+    "anio": 2001,
+    "fuente": {
+      "texto": "escritores.org",
+      "url": "https://www.escritores.org/biografias/140-jorge-amado"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Rosario Castellanos",
+    "descripcion": "México (Ciudad de México, 1925 – Tel Aviv, Israel, 1974). Murió electrocutada por una lámpara defectuosa mientras atendía el teléfono, siendo embajadora de México en Israel.",
+    "dia": 7,
+    "mes": 8,
+    "anio": 1974,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Rosario_Castellanos"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere José Lezama Lima",
+    "descripcion": "Cuba (La Habana, 1910 – La Habana, 1976).",
+    "dia": 9,
+    "mes": 8,
+    "anio": 1976,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Jos%C3%A9_Lezama_Lima"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere José Mármol",
+    "descripcion": "Argentina (Buenos Aires, 1817 – Buenos Aires, 1871). Murió durante la epidemia de fiebre amarilla.",
+    "dia": 9,
+    "mes": 8,
+    "anio": 1871,
+    "fuente": {
+      "texto": "Biblioteca Nacional",
+      "url": "https://www.bn.gov.ar/noticias/2-de-diciembre-de-1817-nace-jose-marmol"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Jorge Amado",
+    "descripcion": "Brasil (Ferradas, Itabuna, Bahía, 1912 – Salvador de Bahía, 2001).",
+    "dia": 10,
+    "mes": 8,
+    "anio": 1912,
+    "fuente": {
+      "texto": "escritores.org",
+      "url": "https://www.escritores.org/biografias/140-jorge-amado"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Olga Orozco",
+    "descripcion": "Argentina (Toay, La Pampa, 1920 – Buenos Aires, 1999).",
+    "dia": 15,
+    "mes": 8,
+    "anio": 1999,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Olga_Orozco"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Oliverio Girondo",
+    "descripcion": "Argentina (Buenos Aires, 1891 – Buenos Aires, 1967).",
+    "dia": 17,
+    "mes": 8,
+    "anio": 1891,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Oliverio_Girondo"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Federico García Lorca",
+    "descripcion": "España (Fuente Vaqueros, Granada, 1898 – camino de Víznar a Alfacar, Granada, 1936). Fusilado al inicio de la Guerra Civil; las fuentes discrepan entre el 18 y el 19 de agosto de 1936 como fecha exacta del fusilamiento, y no se conoce con certeza el paradero de sus restos.",
+    "dia": 18,
+    "mes": 8,
+    "anio": 1936,
+    "fuente": {
+      "texto": "catacultural.com",
+      "url": "https://www.catacultural.com/federico-garcia-lorca-murio-fusilado-el-18-de-agosto-de-1936/"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Nace Idea Vilariño",
+    "descripcion": "Uruguay (Montevideo, 1920 – Montevideo, 2009).",
+    "dia": 18,
+    "mes": 8,
+    "anio": 1920,
+    "fuente": {
+      "texto": "escritores.org",
+      "url": "https://www.escritores.org/biografias/117-idea-vilarino"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día del Lector",
+    "descripcion": "Ley 26.754, sancionada en 2012, en homenaje al natalicio de Jorge Luis Borges (24 de agosto de 1899). Objetivo declarado: promover la lectura y reconocer la obra de Borges.",
+    "dia": 24,
+    "mes": 8,
+    "anio": null,
+    "fuente": {
+      "texto": "Argentina.gob.ar",
+      "url": "https://www.argentina.gob.ar/noticias/24-de-agosto-dia-del-lector-en-homenaje-jorge-luis-borges"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Jorge Luis Borges",
+    "descripcion": "Argentina (Buenos Aires, 1899 – Ginebra, Suiza, 1986).",
+    "dia": 24,
+    "mes": 8,
+    "anio": 1899,
+    "fuente": {
+      "texto": "radio.perfil.com",
+      "url": "https://radio.perfil.com/noticias/podcasts/el-14-de-junio-de-1986-murio-en-ginebra-jorge-luis-borges.phtml"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «The Map of Love», de Dylan Thomas",
+    "descripcion": "Lo publicó J. M. Dent and Sons en Londres: su primer libro con poesía y prosa juntas.",
+    "dia": 24,
+    "mes": 8,
+    "anio": 1939,
+    "fuente": {
+      "texto": "DylanThomas.com",
+      "url": ""
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Julio Cortázar",
+    "descripcion": "Argentina (Bruselas, Bélgica, 1914 – París, Francia, 1984).",
+    "dia": 26,
+    "mes": 8,
+    "anio": 1914,
+    "fuente": {
+      "texto": "lecturalia.com",
+      "url": "https://www.lecturalia.com/autor/936/julio-cortazar"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Johann Wolfgang von Goethe",
+    "descripcion": "Alemania (Fráncfort del Meno, 1749 – Weimar, 1832).",
+    "dia": 28,
+    "mes": 8,
+    "anio": 1749,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Johann_Wolfgang_von_Goethe"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Mary Shelley",
+    "descripcion": "Inglaterra (Londres, 1797 – Londres, 1851).",
+    "dia": 30,
+    "mes": 8,
+    "anio": 1797,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Mary_Shelley"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Adán Buenosayres», de Leopoldo Marechal",
+    "descripcion": "Ese día se publicó la novela de Leopoldo Marechal.",
+    "dia": 30,
+    "mes": 8,
+    "anio": 1948,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Ad%C3%A1n_Buenosayres"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Charles Baudelaire",
+    "descripcion": "Francia (París, 1821 – París, 1867).",
+    "dia": 31,
+    "mes": 8,
+    "anio": 1867,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Charles_Baudelaire"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «El llano en llamas», de Juan Rulfo",
+    "descripcion": "Lo publicó el Fondo de Cultura Económica.",
+    "dia": 1,
+    "mes": 9,
+    "anio": 1953,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/El_llano_en_llamas"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «El viejo y el mar», de Ernest Hemingway",
+    "descripcion": "Salió completo en la revista Life. La edición en libro llegó una semana después, el 8 de septiembre de 1952.",
+    "dia": 1,
+    "mes": 9,
+    "anio": 1952,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/The_Old_Man_and_the_Sea"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Esteban Echeverría",
+    "descripcion": "Argentina (Buenos Aires, 1805 – Montevideo, Uruguay, 1851).",
+    "dia": 2,
+    "mes": 9,
+    "anio": 1805,
+    "fuente": {
+      "texto": "Britannica",
+      "url": "https://www.britannica.com/biography/Esteban-Echeverria-Argentine-writer"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Eduardo Galeano",
+    "descripcion": "Uruguay (Montevideo, 1940 – Montevideo, 2015).",
+    "dia": 3,
+    "mes": 9,
+    "anio": 1940,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Eduardo_Galeano"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día de la Historieta Argentina",
+    "descripcion": "Ley 26.652, sancionada en octubre de 2010. La fecha conmemora la salida del primer número de la revista Hora Cero, dirigida por Héctor Germán Oesterheld, el 4 de septiembre de 1957, donde se originó \"El Eternauta\".",
+    "dia": 4,
+    "mes": 9,
+    "anio": null,
+    "fuente": {
+      "texto": "Argentina.gob.ar",
+      "url": "https://www.argentina.gob.ar/noticias/4-de-septiembre-dia-nacional-de-la-historieta-argentina"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Tokio blues», de Haruki Murakami",
+    "descripcion": "Lo publicó Kodansha en dos tomos. El título original es «Noruwei no Mori» («Norwegian Wood»).",
+    "dia": 4,
+    "mes": 9,
+    "anio": 1987,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://ja.wikipedia.org/wiki/%E3%83%8E%E3%83%AB%E3%82%A6%E3%82%A7%E3%82%A4%E3%81%AE%E6%A3%AE"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Miguel Cané",
+    "descripcion": "Argentina (Montevideo, Uruguay, 1851 – Buenos Aires, 1905). Autor de Juvenilia; nació en Montevideo por el exilio de su familia contra Rosas.",
+    "dia": 5,
+    "mes": 9,
+    "anio": 1905,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Miguel_Can%C3%A9"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Nicanor Parra",
+    "descripcion": "Chile (San Fabián de Alico, 1914 – La Reina, Santiago, 2018).",
+    "dia": 5,
+    "mes": 9,
+    "anio": 1914,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Nicanor_Parra"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día Internacional de la Alfabetización",
+    "descripcion": "UNESCO, proclamado en su 14ª Conferencia General (26 de octubre de 1966). Se celebra desde 1967.",
+    "dia": 8,
+    "mes": 9,
+    "anio": null,
+    "fuente": {
+      "texto": "Naciones Unidas",
+      "url": "https://www.un.org/es/observances/literacy-day"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Liev Tolstói",
+    "descripcion": "Rusia (Yásnaia Poliana, 1828 – Astapovo, 1910).",
+    "dia": 9,
+    "mes": 9,
+    "anio": 1828,
+    "fuente": {
+      "texto": "Britannica",
+      "url": "https://www.britannica.com/biography/Leo-Tolstoy"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día del Maestro",
+    "descripcion": "Decreto N.º 21.215 (19 de septiembre de 1945, presidente Edelmiro Farrell) adoptó en Argentina la fecha resuelta en 1943 por la Primera Conferencia de Ministros de Educación de las Repúblicas Americanas (Panamá). Conmemora el fallecimiento de Domingo F. Sarmiento (11 de septiembre de 1888). Vínculo con lo literario es secundario: Sarmiento fue también escritor y periodista, pero el día se celebra por su rol pedagógico, no literario.",
+    "dia": 11,
+    "mes": 9,
+    "anio": null,
+    "fuente": {
+      "texto": "frm.utn.edu.ar",
+      "url": "https://frm.utn.edu.ar/efemeride-11-de-septiembre-dia-de-las-y-los-maestros/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Domingo Faustino Sarmiento",
+    "descripcion": "Argentina (San Juan, 1811 – Asunción, Paraguay, 1888).",
+    "dia": 11,
+    "mes": 9,
+    "anio": 1888,
+    "fuente": {
+      "texto": "casarosada.gob.ar",
+      "url": "https://www.casarosada.gob.ar/la-casa-rosada/bustos-presidenciales/50507-domingo-faustino-sarmiento-1811-1888"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Manuel Mujica Láinez",
+    "descripcion": "Argentina (Buenos Aires, 1910 – Cruz Chica, Córdoba, 1984).",
+    "dia": 11,
+    "mes": 9,
+    "anio": 1910,
+    "fuente": {
+      "texto": "Ministerio de Cultura",
+      "url": "https://www.cultura.gob.ar/manuel-mujica-lainez-un-escritor-olvidado-9482/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día del Bibliotecario",
+    "descripcion": "Establecido a nivel nacional por el Decreto N.º 17.650/54 (1954), tras una resolución del Congreso de Bibliotecarios reunido en Santiago del Estero en 1942. La fecha conmemora el anuncio, el 13 de septiembre de 1810 en La Gazeta de Buenos Ayres, de la creación de la Biblioteca Pública de Buenos Aires impulsada por Mariano Moreno.",
+    "dia": 13,
+    "mes": 9,
+    "anio": null,
+    "fuente": {
+      "texto": "anm.edu.ar",
+      "url": "https://anm.edu.ar/dia-del-bibliotecario-en-la-republica-argentina/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Dante Alighieri",
+    "descripcion": "Italia (Florencia, 1265 – Rávena, 1321). Fecha de nacimiento imprecisa: por su propio testimonio en el Paraíso (nacido bajo Géminis), se ubica entre el 18 de mayo y el 17 de junio de 1265; no se conoce el día exacto.",
+    "dia": 14,
+    "mes": 9,
+    "anio": 1321,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Dante_Alighieri"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Mario Benedetti",
+    "descripcion": "Uruguay (Paso de los Toros, 1920 – Montevideo, 2009).",
+    "dia": 14,
+    "mes": 9,
+    "anio": 1920,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Mario_Benedetti"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Adolfo Bioy Casares",
+    "descripcion": "Argentina (Buenos Aires, 1914 – Buenos Aires, 1999).",
+    "dia": 15,
+    "mes": 9,
+    "anio": 1914,
+    "fuente": {
+      "texto": "infobae.com",
+      "url": "https://www.infobae.com/cultura/2019/03/08/la-invencion-de-bioy-casares-un-repaso-por-su-vida-y-sus-libros-a-20-anos-de-su-muerte/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Beloved», de Toni Morrison",
+    "descripcion": "Ese día se publicó la novela de Toni Morrison.",
+    "dia": 16,
+    "mes": 9,
+    "anio": 1987,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Beloved_(novel)"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día Internacional de las Lenguas de Señas",
+    "descripcion": "ONU, resolución A/RES/72/161 (aprobada por consenso el 19 de diciembre de 2017) a propuesta de la Federación Mundial de Sordos. Primera celebración en 2018. La fecha conmemora la fundación de esa Federación en 1951.",
+    "dia": 23,
+    "mes": 9,
+    "anio": null,
+    "fuente": {
+      "texto": "Naciones Unidas",
+      "url": "https://www.un.org/es/observances/sign-languages-day"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día de las Bibliotecas Populares",
+    "descripcion": "Decreto N.º 1935/1990. La fecha conmemora la promulgación de la Ley 419 el 23 de septiembre de 1870, que creó la Comisión Protectora de Bibliotecas Populares (hoy CONABIP), impulsada por Domingo Faustino Sarmiento.",
+    "dia": 23,
+    "mes": 9,
+    "anio": null,
+    "fuente": {
+      "texto": "Biblioteca Nacional",
+      "url": "https://www.bn.gov.ar/noticias/23-de-septiembre-nacimiento-de-mariano-moreno-ley-419-y-dia-de-las-bibliotecas-populares"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Pablo Neruda",
+    "descripcion": "Chile (Parral, 1904 – Santiago, 1973).",
+    "dia": 23,
+    "mes": 9,
+    "anio": 1973,
+    "fuente": {
+      "texto": "bcn.cl",
+      "url": "https://www.bcn.cl/historiapolitica/resenas_parlamentarias/wiki/Pablo_Neruda"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Alejandra Pizarnik",
+    "descripcion": "Argentina (Buenos Aires, 1936 – Buenos Aires, 1972). Suicidio por sobredosis de secobarbital.",
+    "dia": 25,
+    "mes": 9,
+    "anio": 1972,
+    "fuente": {
+      "texto": "Biblioteca Nacional",
+      "url": "https://www.bn.gov.ar/noticias/25-de-septiembre-de-1972-muere-alejandra-pizarnik"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «La carretera», de Cormac McCarthy",
+    "descripcion": "Ese día se publicó la novela de Cormac McCarthy.",
+    "dia": 26,
+    "mes": 9,
+    "anio": 2006,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/The_Road"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Machado de Assis",
+    "descripcion": "Brasil (Río de Janeiro, 1839 – Río de Janeiro, 1908).",
+    "dia": 29,
+    "mes": 9,
+    "anio": 1908,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Machado_de_Assis"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Miguel de Cervantes (fecha tradicional)",
+    "descripcion": "España (Alcalá de Henares, 1547 – Madrid, 1616). Fecha de nacimiento estimada a partir de la fiesta de San Miguel; fue bautizado el 9/10/1547. Murió el 22/4/1616 y fue enterrado el 23/4 en el convento de las Trinitarias Descalzas de Madrid; España usaba ya el calendario gregoriano, por lo que su muerte no coincide en el tiempo real con la de Shakespeare pese a la fecha compartida en el santoral.",
+    "dia": 29,
+    "mes": 9,
+    "anio": 1547,
+    "fuente": {
+      "texto": "blog.oup.com",
+      "url": "https://blog.oup.com/2012/04/shakespeare-cervantes-die-april-23-1616/"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Día Internacional de la Traducción",
+    "descripcion": "ONU, resolución A/RES/71/288 (24 de mayo de 2017). Oficializa una conmemoración que la Federación Internacional de Traductores (FIT) venía celebrando desde 1991. Fecha en honor a San Jerónimo (patrono de los traductores, murió el 30 de septiembre del año 420).",
+    "dia": 30,
+    "mes": 9,
+    "anio": null,
+    "fuente": {
+      "texto": "Naciones Unidas",
+      "url": "https://www.un.org/es/observances/international-translation-day"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Quino (Joaquín Salvador Lavado)",
+    "descripcion": "Argentina (Mendoza, 1932 – Mendoza, 2020). Nació el 17 de julio, aunque quedó registrado oficialmente el 17 de agosto.",
+    "dia": 30,
+    "mes": 9,
+    "anio": 2020,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Quino"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Silvina Bullrich",
+    "descripcion": "Argentina (Buenos Aires, 1915 – Ginebra, Suiza, 1990).",
+    "dia": 4,
+    "mes": 10,
+    "anio": 1915,
+    "fuente": {
+      "texto": "Argentina.gob.ar",
+      "url": "https://www.argentina.gob.ar/noticias/silvina-bullrich-110-anos-de-su-nacimiento"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Baladas líricas», de William Wordsworth y Samuel Taylor Coleridge",
+    "descripcion": "Publicado anónimamente en Bristol por Joseph Cottle. El artículo principal de Wikipedia da el 4 de octubre; el artículo '1798 in literature' da el 18 de septiembre. Fecha exacta discutida entre fuentes",
+    "dia": 4,
+    "mes": 10,
+    "anio": 1798,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Lyrical_Ballads"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Nace José Donoso",
+    "descripcion": "Chile (Santiago, 1924 – Santiago, 1996).",
+    "dia": 5,
+    "mes": 10,
+    "anio": 1924,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Jos%C3%A9_Donoso"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Laura Devetach",
+    "descripcion": "Argentina (Reconquista, Santa Fe, 1936 · vive).",
+    "dia": 5,
+    "mes": 10,
+    "anio": 1936,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Laura_Devetach"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Roberto Juarroz",
+    "descripcion": "Argentina (Coronel Dorrego, Buenos Aires, 1925 – Temperley, Buenos Aires, 1995).",
+    "dia": 5,
+    "mes": 10,
+    "anio": 1925,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Roberto_Juarroz"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Versos sencillos», de José Martí",
+    "descripcion": "Publicado en Nueva York por Louis Weiss & Co.; último libro impreso en vida del autor",
+    "dia": 6,
+    "mes": 10,
+    "anio": 1891,
+    "fuente": {
+      "texto": "josemarti.cu",
+      "url": "https://www.josemarti.cu/filatelia-los-versos-sencillos-de-jose-marti/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Edgar Allan Poe",
+    "descripcion": "Estados Unidos (Boston, 1809 – Baltimore, 1849). Las circunstancias exactas de su muerte siguen siendo objeto de debate histórico.",
+    "dia": 7,
+    "mes": 10,
+    "anio": 1849,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Edgar_Allan_Poe"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Ricardo Güiraldes",
+    "descripcion": "Argentina (Buenos Aires, 1886 – París, Francia, 1927). Murió de enfermedad de Hodgkin poco después de ganar el Premio Nacional de Literatura por Don Segundo Sombra.",
+    "dia": 8,
+    "mes": 10,
+    "anio": 1927,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Ricardo_G%C3%BCiraldes"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Antonio Di Benedetto",
+    "descripcion": "Argentina (Mendoza, 1922 – Buenos Aires, 1986).",
+    "dia": 10,
+    "mes": 10,
+    "anio": 1986,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Antonio_di_Benedetto"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Hebe Uhart",
+    "descripcion": "Argentina (Moreno, Buenos Aires, 1936 – Buenos Aires, 2018).",
+    "dia": 11,
+    "mes": 10,
+    "anio": 2018,
+    "fuente": {
+      "texto": "pagina12.com.ar",
+      "url": "https://www.pagina12.com.ar/148138-murio-hebe-uhart"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Oscar Wilde",
+    "descripcion": "Irlanda (Dublín, 1854 – París, Francia, 1900).",
+    "dia": 16,
+    "mes": 10,
+    "anio": 1854,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Oscar_Wilde"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «La tierra baldía», de T. S. Eliot",
+    "descripcion": "Apareció en el primer número de la revista The Criterion, en Londres. En Estados Unidos salió días después en The Dial, y como libro en diciembre de 1922.",
+    "dia": 16,
+    "mes": 10,
+    "anio": 1922,
+    "fuente": {
+      "texto": "beinecke.library.yale.edu",
+      "url": "https://beinecke.library.yale.edu/article/celebrating-waste-lands-centennial"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Moby Dick», de Herman Melville",
+    "descripcion": "La primera edición salió en Londres con el título «The Whale». La estadounidense, ya como «Moby-Dick», se publicó el 14 de noviembre de 1851.",
+    "dia": 18,
+    "mes": 10,
+    "anio": 1851,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Moby-Dick"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Miguel Ángel Asturias",
+    "descripcion": "Guatemala (Ciudad de Guatemala, 1899 – Madrid, España, 1974).",
+    "dia": 19,
+    "mes": 10,
+    "anio": 1899,
+    "fuente": {
+      "texto": "sicultura.gob.gt",
+      "url": "https://www.sicultura.gob.gt/miguel-angel-asturias/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Jane Eyre», de Charlotte Brontë",
+    "descripcion": "Se publicó en Londres con el seudónimo Currer Bell, editada por Smith, Elder & Co.",
+    "dia": 19,
+    "mes": 10,
+    "anio": 1847,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Jane_Eyre"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «El libro de los elogios», de Enrique Banchs",
+    "descripcion": "Es la fecha del colofón: se terminó de imprimir ese día en Buenos Aires, para la revista Nosotros.",
+    "dia": 20,
+    "mes": 10,
+    "anio": 1908,
+    "fuente": {
+      "texto": "Internet Archive",
+      "url": "https://archive.org/details/ellibrodeloselo00bancgoog"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere José Hernández",
+    "descripcion": "Argentina (Buenos Aires (Perdriel/San Martín), 1834 – Buenos Aires, 1886). Autor de Martín Fierro.",
+    "dia": 21,
+    "mes": 10,
+    "anio": 1886,
+    "fuente": {
+      "texto": "Britannica",
+      "url": "https://www.britannica.com/biography/Jose-Hernandez"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Delmira Agustini",
+    "descripcion": "Uruguay (Montevideo, 1886 – Montevideo, 1914).",
+    "dia": 24,
+    "mes": 10,
+    "anio": 1886,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Delmira_Agustini"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Alfonsina Storni",
+    "descripcion": "Argentina (Sala Capriasca, Suiza, 1892 – Mar del Plata, Argentina, 1938). Suicidio; se arrojó al mar desde la escollera del Club Argentino de Mujeres.",
+    "dia": 25,
+    "mes": 10,
+    "anio": 1938,
+    "fuente": {
+      "texto": "Biblioteca Nacional",
+      "url": "https://www.bn.gov.ar/noticias/25-de-octubre-de-1938-muere-alfonsina-storni"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día del Corrector de Textos",
+    "descripcion": "Instituido en 2006 por la Fundación Litterae (Argentina), en homenaje al natalicio de Erasmo de Rotterdam. Se difunde en medios como \"Día Internacional\", pero el origen identificado es una fundación argentina, no un organismo intergubernamental — por eso se lo clasifica acá como ámbito argentina.",
+    "dia": 27,
+    "mes": 10,
+    "anio": null,
+    "fuente": {
+      "texto": "cuentaartes.org",
+      "url": "https://cuentaartes.org/2024/10/dia-del-corrector-de-textos-se-celebra-este-27-de-octubre/"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Nace Sylvia Plath",
+    "descripcion": "Estados Unidos (Boston, 1932 – Londres, 1963).",
+    "dia": 27,
+    "mes": 10,
+    "anio": 1932,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Sylvia_Plath"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Los viajes de Gulliver», de Jonathan Swift",
+    "descripcion": "La primera edición salió en dos tomos.",
+    "dia": 28,
+    "mes": 10,
+    "anio": 1726,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Gulliver%27s_Travels"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Aullido y otros poemas», de Allen Ginsberg",
+    "descripcion": "City Lights Pocket Poets Series n.º 4; varias fuentes solo confirman 'otoño de 1956' y no corroboran el día 1/11 con una segunda fuente sólida",
+    "dia": 1,
+    "mes": 11,
+    "anio": 1956,
+    "fuente": {
+      "texto": "citylights.com",
+      "url": "https://citylights.com/city-lights-published/howl-anniversary-clothbound-ed/"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Nace Antonio Di Benedetto",
+    "descripcion": "Argentina (Mendoza, 1922 – Buenos Aires, 1986).",
+    "dia": 2,
+    "mes": 11,
+    "anio": 1922,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Antonio_di_Benedetto"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Albert Camus",
+    "descripcion": "Francia (Argelia) (Mondovi, Argelia, 1913 – Villeblevin, Francia, 1960).",
+    "dia": 7,
+    "mes": 11,
+    "anio": 1913,
+    "fuente": {
+      "texto": "dialogoexistencial.com",
+      "url": "https://www.dialogoexistencial.com/camus1/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Día de la Tradición",
+    "descripcion": "Ley N.º 4756 (1939), impulsada por los legisladores Edgardo J. Míguenz y Atilio Roncoroni a pedido de la Agrupación Bases, la estableció para la Provincia de Buenos Aires. La Ley 21.154 (1975) la extendió a todo el país. La fecha conmemora el natalicio de José Hernández (10 de noviembre de 1834), autor de \"El gaucho Martín Fierro\".",
+    "dia": 10,
+    "mes": 11,
+    "anio": null,
+    "fuente": {
+      "texto": "Ministerio de Cultura",
+      "url": "https://www.cultura.gob.ar/por-que-se-celebra-el-dia-de-la-tradicion-en-argentina-8528/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace José Hernández",
+    "descripcion": "Argentina (Buenos Aires (Perdriel/San Martín), 1834 – Buenos Aires, 1886).",
+    "dia": 10,
+    "mes": 11,
+    "anio": 1834,
+    "fuente": {
+      "texto": "Britannica",
+      "url": "https://www.britannica.com/biography/Jose-Hernandez"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Vitam Impendere Amori», de Guillaume Apollinaire",
+    "descripcion": "Lo publicó Mercure de France en París, con dibujos de André Rouveyre.",
+    "dia": 10,
+    "mes": 11,
+    "anio": 1917,
+    "fuente": {
+      "texto": "Drouot",
+      "url": ""
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Carlos Fuentes",
+    "descripcion": "México (Panamá, 1928 – Ciudad de México, 2012).",
+    "dia": 11,
+    "mes": 11,
+    "anio": 1928,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Carlos_Fuentes"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Fiódor Dostoyevski",
+    "descripcion": "Rusia (Moscú, 1821 – San Petersburgo, 1881).",
+    "dia": 11,
+    "mes": 11,
+    "anio": 1821,
+    "fuente": {
+      "texto": "rferl.org",
+      "url": "https://www.rferl.org/a/fyodor-dostoyevsky-200th-anniversary/31556540.html"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Sor Juana Inés de la Cruz (fecha tradicional)",
+    "descripcion": "México (San Miguel Nepantla, 1651 – Ciudad de México, 1695). Discrepancia clásica y no resuelta: la biografía tradicional (Diego Calleja) da el 12/11/1651, pero se halló una partida bautismal de 1648 (2/12/1648) que algunos historiadores creen que le corresponde, ligada a su condición de hija natural. Ambas fechas circulan como válidas.",
+    "dia": 12,
+    "mes": 11,
+    "anio": 1651,
+    "fuente": {
+      "texto": "Britannica",
+      "url": "https://www.britannica.com/biography/Sor-Juana-Ines-de-la-Cruz"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Se publica «Poems», de Emily Dickinson",
+    "descripcion": "Edición póstuma preparada por Mabel Loomis Todd y Thomas Wentworth Higginson",
+    "dia": 12,
+    "mes": 11,
+    "anio": 1890,
+    "fuente": {
+      "texto": "archive.emilydickinson.org",
+      "url": "https://archive.emilydickinson.org/safe/poems1890.html"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «En busca del tiempo perdido», de Marcel Proust",
+    "descripcion": "Sale el primer tomo, «Por el camino de Swann», editado por Bernard Grasset y pagado por el propio Proust.",
+    "dia": 14,
+    "mes": 11,
+    "anio": 1913,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://fr.wikipedia.org/wiki/Du_c%C3%B4t%C3%A9_de_chez_Swann"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace José Saramago",
+    "descripcion": "Portugal (Azinhaga, 1922 – Tías, Lanzarote, España, 2010).",
+    "dia": 16,
+    "mes": 11,
+    "anio": 1922,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Jos%C3%A9_Saramago"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Marcel Proust",
+    "descripcion": "Francia (Auteuil, París, 1871 – París, 1922).",
+    "dia": 18,
+    "mes": 11,
+    "anio": 1922,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Marcel_Proust"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Liev Tolstói",
+    "descripcion": "Rusia (Yásnaia Poliana, 1828 – Astapovo, 1910). Fechas en calendario gregoriano. En calendario juliano (vigente en la Rusia de la época): nació el 28/8/1828 y murió el 7/11/1910, en la estación de trenes de Astapovo.",
+    "dia": 20,
+    "mes": 11,
+    "anio": 1910,
+    "fuente": {
+      "texto": "Britannica",
+      "url": "https://www.britannica.com/biography/Leo-Tolstoy"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Ricardo Piglia",
+    "descripcion": "Argentina (Adrogué, Buenos Aires, 1941 – Buenos Aires, 2017).",
+    "dia": 24,
+    "mes": 11,
+    "anio": 1941,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Ricardo_Piglia"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Cumbres borrascosas», de Emily Brontë",
+    "descripcion": "Ese día se publicó la novela de Emily Brontë.",
+    "dia": 24,
+    "mes": 11,
+    "anio": 1847,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Wuthering_Heights"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Roberto Fontanarrosa",
+    "descripcion": "Argentina (Rosario, Santa Fe, 1944 – Rosario, Santa Fe, 2007).",
+    "dia": 26,
+    "mes": 11,
+    "anio": 1944,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Roberto_Fontanarrosa"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Fernando Pessoa",
+    "descripcion": "Portugal (Lisboa, 1888 – Lisboa, 1935).",
+    "dia": 30,
+    "mes": 11,
+    "anio": 1935,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Fernando_Pessoa"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Oscar Wilde",
+    "descripcion": "Irlanda (Dublín, 1854 – París, Francia, 1900).",
+    "dia": 30,
+    "mes": 11,
+    "anio": 1900,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Oscar_Wilde"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Mensaje (Mensagem)», de Fernando Pessoa",
+    "descripcion": "Puesto a la venta el 1 de diciembre de 1934, fecha conmemorativa de la Restauración de 1640; Parceria António Maria Pereira, Lisboa. Único libro en portugués publicado en vida del autor",
+    "dia": 1,
+    "mes": 12,
+    "anio": 1934,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://pt.wikipedia.org/wiki/Mensagem_(livro)"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere José María Arguedas",
+    "descripcion": "Perú (Andahuaylas, 1911 – Lima, 1969). Se disparó el 28/11/1969 y murió días después, el 2/12/1969.",
+    "dia": 2,
+    "mes": 12,
+    "anio": 1969,
+    "fuente": {
+      "texto": "rpp.pe",
+      "url": "https://rpp.pe/cultura/literatura/jose-maria-arguedas-a-42-anos-de-su-muerte-noticia-427853"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Hebe Uhart",
+    "descripcion": "Argentina (Moreno, Buenos Aires, 1936 – Buenos Aires, 2018).",
+    "dia": 2,
+    "mes": 12,
+    "anio": 1936,
+    "fuente": {
+      "texto": "pagina12.com.ar",
+      "url": "https://www.pagina12.com.ar/148138-murio-hebe-uhart"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace José Mármol",
+    "descripcion": "Argentina (Buenos Aires, 1817 – Buenos Aires, 1871). Murió durante la epidemia de fiebre amarilla.",
+    "dia": 2,
+    "mes": 12,
+    "anio": 1817,
+    "fuente": {
+      "texto": "Biblioteca Nacional",
+      "url": "https://www.bn.gov.ar/noticias/2-de-diciembre-de-1817-nace-jose-marmol"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Rainer Maria Rilke",
+    "descripcion": "Austria (Praga) (Praga, 1875 – Valmont, Suiza, 1926).",
+    "dia": 4,
+    "mes": 12,
+    "anio": 1875,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Rainer_Maria_Rilke"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «El gaucho Martín Fierro», de José Hernández",
+    "descripcion": "Verificado por el usuario en otra sesión (2026-09-25). Edición en libro el 6/12/1872; venía anunciándose desde el 28/11 en el diario La República. Una búsqueda anterior no halló fuente sólida para el día 6.",
+    "dia": 6,
+    "mes": 12,
+    "anio": 1872,
+    "fuente": {
+      "texto": "Argentina.gob.ar",
+      "url": "https://www.argentina.gob.ar/noticias/150-anos-de-la-publicacion-de-el-gaucho-martin-fierro"
+    },
+    "estado": "borrador"
+  },
+  {
+    "titulo": "Muere José Donoso",
+    "descripcion": "Chile (Santiago, 1924 – Santiago, 1996).",
+    "dia": 7,
+    "mes": 12,
+    "anio": 1996,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Jos%C3%A9_Donoso"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Clarice Lispector",
+    "descripcion": "Brasil (nacida en Ucrania) (Chechelnyk, Ucrania, 1920 – Río de Janeiro, 1977). Murió un día antes de cumplir 57 años; emigró a Brasil con su familia en 1926.",
+    "dia": 9,
+    "mes": 12,
+    "anio": 1977,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Clarice_Lispector"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Clarice Lispector",
+    "descripcion": "Brasil (nacida en Ucrania) (Chechelnyk, Ucrania, 1920 – Río de Janeiro, 1977).",
+    "dia": 10,
+    "mes": 12,
+    "anio": 1920,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Clarice_Lispector"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Emily Dickinson",
+    "descripcion": "Estados Unidos (Amherst, Massachusetts, 1830 – Amherst, Massachusetts, 1886).",
+    "dia": 10,
+    "mes": 12,
+    "anio": 1830,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Emily_Dickinson"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Marco Denevi",
+    "descripcion": "Argentina (Sáenz Peña, Buenos Aires, 1922 – Buenos Aires, 1998). El año de nacimiento se discute: pudo haber sido 1920.",
+    "dia": 12,
+    "mes": 12,
+    "anio": 1998,
+    "fuente": {
+      "texto": "sepaargentina.com",
+      "url": "https://sepaargentina.com/2020/05/26/marco-denevi-1922-1998/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Silvina Ocampo",
+    "descripcion": "Argentina (Buenos Aires, 1903 – Buenos Aires, 1993).",
+    "dia": 14,
+    "mes": 12,
+    "anio": 1993,
+    "fuente": {
+      "texto": "radio.perfil.com",
+      "url": "https://radio.perfil.com/noticias/podcasts/el-14-de-diciembre-de-1993-murio-la-escritora-silvina-ocampo.phtml"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «Veinte poemas para ser leídos en el tranvía», de Oliverio Girondo",
+    "descripcion": "Es la fecha del colofón: se terminó de imprimir ese día en Argenteuil, Francia, en una tirada de 850 ejemplares numerados.",
+    "dia": 15,
+    "mes": 12,
+    "anio": 1922,
+    "fuente": {
+      "texto": "Internet Archive",
+      "url": "https://archive.org/details/20poemasparaserl00giro"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Jane Austen",
+    "descripcion": "Inglaterra (Steventon, 1775 – Winchester, 1817).",
+    "dia": 16,
+    "mes": 12,
+    "anio": 1775,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Jane_Austen"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Se publica «18 Poems», de Dylan Thomas",
+    "descripcion": "Lo publicaron en Londres The Sunday Referee y The Parton Bookshop: el primer libro de Dylan Thomas.",
+    "dia": 18,
+    "mes": 12,
+    "anio": 1934,
+    "fuente": {
+      "texto": "newmexicoliteracyproject.org",
+      "url": "https://newmexicoliteracyproject.org/first-edition/18-poems"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace José Lezama Lima",
+    "descripcion": "Cuba (La Habana, 1910 – La Habana, 1976).",
+    "dia": 19,
+    "mes": 12,
+    "anio": 1910,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Jos%C3%A9_Lezama_Lima"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Sara Gallardo",
+    "descripcion": "Argentina (Buenos Aires, 1931 – Buenos Aires, 1988).",
+    "dia": 23,
+    "mes": 12,
+    "anio": 1931,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Sara_Gallardo"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Alejo Carpentier",
+    "descripcion": "Cuba (Lausana, Suiza, 1904 – París, Francia, 1980). Siempre dijo haber nacido en La Habana; documentos hallados tras su muerte muestran que nació en Lausana y que su familia emigró a Cuba poco después.",
+    "dia": 26,
+    "mes": 12,
+    "anio": 1904,
+    "fuente": {
+      "texto": "literatura.us",
+      "url": "https://www.literatura.us/alejo/"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Manuel Puig",
+    "descripcion": "Argentina (General Villegas, Buenos Aires, 1932 – Cuernavaca, México, 1990).",
+    "dia": 28,
+    "mes": 12,
+    "anio": 1932,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://en.wikipedia.org/wiki/Manuel_Puig"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Muere Rainer Maria Rilke",
+    "descripcion": "Austria (Praga) (Praga, 1875 – Valmont, Suiza, 1926).",
+    "dia": 29,
+    "mes": 12,
+    "anio": 1926,
+    "fuente": {
+      "texto": "Wikipedia",
+      "url": "https://es.wikipedia.org/wiki/Rainer_Maria_Rilke"
+    },
+    "estado": "publicado"
+  },
+  {
+    "titulo": "Nace Horacio Quiroga",
+    "descripcion": "Uruguay (Salto, 1878 – Buenos Aires, Argentina, 1937).",
+    "dia": 31,
+    "mes": 12,
+    "anio": 1878,
+    "fuente": {
+      "texto": "Biblioteca Nacional",
+      "url": "https://www.bn.gov.ar/noticias/31-de-diciembre-de-1878-nace-horacio-quiroga"
+    },
+    "estado": "publicado"
+  }
+]

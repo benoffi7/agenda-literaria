@@ -1088,6 +1088,34 @@ opción de la lista, que se borran desde el panel después de unir.
 > Correrlo una vez, fuera de hora. Deja además una versión del §12 por actividad y
 > un rebuild; el `searchText` va escrito para que no suene `derivados-no-coinciden`.
 
+## Importar las efemérides del relevamiento (B-2224)
+
+Las 296 efemérides con día y mes del relevamiento del dueño (`efemerides.csv`,
+2026-09-25) están en `scripts/datos/efemerides-literarias.json`, ya en la forma del
+formulario: el título dice qué pasó («Nace Umberto Eco», «Se publica «Rayuela», de
+Julio Cortázar»), las 25 que tenían solo el mes quedaron afuera a pedido, y las
+notas de investigación de las publicadas se reescribieron como el dato. Las 22 de
+fecha discutida (≈ en el PDF) entran como **borrador**, con la nota entera, para
+leerla antes de publicarlas.
+
+```bash
+npm run efemerides:importar                       # informa, en el emulador
+npm run efemerides:importar -- --aplicar          # escribe, en el emulador
+npm run efemerides:importar:prod                  # informa qué escribiría en producción
+npm run efemerides:importar:prod -- --aplicar     # lo escribe
+```
+
+- **Es idempotente**: una efeméride cuyo slug ya está en la base no se toca. Correrlo
+  dos veces no duplica, y no pisa una que se haya editado en el panel.
+- **Solo crea.** Firma `createdBy`/`updatedBy` con `importacion:efemerides-literarias`
+  —no es el uid de nadie—; la primera edición desde el panel pone el uid de quien
+  edita, y la regla deja editarlas igual (lo prueba `efemerides.integracion.test.ts`).
+- **Escribe con el Admin SDK**, que no pasa por las reglas: por eso cada entrada del
+  archivo se valida en `tests/efemerides-a-importar.test.ts` contra el schema del
+  formulario y contra lo que `formAEfemeride` armaría.
+- Las publicadas disparan `rebuildPorEfemerides` una vez cada una; el debounce del §8
+  las junta en un solo build.
+
 ## Entornos
 
 Vite carga `.env.production` en `build` y `.env.development` en `dev`. La

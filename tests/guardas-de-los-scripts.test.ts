@@ -80,6 +80,9 @@ describe('las guardas de los scripts que escriben — B-630', () => {
       // B-2168 — los contactos cargados en el campo equivocado. Trae la guarda
       // de los dos flags; no toca Calendar, pero escribe en producción igual.
       'scripts/corregir-contactos-mal-cargados.mjs',
+      // B-2224 — la importación de las efemérides del relevamiento. Solo crea
+      // (no pisa ni borra), pero crea 296 documentos que el sitio publica.
+      'scripts/importar-efemerides.mjs',
       'scripts/limpiar-imagenes-huerfanas.mjs',
       'scripts/limpiar-versiones-huerfanas.mjs',
       'scripts/optimizar-imagenes.mjs',
