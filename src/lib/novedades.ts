@@ -65,6 +65,27 @@ export interface Novedad {
  */
 export const NOVEDADES: Novedad[] = [
   {
+    id: 'placa-de-actividad',
+    fecha: '2026-10-21',
+    version: '1.11.0',
+    titulo: 'La placa para Instagram de cada actividad',
+    detalle:
+      'Debajo del texto para publicar, un botón arma la imagen del posteo con la fecha, el ' +
+      'lugar, el arancel y cómo inscribirse, y la portada si es una foto que subiste. Sale ' +
+      'para el feed o para la historia, y se baja para subirla.',
+    donde: 'En el formulario de la actividad, sección «Texto para publicar».',
+  },
+  {
+    id: 'placa-de-efemeride',
+    fecha: '2026-10-21',
+    version: '1.11.0',
+    titulo: 'La placa de cada efeméride, y la lista por mes',
+    detalle:
+      'Cada efeméride arma su imagen para Instagram con el día, cuántos años hace y el dato. ' +
+      'La lista arranca en el mes de hoy y tiene un buscador.',
+    donde: 'En «Efemérides», el botón «Placa para Instagram» de cada fila.',
+  },
+  {
     id: 'encuentro-de-mas-de-una-semana',
     fecha: '2026-10-19',
     version: '1.11.0',

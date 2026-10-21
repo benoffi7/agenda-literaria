@@ -11,6 +11,7 @@
  */
 import { z } from 'zod';
 import { urlSegura } from '@/lib/enlaceSeguro';
+import { normalize } from '@/lib/normalize';
 import { slugify } from '@/lib/slugify';
 import {
   DIAS_POR_MES,
@@ -186,3 +187,24 @@ export const slugDeEfemerideBloqueado = (e: {
   estado: EstadoEfemeride;
   publicadaAlgunaVez?: boolean;
 }): boolean => e.publicadaAlgunaVez === true || e.estado === 'publicado';
+
+/**
+ * **El filtro de la lista del panel** — B-2225. Con la importación del
+ * relevamiento (B-2224) la lista pasó de unas pocas a casi trescientas, y
+ * recorrerla entera para encontrar la de mañana no es una pantalla.
+ *
+ * `mes` es 1–12, o `null` para el año entero. El texto se compara normalizado
+ * (§6: sin acentos ni mayúsculas) contra el título y el dato, así «cortazar»
+ * encuentra a Cortázar.
+ */
+export const filtrarEfemerides = <T extends { mes: number; titulo: string; descripcion: string }>(
+  lista: readonly T[],
+  { mes, texto }: { mes: number | null; texto: string },
+): T[] => {
+  const buscado = normalize(texto.trim());
+  return lista.filter(
+    (e) =>
+      (mes === null || e.mes === mes) &&
+      (!buscado || normalize(`${e.titulo} ${e.descripcion ?? ''}`).includes(buscado)),
+  );
+};

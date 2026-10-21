@@ -1026,7 +1026,9 @@ export function ActividadFormulario({
           difusion: soloLectura ? null : (
             <SeccionDifusion form={form} set={set} pedidoDeApertura={aperturas['difusion']} />
           ),
-          'texto-redes': <SeccionTextoRedes form={form} labelsPendientes={labelsPendientes} />,
+          'texto-redes': (
+            <SeccionTextoRedes form={form} labelsPendientes={labelsPendientes} inicial={inicial} />
+          ),
           'vista-previa': <SeccionVistaPrevia form={form} labelsPendientes={labelsPendientes} />,
         };
 

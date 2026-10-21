@@ -78,3 +78,50 @@ describe('el aviso del link repetido — B-1943', () => {
     expect(screen.queryByRole('status')).toBeNull();
   });
 });
+
+/**
+ * **B-2225 — la lista filtrada y la placa.** Con la importación del relevamiento
+ * la lista son casi trescientas: arranca en el mes de hoy (Buenos Aires), se
+ * busca por texto, y cada fila abre su placa.
+ */
+describe('el filtro y la placa — B-2225', () => {
+  afterEach(() => vi.useRealTimers());
+
+  const lista = [
+    efemeride({ id: 'e1' }),
+    efemeride({ id: 'e2', titulo: 'Muere Alejandra Pizarnik', slug: 'muere-pizarnik', dia: 25, mes: 9 }),
+    efemeride({ id: 'e3', titulo: 'Nace Alfonsina Storni', slug: 'nace-storni', dia: 29, mes: 5 }),
+  ];
+
+  it('arranca en el mes de hoy y dice cuántas muestra', () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2026-08-10T15:00:00Z'));
+    montar(lista);
+    expect(screen.getByText('Nace Julio Cortázar')).toBeTruthy();
+    expect(screen.queryByText('Muere Alejandra Pizarnik')).toBeNull();
+    expect(screen.getByText('1 de 3')).toBeTruthy();
+  });
+
+  it('«Todo el año» y el buscador, sin acentos', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+    montar(lista);
+    await user.selectOptions(screen.getByLabelText('Mes'), '');
+    await user.type(screen.getByLabelText('Buscar'), 'alfonsina');
+    expect(screen.getByText('Nace Alfonsina Storni')).toBeTruthy();
+    expect(screen.queryByText('Nace Julio Cortázar')).toBeNull();
+  });
+
+  it('el botón de cada fila abre y cierra su placa', async () => {
+    const { default: userEvent } = await import('@testing-library/user-event');
+    const user = userEvent.setup();
+    montar(lista);
+    await user.selectOptions(screen.getByLabelText('Mes'), '');
+    const [primero] = screen.getAllByRole('button', { name: 'Placa para Instagram' });
+    await user.click(primero!);
+    expect(screen.getByRole('button', { name: 'Bajar la imagen' })).toBeTruthy();
+    expect(screen.getByLabelText(/Vista previa de la placa de «Nace Alfonsina Storni»/)).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: 'Cerrar la placa' }));
+    expect(screen.queryByRole('button', { name: 'Bajar la imagen' })).toBeNull();
+  });
+});

@@ -149,9 +149,10 @@ solo las cargaba de a una. Pidió cargarlas sacando las que no tienen fecha comp
 **Hecho:** `scripts/datos/efemerides-literarias.json` (las 296 con día y mes) y
 `scripts/importar-efemerides.mjs`, idempotente y con la guarda de los dos flags.
 Títulos en la forma del formulario («Nace …», «Muere …», «Se publica «…», de …»);
-las notas de investigación de las 274 publicadas reescritas como el dato, sin
-agregar nada que la nota no dijera; las 22 discutidas como borrador con la nota
-entera. Tests: `efemerides-a-importar.test.ts` (cada entrada contra el schema del
+las notas de investigación de las 296 reescritas como el dato, sin agregar nada
+que la nota no dijera; las 22 discutidas como borrador, con su nota en el PDF (el
+`auditor-privacidad` vio que dejarla en la descripción la ponía a un «Publicar» de
+una página indexada). Tests: `efemerides-a-importar.test.ts` (cada entrada contra el schema del
 formulario) y un caso nuevo en `efemerides.integracion.test.ts` (el panel edita una
 importada). Probado contra el emulador: 296 escritas, la segunda corrida cero.
 

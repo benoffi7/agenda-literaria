@@ -492,6 +492,10 @@ que va marcado como decisión.
 > **Hecho el 2026-10-06** como recomendaba la decisión: **una sola plantilla
 > semanal**, en la pantalla del correo, para el feed o la historia, dibujada en el
 > navegador con la identidad del sitio y bajada como PNG.
+>
+> **Ampliado el 2026-10-21 (D-1278)**, a pedido del dueño: además de la semanal,
+> una placa por actividad (en «Texto para publicar») y una por efeméride (en su
+> lista), con la misma maquinaria.
 
 
 - **Qué gana quien carga:** una imagen cuadrada y una vertical con el flyer, la

@@ -1262,6 +1262,29 @@ export const CAPITULOS: CapituloAyuda[] = [
       },
       {
         texto:
+          'La lista arranca en el mes de hoy: con «Mes» elegís otro o el año entero, y «Buscar» ' +
+          'encuentra por nombre o por el dato, con o sin acentos.',
+        atadoA: [
+          {
+            archivo: 'tests/efemerides-panel.render.test.tsx',
+            it: 'arranca en el mes de hoy y dice cuántas muestra',
+          },
+        ],
+      },
+      {
+        texto:
+          '«Placa para Instagram», en cada fila, arma la imagen de esa efeméride para el feed o ' +
+          'la historia: el día, el año, cuántos años hace, qué pasó y el dato. Se baja y se sube ' +
+          'a mano. En borrador sale sin la dirección de su página, que todavía no existe.',
+        atadoA: [
+          {
+            archivo: 'tests/placas.test.ts',
+            it: 'lleva la dirección de su página solo si está publicada',
+          },
+        ],
+      },
+      {
+        texto:
           'Se carga el día y el mes, no una fecha: una efeméride se repite todos los años. El ' +
           'año del hecho va aparte, es opcional y no decide qué día se muestra.',
       },
@@ -2549,6 +2572,25 @@ export const CAPITULOS: CapituloAyuda[] = [
           {
             archivo: 'tests/textoRedes.test.ts',
             it: 'el cupo completo no esconde el canal, va arriba y con el paréntesis (D-127)',
+          },
+        ],
+      },
+      {
+        texto:
+          '«Armar la placa para Instagram», debajo del texto, dibuja la imagen del posteo: la ' +
+          'fecha, el lugar, el arancel y cómo inscribirse, con la portada si es una foto que ' +
+          'subiste al panel (una foto de otro sitio no se puede usar). Se baja y se sube a mano.',
+      },
+      {
+        texto:
+          'La placa no lleva el número, el mail ni la cuenta de inscripción —dice solo por dónde—, ' +
+          'ni la dirección exacta, ni las notas del arancel: una imagen se comparte sin el texto ' +
+          'y no se despublica. Esos datos van en el texto de arriba.',
+        cuidado: true,
+        atadoA: [
+          {
+            archivo: 'tests/placas.test.ts',
+            it: 'no lleva el destino de la inscripción ni la dirección, aunque el texto sí',
           },
         ],
       },

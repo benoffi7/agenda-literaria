@@ -14254,3 +14254,34 @@ escritura de huellas cuando hubo operaciones.
   reenviaría todo en su próxima edición.
 - **Borrar la actividad borra su documento de huellas** aunque no haya eventos que
   borrar: una subcolección no se va con el documento padre.
+
+---
+
+## D-1278 · Una placa por actividad y por efeméride, además de la imagen de la semana
+
+**B-2225 y B-2226, 2026-10-21, pedido del dueño.** El roadmap 4.3 había decidido
+**una sola plantilla, semanal** («Esta semana en la agenda»), con el argumento de
+que el flyer del organizador ya era la imagen de cada actividad. El dueño pidió
+poder generar la placa de una efeméride elegida y la de cada evento.
+
+**Qué cambia:** la decisión del 4.3 se amplía, no se revierte. La imagen de la
+semana sigue igual; se suman dos placas con la misma maquinaria —un `<canvas>` en
+el navegador de quien carga, los dos formatos de Instagram, las tipografías y los
+colores del sitio, y «se baja y se sube a mano»—. Lo compartido está en
+`src/components/admin/placa/`; el texto de cada placa lo decide `src/lib/placas.ts`.
+
+**Qué se mantiene para que sea aceptable:**
+
+- **Nada se publica solo** ni pasa por el build (el renderizador en el build sigue
+  descartado, 12-sitio-publico §12).
+- **Una placa lleva menos que el texto para redes, nunca más** (tabla en el
+  docblock de `placas.ts`, verificada con centinelas): sin el destino de la
+  inscripción, sin dirección, sin notas del arancel, sin handles.
+- **La foto, solo la portada propia.** El bucket tiene el CORS del sitio
+  (`cors.json`); una externa contaminaría el canvas y no se podría bajar, y además
+  sería la imagen de otro. Si no carga, la placa sale sin foto.
+- **La dirección de la página, solo con lo guardado publicado** (B-312): en
+  borrador el slug todavía se mueve.
+- **Todo texto libre que se dibuja pasa por `sinLinksDeReunion`**: la placa es la
+  primera salida para redes que dibuja las opciones para sumarse, y se arma del
+  formulario en curso, donde la regla del schema todavía no corrió.

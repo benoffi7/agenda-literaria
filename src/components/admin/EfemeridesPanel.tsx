@@ -4,10 +4,13 @@ import { EfemerideFormulario } from '@/components/admin/EfemerideFormulario';
 import { medirFuncion } from '@/lib/analytics';
 import { textoDeFallo } from '@/lib/fallosDelPanel';
 import { fechaDeEfemeride, ordenDelAnio, publicadasSinPagina } from '@/lib/efemeridePublica';
-import { slugDeEfemerideBloqueado } from '@/lib/efemeride-schema';
+import { filtrarEfemerides, slugDeEfemerideBloqueado } from '@/lib/efemeride-schema';
+import { MESES } from '@/lib/meses';
+import { PlacaDeEfemeride } from '@/components/admin/placa/PlacaDeEfemeride';
 import { moverEfemeride, observarEfemerides, slugPublicable } from '@/lib/efemerides';
 import { rutaDeEfemeride } from '@/lib/rutasPublicas';
 import type { EfemerideConId, EstadoEfemeride } from '@/types/efemeride';
+import { TIMEZONE } from '@calendario';
 
 /**
  * **La pantalla de efemérides del panel** — B-959.
@@ -16,6 +19,9 @@ import type { EfemerideConId, EstadoEfemeride } from '@/types/efemeride';
  * como las de la Guía (`DirectorioPanel`): acá nadie de afuera propone nada, así
  * que no hay «espera decisión» ni «descartada». Es la lista del año, ordenada
  * por mes y día, con el estado de cada una a la vista.
+ *
+ * Desde B-2225 se filtra por mes —arranca en el de hoy— y por texto, y cada fila
+ * arma su placa para Instagram.
  *
  * Mismo reparto que `BibliotecasPanel`: el alta y la edición viven acá adentro
  * para no perder la suscripción a la colección al abrir el formulario, y son
@@ -42,6 +48,12 @@ const ESTILO_ESTADO: Record<EstadoEfemeride, string> = {
   publicado: 'bg-emerald-100 text-emerald-800',
 };
 
+/** 1–12: el mes de hoy en la zona del proyecto. */
+const mesDeHoy = (): number =>
+  Number(
+    new Intl.DateTimeFormat('en-CA', { timeZone: TIMEZONE, month: 'numeric' }).format(new Date()),
+  );
+
 export function EfemeridesPanel({
   usuario,
   onAbrirFormulario,
@@ -52,6 +64,10 @@ export function EfemeridesPanel({
   const [efemerides, setEfemerides] = useState<EfemerideConId[]>([]);
   const [fallo, setFallo] = useState<string | null>(null);
   const [moviendo, setMoviendo] = useState<string | null>(null);
+  // El mes de hoy en Buenos Aires: es el que se va a querer publicar.
+  const [mes, setMes] = useState<number | null>(() => mesDeHoy());
+  const [texto, setTexto] = useState('');
+  const [conPlaca, setConPlaca] = useState<string | null>(null);
 
   /*
    * `efemerides-abrir` con cuántas hay publicadas, adentro del primer snapshot y
@@ -80,6 +96,10 @@ export function EfemeridesPanel({
   );
 
   const ordenadas = useMemo(() => [...efemerides].sort(ordenDelAnio), [efemerides]);
+  const visibles = useMemo(
+    () => filtrarEfemerides(ordenadas, { mes, texto }),
+    [ordenadas, mes, texto],
+  );
 
   /*
    * B-1943 — la guarda de publicación lee sin transacción, así que dos admins
@@ -162,6 +182,45 @@ export function EfemeridesPanel({
           </div>
         )}
 
+        {ordenadas.length > 0 && (
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <label className="flex flex-col gap-1 text-xs text-tinta/65">
+              Mes
+              <select
+                value={mes ?? ''}
+                onChange={(ev) => setMes(ev.target.value ? Number(ev.target.value) : null)}
+                className="rounded-md border border-borde bg-white px-2 py-1.5 text-sm text-tinta"
+              >
+                <option value="">Todo el año</option>
+                {MESES.map((m, i) => (
+                  <option key={m} value={i + 1}>
+                    {m[0]!.toUpperCase() + m.slice(1)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-1 flex-col gap-1 text-xs text-tinta/65">
+              Buscar
+              <input
+                type="search"
+                value={texto}
+                onChange={(ev) => setTexto(ev.target.value)}
+                placeholder="Cortázar, Rayuela, poesía…"
+                className="rounded-md border border-borde bg-white px-2 py-1.5 text-sm text-tinta"
+              />
+            </label>
+            <p className="text-xs text-tinta/65 sm:pb-2">
+              {visibles.length} de {ordenadas.length}
+            </p>
+          </div>
+        )}
+
+        {ordenadas.length > 0 && visibles.length === 0 && (
+          <p className="rounded-md border border-dashed border-borde px-3 py-6 text-center text-sm text-tinta/65">
+            Ninguna efeméride con ese filtro.
+          </p>
+        )}
+
         {ordenadas.length === 0 && !fallo && (
           <p className="rounded-md border border-dashed border-borde px-3 py-8 text-center text-sm text-tinta/65">
             Todavía no hay ninguna efeméride cargada.
@@ -169,7 +228,7 @@ export function EfemeridesPanel({
         )}
 
         <ul className="flex flex-col gap-2">
-          {ordenadas.map((e) => (
+          {visibles.map((e) => (
             <li key={e.id} className="rounded-md border border-borde bg-white px-3 py-2.5">
               <div className="sm:flex sm:items-start sm:gap-3">
                 <div className="min-w-0 sm:flex-1">
@@ -207,7 +266,20 @@ export function EfemeridesPanel({
                       ? 'Despublicar'
                       : 'Publicar'}
                 </button>
+                <button
+                  type="button"
+                  aria-expanded={conPlaca === e.id}
+                  onClick={() => setConPlaca(conPlaca === e.id ? null : e.id)}
+                  className={`${claseBotonSecundario} shrink-0`}
+                >
+                  {conPlaca === e.id ? 'Cerrar la placa' : 'Placa para Instagram'}
+                </button>
               </div>
+              {conPlaca === e.id && (
+                <div className="mt-3 border-t border-borde pt-3">
+                  <PlacaDeEfemeride efemeride={e} />
+                </div>
+              )}
             </li>
           ))}
         </ul>

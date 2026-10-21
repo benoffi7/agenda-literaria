@@ -1030,7 +1030,9 @@ del correo, un bloque «Para redes» con:
   leídos de sus variables CSS, y se baja como PNG para subirla a mano; no se publica
   sola. Si sobran, entran primero las recomendadas; lo que no entra se dice («y N más
   en la agenda»), contado sobre lo que se dibujó. Qué entra y cómo se parten los
-  títulos: `lib/imagenDeLaSemana.ts`;
+  títulos: `lib/imagenDeLaSemana.ts`. Desde D-1278 hay además una placa por
+  actividad y una por efeméride, con las mismas piezas (ver «Las placas para
+  Instagram»);
 - **los recordatorios, día por día**: cada encuentro de la semana con un botón
   «Armar recordatorio» que lee **esa** actividad y arma el mismo texto que da su
   formulario —con los arrobados y el canal de inscripción—, para el encuentro de ese
@@ -1754,6 +1756,41 @@ pantalla lo dice: un aviso arriba de la lista nombra la publicada que quedó sin
 página y la que se quedó el link, con el mismo reparto que usa el build
 (`publicadasSinPagina`). Como la lista está suscripta, aparece en las dos
 pantallas sin recargar. Se arregla despublicando una de las dos.
+
+### Las placas para Instagram (B-2225, B-2226, D-1278)
+
+Pedido del dueño del 2026-10-21: además de la imagen de la semana, la placa de
+una efeméride elegida y la de cada evento. Las tres se dibujan igual —un
+`<canvas>` en el navegador de quien carga, feed (1080 × 1350) o historia
+(1080 × 1920), las tipografías y los colores del sitio— y se bajan como PNG para
+subirlas a mano: **nada se publica solo**. Lo compartido vive en
+`src/components/admin/placa/`; el texto de cada placa, en `src/lib/placas.ts`.
+
+- **La de una efeméride**: el botón «Placa para Instagram» de cada fila de la
+  lista. «Un día como hoy», el día y el mes, el año con cuántos años hace, qué pasó
+  y el dato, con las líneas que entren. Si la placa sobra, el contenido se centra.
+  La dirección de su página va solo si está publicada.
+- **La de una actividad**: «Armar la placa para Instagram», debajo del texto en
+  «Texto para publicar». Se arma con el formulario en curso, por `formADocumento`
+  como el texto. Lleva el tipo y cuántos encuentros, el título, quién lo da, y en
+  filas: cuándo, dónde, arancel e inscripción. **Cuándo** se resume: hasta tres
+  fechas van una por línea; un ciclo del mismo día y la misma hora dice «Los
+  jueves · 19:00 / Del 5/11 al 24/12»; si no hay patrón, las dos primeras y «y N
+  fechas más»; con opciones para sumarse, las opciones. Las canceladas no se
+  anuncian. Una fila que no entra entera no se dibuja, y las que siguen tampoco
+  (en el feed con foto suele quedar afuera la inscripción; en la historia entra).
+- **La foto es la portada, solo si es propia.** El bucket tiene el CORS del sitio;
+  una externa no se puede leer del canvas, y si la foto no carga la placa sale sin
+  ella.
+- **Lleva menos que el texto para redes**: no lleva el número, el mail ni la cuenta
+  de inscripción, ni la dirección exacta, ni las notas del arancel, ni los handles.
+  La tabla está en el docblock de `placas.ts` y la verifica `tests/placas.test.ts`
+  con los centinelas del formulario lleno.
+
+**La lista de efemérides se filtra** desde B-2225: arranca en el mes de hoy (hora
+de Buenos Aires), con «Todo el año» en el mismo desplegable y un buscador que
+compara sin acentos contra el título y el dato (`filtrarEfemerides`). Con la
+importación de B-2224 pasa de unas pocas a casi trescientas.
 
 ## Dos formas del formulario, y las elige quien carga
 

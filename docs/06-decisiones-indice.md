@@ -340,6 +340,7 @@ cambio.
 - [D-1275](06-decisiones.md#d-1275--el-rebuild-por-contenido-publica-datos-nunca-código) · El rebuild por contenido publica datos, nunca código
 - [D-1276](06-decisiones.md#d-1276--el-índice-público-va-en-dos-archivos-lo-vigente-y-lo-pasado) · El índice público va en dos archivos: lo vigente y lo pasado
 - [D-1277](06-decisiones.md#d-1277--la-huella-de-lo-que-calendar-aceptó-vive-aparte-y-el-sync-que-llega-tarde-corta) · La huella de lo que Calendar aceptó vive aparte, y el sync que llega tarde corta
+- [D-1278](06-decisiones.md#d-1278--una-placa-por-actividad-y-por-efeméride-además-de-la-imagen-de-la-semana) · Una placa por actividad y por efeméride, además de la imagen de la semana
 
 ## Otras secciones del registro
 

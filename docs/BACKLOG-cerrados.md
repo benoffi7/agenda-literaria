@@ -18601,6 +18601,43 @@ mano y de a ratos. **Arreglo:** `new Headers(...)` más `set('Content-Type')`.
 tiene `roles/iam.serviceAccountTokenCreator` sobre `calendar-sync@` (es el paso 2
 del encabezado del script), y otorgarlo es del dueño.
 
+### B-2225 · La placa para Instagram de una efeméride, y la lista filtrable · P2 — ✅ hecho (2026-10-21)
+
+El dueño pidió poder generar la placa de una efeméride elegida. **Hecho:** botón
+«Placa para Instagram» en cada fila de «Efemérides», feed o historia, con el mismo
+lienzo que la imagen de la semana (D-1278). Y como con B-2224 la lista pasa a casi
+trescientas, un filtro por mes que arranca en el de hoy y un buscador sin acentos.
+`tests/placas.test.ts`, `tests/efemerides-panel.render.test.tsx`.
+
+### B-2226 · La placa para Instagram de cada actividad · P2 — ✅ hecho (2026-10-21)
+
+El dueño pidió la misma placa para los eventos; el roadmap 4.3 había dejado una
+sola plantilla, semanal (D-1278 la amplía). **Hecho:** «Armar la placa para
+Instagram» en «Texto para publicar», con la portada propia si la hay, y lo que
+lleva y no lleva verificado con los centinelas (`tests/placas.test.ts`). La imagen
+de la semana pasó a usar las mismas piezas (`components/admin/placa/`) sin cambiar
+lo que dibuja.
+
+**Queda dicho, no pendiente:** en el feed con foto, la fila de inscripción suele no
+entrar; la historia la lleva y el texto del posteo también.
+
+**Lo que corrigieron los auditores antes del commit (2026-10-21):**
+
+- **El link de la reunión podía llegar a la placa por la etiqueta de una opción para
+  sumarse** (`auditor-privacidad`, medido con el test en rojo). La regla del schema
+  que lo saca corre solo con la actividad publicada y al guardar; la placa se arma
+  del formulario en curso. Ahora todo texto libre que se dibuja pasa por
+  `sinLinksDeReunion` (`it('una etiqueta de opción con el link de la reunión no llega
+  a la placa, ni en borrador …')`).
+- **«Hace N años» se contaba con el año del navegador** (`auditor-trampas`, trampa
+  1): el 31 de diciembre a la noche, desde otra zona, decía un año de más. Ahora
+  con el de Buenos Aires.
+- **Las 22 efemérides en borrador traían la nota de investigación** como descripción,
+  a un «Publicar» de una página indexada (`auditor-privacidad`). Se reescribieron
+  como las publicadas; la nota queda en el PDF.
+- **El importador ahora avisa** de una nueva que cae el mismo día y año que una
+  existente con otro slug (`auditor-trampas`).
+
 ## P3 — cuando sobre tiempo
 
 ### B-1132 · Un `rejects.toThrow()` pelado en un test de reglas sigue sin red, y es más débil que lo que B-1130 sacó — ✅ hecho (2026-09-21) · P3 — del `auditor-trampas` sobre el cierre de B-1130 (2026-09-18)

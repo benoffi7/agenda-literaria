@@ -2,6 +2,12 @@
 
 ## Sin publicar
 
+- **La placa para Instagram de cada actividad** (B-2226, D-1278). En «Texto para
+  publicar», un botón arma la imagen del posteo —fecha, lugar, arancel, cómo
+  inscribirse y la portada propia— para el feed o la historia.
+
+- **La placa de cada efeméride, y la lista por mes con buscador** (B-2225, D-1278).
+
 - **Las 296 efemérides del relevamiento, listas para cargar** (B-2224). Un comando las
   importa de una vez: 274 publicadas y 22 de fecha discutida como borrador para
   revisar. Las que tenían solo el mes quedaron afuera.
